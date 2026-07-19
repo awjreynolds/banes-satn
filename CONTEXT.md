@@ -63,3 +63,51 @@ _Avoid_: complete network, failed output
 **Complete Network**:
 A connected, bidirectionally traversable network with unique Community Connections, justified termini, continuous selected alignments, complete intervention-archetype coverage, and no blocking Route Refinement Findings.
 _Avoid_: final design, adopted network
+
+**Evidence Packet**:
+An immutable, versioned collection of governed evidence and rules supplied to an agent role for one compilation scope.
+_Avoid_: prompt context, live web research
+
+**Agent Decision Record**:
+A schema-valid, evidence-citing proposal, critique, synthesis or refinement emitted by an agent role without directly changing compiled state.
+_Avoid_: free-form answer, silent edit
+
+**Challenge Finding**:
+A critic's evidence-backed challenge to a proposal, classified as blocking, revision-required or advisory and displayed through a traffic-light status.
+_Avoid_: comment, untracked objection
+
+**Governance Directive**:
+A versioned, scoped human instruction that becomes governed input to a later compilation without overriding mandatory network invariants.
+_Avoid_: manual output edit, validation waiver, prompt pragma
+
+**Human Intervention Request**:
+A structured handoff describing a blocked decision, attempted revisions, unresolved findings, missing evidence, available choices and the smallest human input needed.
+_Avoid_: review requested, agent failure message
+
+**Agent Role Contract**:
+A provider-neutral definition of one agent role's instructions, Evidence Packet, permitted tools, output schema, citation duties and stopping behaviour.
+_Avoid_: Codex prompt, model-specific workflow
+
+**Compiled Connection**:
+The typed result of compiling one Community Connection, including its selected Alignment Option, rejected alternatives, evidence, findings, intervention coverage and provenance.
+_Avoid_: drawn route, agent response
+
+**Network Compilation Unit**:
+A recursively compiled subgraph assembled from Compiled Connections or smaller Network Compilation Units and assessed through the same proposal, critique, synthesis and validation protocol.
+_Avoid_: map tile, administrative area
+
+**Validated Connection**:
+An immutable Compiled Connection that satisfies its applicable deterministic and agent-review contract and can be reused until a relevant governed input changes.
+_Avoid_: cached guess, permanently approved route
+
+**Criteria Set**:
+A versioned collection of connection-level and network-level assessment criteria used by agent roles and deterministic validation for a compilation run.
+_Avoid_: mutable scorecard, hidden rubric
+
+**Full Recompile Directive**:
+A Governance Directive requiring every connection and Network Compilation Unit to be compiled again under a declared Criteria Set while preserving prior results for comparison.
+_Avoid_: cache clear, overwrite run
+
+**Evidence Request**:
+A structured request for evidence absent from an Evidence Packet, to be acquired and governed outside the compilation run.
+_Avoid_: live browsing, unsupported assumption
