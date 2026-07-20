@@ -116,6 +116,14 @@ _Avoid_: critical town
 A published network state that may contain visible Network Gaps and open Route Refinement Findings for inspection.
 _Avoid_: complete network, failed output
 
+**Inspectable Review Map**:
+A static browser map whose selected-feature details, statuses and controls are mirrored in accessible HTML with stable identifiers, allowing people and browser agents to inspect the network without relying on the rendered map canvas alone.
+_Avoid_: canvas-only map, GIS-only output, screenshot report
+
+**Review Map Bundle**:
+The read-only static directory, shareable ZIP and GitHub Pages deployment generated from the same current network layers and Inspectable Review Map implementation.
+_Avoid_: editable map, hosted application, separate publication build
+
 **Complete Network**:
 A connected, bidirectionally traversable network with unique Community Connections, justified termini, continuous selected alignments, complete intervention-archetype coverage, and no blocking Route Refinement Findings.
 _Avoid_: final design, adopted network
