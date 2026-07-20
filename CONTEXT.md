@@ -160,6 +160,14 @@ _Avoid_: cached guess, permanently approved route
 A versioned collection of connection-level and network-level assessment criteria used by agent roles and deterministic validation for a compilation run.
 _Avoid_: mutable scorecard, hidden rubric
 
+**Criterion Status**:
+The visible result of applying one criterion: Green when satisfied, Amber when agentic refinement or challenge is required, Red when a mandatory network invariant fails, and Grey when unevaluated or evidence is unavailable.
+_Avoid_: aggregate score, implicit confidence, hidden failure
+
+**Criteria Section**:
+A coherent group of Criterion Statuses evaluated and displayed on its own merit. Sections are never collapsed into one overall traffic light or weighted score.
+_Avoid_: dashboard total, worst-status rollup, composite score
+
 **Full Recompile Directive**:
 A Governance Directive requiring every connection and Network Compilation Unit to be compiled again under a declared Criteria Set while preserving prior results for comparison.
 _Avoid_: cache clear, overwrite run
