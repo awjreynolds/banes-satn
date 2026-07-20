@@ -111,3 +111,31 @@ _Avoid_: cache clear, overwrite run
 **Evidence Request**:
 A structured request for evidence absent from an Evidence Packet, to be acquired and governed outside the compilation run.
 _Avoid_: live browsing, unsupported assumption
+
+**Wayfinding Pass**:
+The compilation phase that connects Network Places into a valid end-to-end network using topology, constraints and alignment evidence. Demand and accessibility evidence do not determine connections in this pass.
+_Avoid_: prioritisation, demand-led routing
+
+**Prioritisation Pass**:
+A later phase that uses demand, accessibility and other delivery evidence to order already-valid Community Connections without changing the network's required connectivity.
+_Avoid_: wayfinding, network generation
+
+**ATM Reference Corpus**:
+The human-reviewed B&NES Active Travel Masterplan network, including existing and potentially planned alignments, used to improve and test the portable SATN compiler rather than define its rules.
+_Avoid_: ground truth, portable dependency
+
+**ATM-Seeded Compilation**:
+A B&NES compilation that starts from ATM alignments where present and records reasons for any deviation.
+_Avoid_: ATM validation, copied network
+
+**ATM-Blind Compilation**:
+A B&NES compilation that does not use ATM geometry during route proposal and compares its result with the ATM Reference Corpus afterwards.
+_Avoid_: evidence-free compilation, automatic benchmark
+
+**Divergence Record**:
+The evidence-citing, red-teamed explanation of a difference between an ATM-seeded or ATM-blind result and the ATM Reference Corpus, including the attempted resolution and remaining uncertainty.
+_Avoid_: geometry diff, unexplained mismatch
+
+**Explicit Unknown**:
+A material fact that the available evidence does not establish. It remains visible and must not be silently interpreted as absent, safe or zero.
+_Avoid_: missing value, assumed absence
