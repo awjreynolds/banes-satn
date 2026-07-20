@@ -89,7 +89,7 @@ A rural lane where through motor traffic is physically or legally filtered while
 _Avoid_: Quiet Lane, traffic-free path
 
 **Strategic Spine**:
-A rural A-road corridor whose cycling provision defaults to a wide shared-use path alongside the road. A parallel alignment is used only where adjacent provision is physically impracticable and the reason is recorded.
+A priority rural A-road corridor valued for directness, legibility and social oversight, whose cycling provision defaults to a wide shared-use path alongside the road. A parallel alignment is used only where adjacent provision is physically impracticable and the reason is recorded.
 _Avoid_: cycling on the carriageway, optional corridor, unexplained diversion
 
 **Urban Main-Road Spine**:
