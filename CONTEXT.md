@@ -144,9 +144,21 @@ _Avoid_: review requested, agent failure message
 A provider-neutral definition of one agent role's instructions, Evidence Packet, permitted tools, output schema, citation duties and stopping behaviour.
 _Avoid_: Codex prompt, model-specific workflow
 
+**Agent Runtime**:
+The provider-neutral seam through which compilation invokes proposal, critique, red-team and divergence roles using typed inputs and outputs. A concrete model provider is an Adapter at this seam; Codex is not required.
+_Avoid_: embedded chatbot, Codex dependency, free-form agent call
+
+**Council Configuration**:
+Versioned council-specific data declaring the study boundary, source locations and Criteria Set values consumed by the council-neutral compiler without changing compilation logic.
+_Avoid_: council fork, hard-coded B&NES rule, deployment environment
+
 **Compiled Connection**:
 The typed result of compiling one Community Connection, including its selected Alignment Option, rejected alternatives, evidence, findings, intervention coverage and provenance.
 _Avoid_: drawn route, agent response
+
+**Compilation Gate**:
+The bounded propose, deterministic-check, agent-critique, red-team and revise loop that a Community Connection must pass before entering compiled network state. An unresolved failure becomes an explicit Network Gap.
+_Avoid_: approval screen, silent acceptance, unbounded retry
 
 **Network Compilation Unit**:
 A recursively compiled subgraph assembled from Compiled Connections or smaller Network Compilation Units and assessed through the same proposal, critique, synthesis and validation protocol.
