@@ -1,0 +1,16 @@
+council_id: tiny-council
+council_name: Tiny Council
+source:
+  kind: fixture
+  fixture_dir: source
+  snapshot_dir: work/snapshots
+  snapshot_id: fixture-001
+compilation:
+  max_connection_km: 15
+  agent:
+    provider: fake
+publication:
+  output_dir: work/output
+  title: Tiny Council SATN Review
+  pdf_page_size: A3
+

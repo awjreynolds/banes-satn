@@ -1,0 +1,48 @@
+[project]
+name = "banes-satn"
+version = "0.1.0"
+description = "Council-portable tooling for compiling strategic active travel networks"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Andrew Reynolds" }]
+dependencies = [
+  "geopandas>=1.0,<2",
+  "networkx>=3.4,<4",
+  "osmnx>=2.0,<3",
+  "pydantic>=2.10,<3",
+  "pydantic-ai-slim[openai]>=1.0,<2",
+  "pyogrio>=0.10,<1",
+  "pyyaml>=6.0,<7",
+  "reportlab>=4.2,<5",
+  "shapely>=2.0,<3",
+  "typer>=0.15,<1",
+]
+
+[project.scripts]
+satn = "satn.cli:app"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<10",
+  "ruff>=0.9,<1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/satn"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+

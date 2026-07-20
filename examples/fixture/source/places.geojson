@@ -1,0 +1,18 @@
+{
+  "type": "FeatureCollection",
+  "name": "tiny-network-places",
+  "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"place_id": "westfield", "name": "Westfield", "kind": "community", "population": 3200},
+      "geometry": {"type": "Point", "coordinates": [-2.5, 51.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"place_id": "eastfield", "name": "Eastfield", "kind": "community", "population": 4100},
+      "geometry": {"type": "Point", "coordinates": [-2.46, 51.42]}
+    }
+  ]
+}
+
