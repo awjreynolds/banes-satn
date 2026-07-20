@@ -4,6 +4,42 @@ This context defines the language for a council-portable process that develops o
 
 ## Language
 
+**Community**:
+A named, inhabited settlement or recognisable urban neighbourhood admitted as a Network Place. It is not defined by an administrative ward, a universal population threshold or an individual destination.
+_Avoid_: ward, destination, settlement point
+
+**Community Reference Point**:
+The single canonical network attachment shared by every connection to a compact Community in one compilation. It uses the Community Centre where practical, otherwise a usable on-route point that serves the built-up Community without an artificial detour.
+_Avoid_: geometric centroid, arbitrary settlement point
+
+**Community Portal**:
+One of multiple canonical points where an external Community Connection meets the internal network of a physically extensive Community.
+_Avoid_: boundary crossing, arbitrary entrance
+
+**Urban Community**:
+A named neighbourhood within a larger settlement that has its own cluster of everyday services and is admitted as a Community, preventing the larger settlement from collapsing into one network endpoint.
+_Avoid_: ward, suburb label, city-centre spoke
+
+**Community Centre**:
+A named local high street or dense cluster of everyday services that anchors an Urban Community and must be reached by its internal network.
+_Avoid_: city centre, individual shop, arbitrary centroid
+
+**Community Amenity Profile**:
+Qualitative present, absent or unknown facts about everyday services in a Community, used to explain local usefulness without creating Network Places, Community Connections or an unexplained score.
+_Avoid_: destination list, demand score, required access
+
+**Low-Traffic Area**:
+An urban network area with defined portals and sufficiently permeable low-traffic internal streets or paths that an Alignment Option need not assert one exact centreline through it.
+_Avoid_: single route, Community boundary, guaranteed LTN
+
+**Candidate Low-Traffic Area**:
+A proposed Low-Traffic Area inferred from a connected urban minor-road fabric bounded by the main-road network. It may cross Community or administrative boundaries and does not claim that low-traffic conditions already exist.
+_Avoid_: existing LTN, neighbourhood boundary, quiet-road assumption
+
+**Required Access Target**:
+A school, hospital, major employment site or comparable centre of activity that must receive safe access from the network through its nearest Community or Low-Traffic Area without becoming a Community or generating inter-community adjacency.
+_Avoid_: Community, optional amenity, strategic-network hub
+
 **Network Place**:
 A named endpoint admitted to the network as a Community, standalone Strategic Destination or interchange, or Cross-Boundary Gateway.
 _Avoid_: arbitrary endpoint, map point
@@ -12,9 +48,17 @@ _Avoid_: arbitrary endpoint, map point
 The single selected connection between an unordered pair of Network Places. Competing ways to make the connection are Alignment Options, not parallel Community Connections.
 _Avoid_: route alternative, duplicate link
 
+**Local Adjacency**:
+An evidence-backed relationship between nearby Network Places measured over the plausible cycling network. It emerges through recursive compilation and network validation rather than a fixed neighbour count; unusually long candidates are challenged rather than automatically excluded.
+_Avoid_: fixed-radius link, all-to-hub connection, k-nearest rule
+
 **Cross-Boundary Gateway**:
 A Network Place at the governed study-area boundary with a named onward place or network connection.
 _Avoid_: clipped endpoint, map-edge stub
+
+**Gateway Destination**:
+The nearest relevant town or city outside the governed study area reached along a Cross-Boundary Gateway's onward corridor. Intervening villages may inform routing but do not name the gateway.
+_Avoid_: nearest settlement, boundary label, arbitrary external point
 
 **Network Terminus**:
 A degree-one endpoint of the authority-wide network, normally a Cross-Boundary Gateway. A Community is a Network Terminus only when no credible onward connection exists and the reason is recorded.
@@ -31,6 +75,10 @@ _Avoid_: visual gap, omitted link
 **Route Refinement Finding**:
 A recorded defect in an Alignment Option, such as a discontinuity, invalid join, excessive detour, or uncovered intervention need, that must be repaired or become a Network Gap.
 _Avoid_: automatic snap, hidden error
+
+**Crossing Warning**:
+A non-blocking indication that selected route geometries cross without a shared Junction Node. It invites agentic inspection for a useful missing junction but does not imply that the crossing must connect.
+_Avoid_: topology failure, automatic junction, prohibited crossing
 
 **Quiet Lane**:
 A rural lane whose low motor-traffic conditions and treatment make it a plausible active-travel alignment; the term does not imply that through motor traffic is prohibited.
