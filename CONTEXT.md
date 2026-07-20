@@ -88,6 +88,14 @@ _Avoid_: traffic-free lane, access-only lane
 A rural lane where through motor traffic is physically or legally filtered while authorised access, including landowner, property and emergency access, remains.
 _Avoid_: Quiet Lane, traffic-free path
 
+**Strategic Spine**:
+A rural A-road corridor whose cycling provision defaults to a wide shared-use path alongside the road. A parallel alignment is used only where adjacent provision is physically impracticable and the reason is recorded.
+_Avoid_: cycling on the carriageway, optional corridor, unexplained diversion
+
+**Urban Main-Road Spine**:
+An urban main-road corridor that bounds Candidate Low-Traffic Areas and requires protected cycling infrastructure along the corridor.
+_Avoid_: shared-use default, unprotected carriageway route, LTN interior
+
 **Intervention Archetype**:
 A plausible category of treatment that could make part of an indicative alignment accessible and traversable without asserting detailed feasibility or design.
 _Avoid_: final design, unfunded promise
