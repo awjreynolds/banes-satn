@@ -38,6 +38,7 @@ packages = ["src/satn"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+markers = ["live_osm: requires live Nominatim and Overpass access"]
 
 [tool.ruff]
 line-length = 100
@@ -45,4 +46,3 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
-

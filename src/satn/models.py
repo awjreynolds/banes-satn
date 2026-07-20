@@ -24,6 +24,15 @@ class SourceConfig(BaseModel):
     snapshot_dir: Path
     snapshot_id: str = "current"
     osm_place_query: str | None = None
+    network_type: str = "bike"
+    external_buffer_km: float = 15.0
+    internal_portal_threshold_km: float = 1.0
+    community_place_types: list[str] = Field(
+        default_factory=lambda: ["town", "village", "suburb", "quarter", "neighbourhood"]
+    )
+    urban_place_types: list[str] = Field(
+        default_factory=lambda: ["suburb", "quarter", "neighbourhood"]
+    )
 
 
 class AgentConfig(BaseModel):
@@ -95,4 +104,3 @@ class CompilationResult(BaseModel):
     criteria: dict[str, TrafficLight]
     agent_records: list[AgentRecord]
     metadata: dict[str, Any] = Field(default_factory=dict)
-

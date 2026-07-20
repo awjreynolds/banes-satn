@@ -43,6 +43,29 @@ result = compile("examples/fixture/council.yaml")
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
+## Snapshot B&NES from OpenStreetMap
+
+The reference configuration contains only council data and thresholds; acquisition
+and place derivation remain portable compiler behaviour:
+
+```shell
+uv run satn snapshot config/banes.yaml
+```
+
+This retrieves the full governed boundary, cycling graph, named place features and
+public-transport stations. The immutable snapshot records its query, retrieval time
+and OpenStreetMap attribution. Towns, villages and named urban neighbourhoods are
+admitted as Community candidates; hamlets are not mandatory Network Places. Large
+Community polygons can expose connected network portals, and genuine outward road
+crossings are named for their nearest external town or city.
+
+The network request is intentionally live and can take time. Its explicit smoke test
+is:
+
+```shell
+uv run pytest --live-osm -m live_osm tests/test_osm_sources.py
+```
+
 ## Check
 
 ```shell
@@ -52,8 +75,8 @@ uv run pytest
 
 ## Status
 
-The synthetic end-to-end tracer is implemented. Full B&NES OSM acquisition,
-multi-community network assembly, ATM comparison and GitHub Pages publication are
+The synthetic end-to-end tracer and full-boundary OSM snapshot path are implemented.
+Multi-community network assembly, ATM comparison and GitHub Pages publication are
 being delivered through the linked PRD issues.
 
 Released under the MIT licence. OpenStreetMap-derived outputs must retain
