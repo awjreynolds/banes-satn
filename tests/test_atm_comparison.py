@@ -72,13 +72,26 @@ def test_seeded_mode_isolated_from_blind_cache_and_records_its_hypothesis(tmp_pa
 
 
 def test_local_or_permitted_output_can_include_the_atm_overlay(tmp_path: Path) -> None:
-    config, _ = prepared(tmp_path)
+    config, atm_path = prepared(tmp_path)
     config.publication.audience = "local"
+    atm = gpd.read_file(atm_path)
+    atm["fid"] = [101, 102]
+    atm.loc[len(atm)] = {
+        "portal_feature_id": "atm-null",
+        "fid": 103,
+        "geometry": None,
+    }
+    atm = atm.set_crs(4326, allow_override=True)
+    atm.to_file(atm_path, driver="GeoJSON")
 
     local = compile(config)
 
     assert local.metadata["atm_geometry_included"] is True
     assert "atm_reference" in set(pyogrio.list_layers(local.artifacts["geopackage"])[:, 0])
+    published_atm = gpd.read_file(
+        local.artifacts["geopackage"], layer="atm_reference"
+    )
+    assert list(published_atm["source_fid"]) == [101, 102, 103]
     network = json.loads(local.artifacts["geojson"].read_text())
     assert "atm-reference" in {f["properties"]["feature_type"] for f in network["features"]}
 
@@ -104,4 +117,3 @@ def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> Non
     assert "deviation" in {record.status for record in deviation}
     assert {record.status for record in addition} == {"addition", "omission"}
     assert all(record.resolution_attempts for record in [*deviation, *addition])
-

@@ -1,0 +1,22 @@
+{
+  "run_id": "run-09c881a24923",
+  "status": "complete",
+  "connection_count": 150,
+  "gap_count": 0,
+  "criteria": {
+    "connections": {
+      "mandatory_checks": "green",
+      "distance_challenges": "green"
+    },
+    "network": {
+      "community_coverage": "green",
+      "connected_graph": "green",
+      "unique_pairs": "green",
+      "internal_termini": "green"
+    },
+    "atm_comparison": {
+      "compared": "grey"
+    }
+  },
+  "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan."
+}

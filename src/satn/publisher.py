@@ -92,8 +92,27 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
             path, layer="crossing_warnings", driver="GPKG"
         )
     if compiled.atm_reference is not None:
-        compiled.atm_reference.to_file(path, layer="atm_reference", driver="GPKG")
+        _geopackage_safe(compiled.atm_reference).to_file(
+            path, layer="atm_reference", driver="GPKG"
+        )
     _metadata_frame(compiled.places.crs).to_file(path, layer="metadata", driver="GPKG")
+
+
+def _geopackage_safe(frame: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Preserve source attributes without colliding with GeoPackage internals."""
+    renamed: dict[str, str] = {}
+    occupied = set(frame.columns)
+    for column in frame.columns:
+        if column.lower() != "fid":
+            continue
+        candidate = "source_fid"
+        suffix = 2
+        while candidate in occupied:
+            candidate = f"source_fid_{suffix}"
+            suffix += 1
+        renamed[column] = candidate
+        occupied.add(candidate)
+    return frame.rename(columns=renamed)
 
 
 def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, object]]:
@@ -310,7 +329,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
     canvas.drawString(42, height - 58, f"Compiled {datetime.now(UTC).date().isoformat()}")
     _draw_legend(canvas, width, height, compiled.atm_reference is not None)
     map_frames = [
-        frame.to_crs(3857)
+        frame.loc[frame.geometry.notna() & ~frame.geometry.is_empty].to_crs(3857)
         for frame in (
             compiled.connections,
             compiled.urban_spines,
@@ -318,7 +337,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             compiled.crossing_warnings,
             *([compiled.atm_reference] if compiled.atm_reference is not None else []),
         )
-        if not frame.empty
+        if not frame.empty and frame.geometry.notna().any()
     ]
     if map_frames:
         bounds_frame = gpd.GeoDataFrame(
@@ -406,6 +425,8 @@ def _draw_geometry(
     *,
     fill: bool = False,
 ) -> None:
+    if geometry is None or geometry.is_empty:
+        return
     if geometry.geom_type == "Polygon":
         coordinate_sets = [geometry.exterior.coords]
     elif geometry.geom_type == "MultiPolygon":

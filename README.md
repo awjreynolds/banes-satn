@@ -72,6 +72,10 @@ Each Community nominates its nearest reachable Community using cycling-network
 distance. Reciprocal nominations become one unordered Community Connection. The
 compiler compares only continuous OSM alignments:
 
+Where one strongly connected cycling component contains at least 90% of graph nodes,
+Community attachment prefers that dominant routable component instead of snapping to
+a nearby isolated digitising fragment.
+
 - a direct A-road corridor is the preferred Strategic Spine, representing a wide
   alongside shared path rather than cycling in the carriageway;
 - a parallel route is used when alongside provision is explicitly found physically
@@ -181,6 +185,17 @@ uv run playwright install chromium
 uv run pytest --browser -m browser tests/test_review_map_browser.py
 ```
 
+The current full B&NES result is published at
+[awjreynolds.github.io/banes-satn](https://awjreynolds.github.io/banes-satn/).
+It contains 150 unique Community Connections in one end-to-end network, with no Red
+Network Gaps and five non-blocking route-crossing warnings. The public map excludes
+the governed ATM geometry. After a validated public compile, refresh the tracked
+GitHub Pages bundle with:
+
+```shell
+uv run python scripts/publish_site.py
+```
+
 ## Check
 
 ```shell
@@ -190,9 +205,11 @@ uv run pytest
 
 ## Status
 
-The complete compiler, full-boundary OSM snapshot path, network assembly and governed
-ATM comparison are implemented. Publication and full B&NES validation remain in the
-linked PRD issues.
+The POC compiler and its full B&NES reference publication are complete. The current
+snapshot contains 127 Network Places and 41,158 OSM road edges. The resulting 150
+Connections form one network unit; an unchanged incremental run reuses all 150
+validated Connections. This is an experimental generated network, not an adopted
+plan, and its alignments still require scheme-level feasibility and design work.
 
 Released under the MIT licence. OpenStreetMap-derived outputs must retain
 OpenStreetMap attribution and comply with the ODbL.

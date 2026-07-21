@@ -1,8 +1,8 @@
 .DS_Store
 .pytest_cache/
 .ruff_cache/
-.satn-cache/
-.venv/
+.satn-cache*/
+.venv*/
 __pycache__/
 *.py[cod]
 cache/
@@ -11,3 +11,4 @@ data/snapshots/
 data/local/*.geojson
 dist/
 output/
+output-atm-local/

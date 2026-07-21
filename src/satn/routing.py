@@ -79,6 +79,13 @@ class RoadGraph:
                 reverse = attrs | {"geometry": LineString(list(geometry.coords)[::-1])}
                 self._add_best_edge(v, u, reverse)
         self._node_ids = list(self.node_points)
+        strong_components = sorted(
+            nx.strongly_connected_components(self.graph), key=len, reverse=True
+        )
+        dominant = strong_components[0] if strong_components else set()
+        routable_share = len(dominant) / len(self.graph) if self.graph else 0
+        if routable_share >= 0.9:
+            self._node_ids = [node for node in self._node_ids if node in dominant]
         self._projected_nodes = gpd.GeoSeries(
             [self.node_points[node] for node in self._node_ids], crs=self.crs
         ).to_crs(27700)

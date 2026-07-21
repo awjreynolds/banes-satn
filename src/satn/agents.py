@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import StrEnum
@@ -82,19 +83,20 @@ class RuntimeReply:
     tokens: int = 0
 
 
-class AgentRuntime:
+class AgentRuntime(ABC):
     """Provider-neutral adapter interface. Implementations never mutate compiled state."""
 
     name = "runtime"
     model = "unknown"
 
+    @abstractmethod
     def run(
         self,
         role: AgentRole,
         payload: BaseModel,
         output_type: type[BaseModel],
     ) -> RuntimeReply:
-        raise NotImplementedError
+        """Return a response validated against ``output_type``."""
 
 
 class FakeAgentRuntime(AgentRuntime):
