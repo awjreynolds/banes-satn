@@ -76,19 +76,26 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
     compiled.places.to_file(path, layer="places", driver="GPKG")
     if not compiled.gaps.empty:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
+    if not compiled.urban_spines.empty:
+        compiled.urban_spines.to_file(path, layer="urban_spines", driver="GPKG")
+    if not compiled.low_traffic_areas.empty:
+        compiled.low_traffic_areas.to_file(
+            path, layer="candidate_low_traffic_areas", driver="GPKG"
+        )
     _metadata_frame(compiled.places.crs).to_file(path, layer="metadata", driver="GPKG")
 
 
-def _features(frame: gpd.GeoDataFrame) -> list[dict[str, object]]:
+def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, object]]:
     return [
         {
             "type": "Feature",
-            "id": row.get("connection_id", row.get("place_id")),
+            "id": row.get("connection_id", row.get("place_id", row.get("structure_id"))),
             "properties": {
                 key: value
                 for key, value in row.items()
                 if key != "geometry" and value is not None
-            },
+            }
+            | {"feature_type": feature_type},
             "geometry": mapping(row.geometry) if row.geometry is not None else None,
         }
         for _, row in frame.to_crs(4326).iterrows()
@@ -100,7 +107,12 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "type": "FeatureCollection",
         "name": "SATN compiled network",
         "disclaimer": DISCLAIMER,
-        "features": _features(compiled.connections) + _features(compiled.gaps),
+        "features": (
+            _features(compiled.connections, "connection")
+            + _features(compiled.gaps, "gap")
+            + _features(compiled.urban_spines, "urban-spine")
+            + _features(compiled.low_traffic_areas, "low-traffic-area")
+        ),
     }
 
 
@@ -142,7 +154,7 @@ def _write_review_map(
 ) -> None:
     payload = json.dumps(_network_collection(compiled)).replace("</", "<\\/")
     places = json.dumps(
-        {"type": "FeatureCollection", "features": _features(compiled.places)}
+        {"type": "FeatureCollection", "features": _features(compiled.places, "place")}
     ).replace("</", "<\\/")
     cards = "".join(
         f'<button class="connection" id="item-{row.connection_id}" '
@@ -169,7 +181,8 @@ const network={payload}; const places={places};
 const map=new maplibregl.Map({{container:'map',style:{{version:8,sources:{{osm:{{type:'raster',tiles:['https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png'],tileSize:256,attribution:'© OpenStreetMap contributors'}}}},layers:[{{id:'osm',type:'raster',source:'osm'}}]}},center:[-2.5,51.4],zoom:11}});
 map.addControl(new maplibregl.NavigationControl());
 function details(id){{const f=network.features.find(x=>x.id===id);if(!f)return;document.querySelector('#feature-details').innerHTML=`<h2>${{f.properties.from_place}} → ${{f.properties.to_place}}</h2><dl><dt>Status</dt><dd>${{f.properties.status}}</dd><dt>Distance</dt><dd>${{f.properties.distance_km}} km</dd><dt>Stable ID</dt><dd><code>${{id}}</code></dd></dl>`;document.querySelectorAll('.connection').forEach(x=>x.classList.toggle('active',x.dataset.featureId===id));map.setFilter('connections-highlight',['==',['id'],id]);}}
-map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'connections',type:'line',source:'network',paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>f.geometry.coordinates.forEach(c=>b.extend(c)));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
+function extendBounds(bounds,coordinates){{if(typeof coordinates[0]==='number')bounds.extend(coordinates);else coordinates.forEach(item=>extendBounds(bounds,item));}}
+map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'low-traffic-areas',type:'fill',source:'network',filter:['==',['get','feature_type'],'low-traffic-area'],paint:{{'fill-color':'#85c1e9','fill-opacity':0.3,'fill-outline-color':'#2874a6'}}}});map.addLayer({{id:'urban-spines',type:'line',source:'network',filter:['==',['get','feature_type'],'urban-spine'],paint:{{'line-color':'#8e44ad','line-width':5}}}});map.addLayer({{id:'connections',type:'line',source:'network',filter:['==',['get','feature_type'],'connection'],paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'gaps',type:'circle',source:'network',filter:['==',['get','feature_type'],'gap'],paint:{{'circle-color':'#c0392b','circle-radius':8}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>extendBounds(b,f.geometry.coordinates));places.features.forEach(f=>extendBounds(b,f.geometry.coordinates));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
 document.querySelectorAll('.connection').forEach(x=>{{x.addEventListener('mouseenter',()=>details(x.dataset.featureId));x.addEventListener('focus',()=>details(x.dataset.featureId));x.addEventListener('click',()=>details(x.dataset.featureId));}});
 </script></body></html>"""
     (review / "index.html").write_text(html, encoding="utf-8")
@@ -191,25 +204,71 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
     canvas.setTitle(config.publication.title)
     canvas.setFont("Helvetica-Bold", 22)
     canvas.drawString(42, height - 42, config.publication.title)
-    frame = compiled.connections.to_crs(3857)
-    if not frame.empty:
-        min_x, min_y, max_x, max_y = frame.total_bounds
+    map_frames = [
+        frame.to_crs(3857)
+        for frame in (
+            compiled.connections,
+            compiled.urban_spines,
+            compiled.low_traffic_areas,
+        )
+        if not frame.empty
+    ]
+    if map_frames:
+        bounds_frame = gpd.GeoDataFrame(
+            geometry=[geometry for frame in map_frames for geometry in frame.geometry], crs=3857
+        )
+        min_x, min_y, max_x, max_y = bounds_frame.total_bounds
         scale = min((width - 84) / max(max_x - min_x, 1), (height - 140) / max(max_y - min_y, 1))
+        if not compiled.low_traffic_areas.empty:
+            canvas.setStrokeColor(HexColor("#2874a6"))
+            canvas.setFillColor(HexColor("#d6eaf8"))
+            for geometry in compiled.low_traffic_areas.to_crs(3857).geometry:
+                _draw_geometry(canvas, geometry, min_x, min_y, scale, fill=True)
+        if not compiled.urban_spines.empty:
+            canvas.setStrokeColor(HexColor("#8e44ad"))
+            canvas.setLineWidth(3)
+            for geometry in compiled.urban_spines.to_crs(3857).geometry:
+                _draw_geometry(canvas, geometry, min_x, min_y, scale)
         canvas.setStrokeColor(HexColor("#196f3d"))
         canvas.setLineWidth(5)
-        for geometry in frame.geometry:
-            path_obj = canvas.beginPath()
-            for index, (x, y) in enumerate(geometry.coords):
-                px = 42 + (x - min_x) * scale
-                py = 70 + (y - min_y) * scale
-                (path_obj.moveTo if index == 0 else path_obj.lineTo)(px, py)
-            canvas.drawPath(path_obj)
+        for geometry in compiled.connections.to_crs(3857).geometry:
+            _draw_geometry(canvas, geometry, min_x, min_y, scale)
     canvas.setFont("Helvetica", 10)
     text = DISCLAIMER
     if stringWidth(text, "Helvetica", 10) > width - 84:
         text = "Experimental SATN POC — not an adopted council plan."
     canvas.drawString(42, 32, text)
     canvas.save()
+
+
+def _draw_geometry(
+    canvas: Canvas,
+    geometry: object,
+    min_x: float,
+    min_y: float,
+    scale: float,
+    *,
+    fill: bool = False,
+) -> None:
+    if geometry.geom_type == "Polygon":
+        coordinate_sets = [geometry.exterior.coords]
+    elif geometry.geom_type == "MultiPolygon":
+        coordinate_sets = [part.exterior.coords for part in geometry.geoms]
+    elif geometry.geom_type == "LineString":
+        coordinate_sets = [geometry.coords]
+    elif geometry.geom_type == "MultiLineString":
+        coordinate_sets = [part.coords for part in geometry.geoms]
+    else:
+        return
+    for coordinates in coordinate_sets:
+        path_obj = canvas.beginPath()
+        for index, (x, y) in enumerate(coordinates):
+            px = 42 + (x - min_x) * scale
+            py = 70 + (y - min_y) * scale
+            (path_obj.moveTo if index == 0 else path_obj.lineTo)(px, py)
+        if fill:
+            path_obj.close()
+        canvas.drawPath(path_obj, stroke=1, fill=int(fill))
 
 
 def _validate_artifacts(output: Path) -> None:

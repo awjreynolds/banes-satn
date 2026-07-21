@@ -66,6 +66,26 @@ is:
 uv run pytest --live-osm -m live_osm tests/test_osm_sources.py
 ```
 
+## How routes are compiled
+
+Each Community nominates its nearest reachable Community using cycling-network
+distance. Reciprocal nominations become one unordered Community Connection. The
+compiler compares only continuous OSM alignments:
+
+- a direct A-road corridor is the preferred Strategic Spine, representing a wide
+  alongside shared path rather than cycling in the carriageway;
+- a parallel route is used when alongside provision is explicitly found physically
+  impracticable, with that reason retained;
+- other rural connections compare direct and low-traffic OSM paths;
+- no continuous two-way path becomes a visible Red Network Gap rather than a drawn
+  straight line; and
+- a connection over 15 km is challenged Amber, not silently removed.
+
+In urban areas, main roads form protected-route spines. Connected fabrics of minor
+roads become Candidate Low-Traffic Area polygons, without claiming that an LTN
+already exists or asserting an artificial centreline. Community Centres, portals,
+spines and those areas stay in one routable and publishable representation.
+
 ## Check
 
 ```shell

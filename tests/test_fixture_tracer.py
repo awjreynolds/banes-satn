@@ -50,6 +50,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert all(path.exists() for path in result.artifacts.values())
     connections = gpd.read_file(result.artifacts["geopackage"], layer="connections")
     assert list(connections["status"]) == ["validated"]
+    assert list(connections["classification"]) == ["low-traffic"]
     geojson = json.loads(result.artifacts["geojson"].read_text())
     assert geojson["disclaimer"] == DISCLAIMER
     assert result.artifacts["pdf"].read_bytes().startswith(b"%PDF")
