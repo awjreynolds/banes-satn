@@ -82,6 +82,10 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.low_traffic_areas.to_file(
             path, layer="candidate_low_traffic_areas", driver="GPKG"
         )
+    if not compiled.crossing_warnings.empty:
+        compiled.crossing_warnings.to_file(
+            path, layer="crossing_warnings", driver="GPKG"
+        )
     _metadata_frame(compiled.places.crs).to_file(path, layer="metadata", driver="GPKG")
 
 
@@ -112,6 +116,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.gaps, "gap")
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
+            + _features(compiled.crossing_warnings, "crossing-warning")
         ),
     }
 
@@ -131,9 +136,14 @@ def _write_json_records(
         "run_id": run_id,
         "council_id": config.council_id,
         "status": "complete" if compiled.gaps.empty else "reviewable",
-        "criteria": {key: value.value for key, value in compiled.criteria.items()},
+        "criteria": {
+            section: {criterion: status.value for criterion, status in values.items()}
+            for section, values in compiled.criteria.items()
+        },
         "connection_count": len(compiled.connections),
         "gap_count": len(compiled.gaps),
+        "crossing_warning_count": len(compiled.crossing_warnings),
+        "network_units": compiled.network_units,
         "disclaimer": DISCLAIMER,
     }
     (output / "run.json").write_text(json.dumps(run, indent=2), encoding="utf-8")
@@ -173,6 +183,7 @@ html,body{{margin:0;height:100%;font:16px system-ui;color:#17202a}}main{{display
 <label><input type="radio" name="section" checked> Connections</label>
 <label><input type="radio" name="section"> Network</label>
 <label><input type="radio" name="section"> ATM comparison</label></fieldset>
+<p><a href="agent-records.json" download>Download full typed agent records</a></p>
 <section id="connection-list" aria-label="Connections">{cards}</section>
 <section id="feature-details" aria-live="polite"><h2>Details</h2><p>Hover or focus a connection.</p></section>
 </aside><div id="map" role="application" aria-label="Interactive SATN review map"></div></main>
@@ -180,14 +191,27 @@ html,body{{margin:0;height:100%;font:16px system-ui;color:#17202a}}main{{display
 const network={payload}; const places={places};
 const map=new maplibregl.Map({{container:'map',style:{{version:8,sources:{{osm:{{type:'raster',tiles:['https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png'],tileSize:256,attribution:'© OpenStreetMap contributors'}}}},layers:[{{id:'osm',type:'raster',source:'osm'}}]}},center:[-2.5,51.4],zoom:11}});
 map.addControl(new maplibregl.NavigationControl());
-function details(id){{const f=network.features.find(x=>x.id===id);if(!f)return;document.querySelector('#feature-details').innerHTML=`<h2>${{f.properties.from_place}} → ${{f.properties.to_place}}</h2><dl><dt>Status</dt><dd>${{f.properties.status}}</dd><dt>Distance</dt><dd>${{f.properties.distance_km}} km</dd><dt>Stable ID</dt><dd><code>${{id}}</code></dd></dl>`;document.querySelectorAll('.connection').forEach(x=>x.classList.toggle('active',x.dataset.featureId===id));map.setFilter('connections-highlight',['==',['id'],id]);}}
+function details(id){{const f=network.features.find(x=>x.id===id);if(!f)return;document.querySelector('#feature-details').innerHTML=`<h2>${{f.properties.from_place}} → ${{f.properties.to_place}}</h2><dl><dt>Status</dt><dd>${{f.properties.status}}</dd><dt>Distance</dt><dd>${{f.properties.distance_km ?? 'unknown'}} km</dd><dt>Rationale</dt><dd>${{f.properties.selection_reason ?? ''}}</dd><dt>Agent gate</dt><dd>${{f.properties.agent_outcome ?? ''}}</dd><dt>Stable ID</dt><dd><code>${{id}}</code></dd></dl>`;document.querySelectorAll('.connection').forEach(x=>x.classList.toggle('active',x.dataset.featureId===id));map.setFilter('connections-highlight',['==',['id'],id]);}}
 function extendBounds(bounds,coordinates){{if(typeof coordinates[0]==='number')bounds.extend(coordinates);else coordinates.forEach(item=>extendBounds(bounds,item));}}
-map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'low-traffic-areas',type:'fill',source:'network',filter:['==',['get','feature_type'],'low-traffic-area'],paint:{{'fill-color':'#85c1e9','fill-opacity':0.3,'fill-outline-color':'#2874a6'}}}});map.addLayer({{id:'urban-spines',type:'line',source:'network',filter:['==',['get','feature_type'],'urban-spine'],paint:{{'line-color':'#8e44ad','line-width':5}}}});map.addLayer({{id:'connections',type:'line',source:'network',filter:['==',['get','feature_type'],'connection'],paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'gaps',type:'circle',source:'network',filter:['==',['get','feature_type'],'gap'],paint:{{'circle-color':'#c0392b','circle-radius':8}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>extendBounds(b,f.geometry.coordinates));places.features.forEach(f=>extendBounds(b,f.geometry.coordinates));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
+map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'low-traffic-areas',type:'fill',source:'network',filter:['==',['get','feature_type'],'low-traffic-area'],paint:{{'fill-color':'#85c1e9','fill-opacity':0.3,'fill-outline-color':'#2874a6'}}}});map.addLayer({{id:'urban-spines',type:'line',source:'network',filter:['==',['get','feature_type'],'urban-spine'],paint:{{'line-color':'#8e44ad','line-width':5}}}});map.addLayer({{id:'connections',type:'line',source:'network',filter:['==',['get','feature_type'],'connection'],paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'gaps',type:'circle',source:'network',filter:['==',['get','feature_type'],'gap'],paint:{{'circle-color':'#c0392b','circle-radius':8}}}});map.addLayer({{id:'crossing-warnings',type:'circle',source:'network',filter:['==',['get','feature_type'],'crossing-warning'],paint:{{'circle-color':'#f39c12','circle-radius':7,'circle-stroke-color':'#17202a','circle-stroke-width':2}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>extendBounds(b,f.geometry.coordinates));places.features.forEach(f=>extendBounds(b,f.geometry.coordinates));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
 document.querySelectorAll('.connection').forEach(x=>{{x.addEventListener('mouseenter',()=>details(x.dataset.featureId));x.addEventListener('focus',()=>details(x.dataset.featureId));x.addEventListener('click',()=>details(x.dataset.featureId));}});
 </script></body></html>"""
     (review / "index.html").write_text(html, encoding="utf-8")
     (review / "network.geojson").write_text(
         json.dumps(_network_collection(compiled), indent=2), encoding="utf-8"
+    )
+    (review / "agent-records.json").write_text(
+        json.dumps(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "disclaimer": DISCLAIMER,
+                "records": [
+                    record.model_dump(mode="json") for record in compiled.agent_records
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
     )
     (review / "README.txt").write_text(f"{DISCLAIMER}\n", encoding="utf-8")
 
@@ -210,6 +234,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             compiled.connections,
             compiled.urban_spines,
             compiled.low_traffic_areas,
+            compiled.crossing_warnings,
         )
         if not frame.empty
     ]
@@ -233,6 +258,12 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
         canvas.setLineWidth(5)
         for geometry in compiled.connections.to_crs(3857).geometry:
             _draw_geometry(canvas, geometry, min_x, min_y, scale)
+        if not compiled.crossing_warnings.empty:
+            canvas.setFillColor(HexColor("#f39c12"))
+            for point in compiled.crossing_warnings.to_crs(3857).geometry:
+                px = 42 + (point.x - min_x) * scale
+                py = 70 + (point.y - min_y) * scale
+                canvas.circle(px, py, 5, stroke=1, fill=1)
     canvas.setFont("Helvetica", 10)
     text = DISCLAIMER
     if stringWidth(text, "Helvetica", 10) > width - 84:

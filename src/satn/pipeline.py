@@ -17,7 +17,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     """Compile a council configuration into a complete current publication."""
     council = config if isinstance(config, CouncilConfig) else CouncilConfig.from_yaml(config)
     source = load_snapshot(council)
-    runtime = runtime_for(council.compilation.agent.provider)
+    runtime = runtime_for(council.compilation.agent)
     compiled = compile_network(council, source, runtime)
     fingerprint = json.dumps(
         {
@@ -38,5 +38,5 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         artifacts=artifacts,
         criteria=compiled.criteria,
         agent_records=compiled.agent_records,
+        metadata={"network_units": compiled.network_units},
     )
-

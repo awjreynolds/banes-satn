@@ -86,6 +86,34 @@ roads become Candidate Low-Traffic Area polygons, without claiming that an LTN
 already exists or asserting an artificial centreline. Community Centres, portals,
 spines and those areas stay in one routable and publishable representation.
 
+## Agent compilation gate
+
+Every candidate passes a bounded typed sequence: Proposer, deterministic checks,
+Evidence Critic, Network Red Team and Synthesiser. Findings feed a subsequent
+revision attempt, but agents cannot mutate compiled state or override a Red mandatory
+criterion. Repeated output, request/token limits or exhausted revisions terminate as
+an explicit Network Gap. The full Pydantic records are published as JSON; the review
+map shows their concise rationale.
+
+`fake` is the deterministic default. Any Pydantic AI model identifier can be supplied
+in Council Configuration as `compilation.agent.model`, with provider credentials read
+from its normal environment variables. Codex is not required. A live adapter check is
+explicit and opt-in:
+
+```shell
+SATN_TEST_AGENT_MODEL=openai:gpt-5-mini \
+  uv run pytest --live-agent -m live_agent tests/test_agent_gate.py
+```
+
+## Network assembly
+
+Compiled Connections are recursively joined into network units. The compiler first
+bridges disconnected components using the nearest viable untried pair, then repairs
+unexplained degree-one Communities. Cross-boundary Gateways remain legitimate
+termini. A pair is attempted at most once, every successful iteration changes the
+graph, and the finite pair set guarantees termination. Unjoinable components produce
+visible Network Gaps; unjoined route crossings produce non-blocking Amber warnings.
+
 ## Check
 
 ```shell

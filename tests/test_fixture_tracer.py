@@ -36,7 +36,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert result.status == "complete"
     assert result.connections == 1
     assert result.gaps == 0
-    assert result.criteria["connections"] == "green"
+    assert result.criteria["connections"]["mandatory_checks"] == "green"
     assert result.agent_records[0].decision == "accept"
     assert set(result.artifacts) == {
         "geopackage",
@@ -58,6 +58,8 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert DISCLAIMER in html
     assert 'id="feature-details"' in html
     assert 'data-feature-id="connection-' in html
+    assert "Download full typed agent records" in html
+    assert (result.artifacts["review_map"].parent / "agent-records.json").exists()
 
 
 def test_external_cli_snapshot_and_compile(tmp_path: Path) -> None:

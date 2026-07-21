@@ -38,7 +38,10 @@ packages = ["src/satn"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-markers = ["live_osm: requires live Nominatim and Overpass access"]
+markers = [
+  "live_agent: requires SATN_TEST_AGENT_MODEL and provider credentials",
+  "live_osm: requires live Nominatim and Overpass access",
+]
 
 [tool.ruff]
 line-length = 100

@@ -50,6 +50,7 @@ class RoadGraph:
         self.crs = edges.crs
         self.graph = nx.DiGraph()
         self.node_points: dict[str, Point] = {}
+        self._shortest_lengths: dict[str, dict[str, float]] = {}
         for index, row in edges.iterrows():
             geometry = row.geometry
             if not isinstance(geometry, LineString) or len(geometry.coords) < 2:
@@ -58,11 +59,16 @@ class RoadGraph:
             v = str(row.get("v")) if _present(row.get("v")) else _coordinate_id(geometry.coords[-1])
             self.node_points.setdefault(u, Point(geometry.coords[0]))
             self.node_points.setdefault(v, Point(geometry.coords[-1]))
-            projected = gpd.GeoSeries([geometry], crs=edges.crs).to_crs(27700)
+            source_length = row.get("length")
+            if _present(source_length):
+                length_m = float(source_length)
+            else:
+                projected = gpd.GeoSeries([geometry], crs=edges.crs).to_crs(27700)
+                length_m = float(projected.length.iloc[0])
             attrs = {
                 "edge_id": str(row.get("osmid", row.get("source_id", index))),
                 "geometry": geometry,
-                "length_m": float(projected.length.iloc[0]),
+                "length_m": length_m,
                 "highway": _tag_values(row.get("highway")),
                 "ref": _tag_values(row.get("ref")),
                 "oneway": _truthy(row.get("oneway")),
@@ -72,6 +78,10 @@ class RoadGraph:
             if not _present(row.get("u")) and not attrs["oneway"]:
                 reverse = attrs | {"geometry": LineString(list(geometry.coords)[::-1])}
                 self._add_best_edge(v, u, reverse)
+        self._node_ids = list(self.node_points)
+        self._projected_nodes = gpd.GeoSeries(
+            [self.node_points[node] for node in self._node_ids], crs=self.crs
+        ).to_crs(27700)
 
     def _add_best_edge(self, u: str, v: str, attrs: dict[str, object]) -> None:
         existing = self.graph.get_edge_data(u, v)
@@ -81,11 +91,27 @@ class RoadGraph:
     def nearest_node(self, point: Point) -> tuple[str, float]:
         if not self.node_points:
             raise ValueError("source network has no routable LineString edges")
-        points = gpd.GeoSeries(list(self.node_points.values()), crs=self.crs).to_crs(27700)
         target = gpd.GeoSeries([point], crs=self.crs).to_crs(27700).iloc[0]
-        distances = points.distance(target)
+        distances = self._projected_nodes.distance(target)
         position = int(distances.argmin())
-        return list(self.node_points)[position], float(distances.iloc[position])
+        return self._node_ids[position], float(distances.iloc[position])
+
+    def network_distance(
+        self,
+        starts: list[tuple[str, float]],
+        ends: list[tuple[str, float]],
+    ) -> float:
+        best = float("inf")
+        for start, start_snap in starts:
+            if start not in self._shortest_lengths:
+                self._shortest_lengths[start] = nx.single_source_dijkstra_path_length(
+                    self.graph, start, weight="length_m"
+                )
+            lengths = self._shortest_lengths[start]
+            for end, end_snap in ends:
+                if end in lengths:
+                    best = min(best, float(lengths[end]) + start_snap + end_snap)
+        return best
 
     def option(self, start: str, end: str, role: str) -> RouteOption | None:
         weight = _weight_for(role)
@@ -186,7 +212,7 @@ def _unique_options(options: list[RouteOption | None]) -> list[RouteOption]:
     for option in options:
         if option is None:
             continue
-        signature = tuple(option.edge_ids)
+        signature = (option.role, *option.edge_ids)
         if signature not in signatures:
             result.append(option)
             signatures.add(signature)

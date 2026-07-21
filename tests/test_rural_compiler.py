@@ -99,10 +99,11 @@ def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> Non
         tuple(sorted((row.from_place, row.to_place)))
         for _, row in compiled.connections.iterrows()
     }
-    assert pairs == {("a", "b"), ("b", "c")}
+    assert pairs == {("a", "b"), ("b", "c"), ("a", "c")}
     assert len(compiled.connections) == len(pairs)
     assert "amber" in set(compiled.connections["criterion_distance"])
     assert set(compiled.connections["criterion_continuity"]) == {"green"}
+    assert compiled.criteria["network"]["internal_termini"] == "green"
 
 
 def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:

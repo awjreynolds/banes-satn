@@ -39,6 +39,9 @@ class AgentConfig(BaseModel):
     provider: str = "fake"
     model: str | None = None
     enabled: bool = True
+    max_attempts: int = Field(default=3, ge=1, le=10)
+    max_requests: int = Field(default=12, ge=1)
+    max_tokens: int = Field(default=4000, ge=100)
 
 
 class PublicationConfig(BaseModel):
@@ -89,6 +92,10 @@ class AgentRecord(BaseModel):
     critique: str
     revision: str
     decision: Literal["accept", "gap"]
+    selected_role: str | None = None
+    outcome_reason: str = ""
+    attempts: list[dict[str, Any]] = Field(default_factory=list)
+    usage: dict[str, int] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -101,6 +108,6 @@ class CompilationResult(BaseModel):
     connections: int
     gaps: int
     artifacts: dict[str, Path]
-    criteria: dict[str, TrafficLight]
+    criteria: dict[str, dict[str, TrafficLight]]
     agent_records: list[AgentRecord]
     metadata: dict[str, Any] = Field(default_factory=dict)
