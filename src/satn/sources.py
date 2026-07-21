@@ -515,9 +515,15 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
     )
     if context.empty:
         context = empty_context(network.crs)
+    place_features_path = path / "osm-place-features.geojson"
     return {
         "boundary": gpd.read_file(path / "boundary.geojson"),
         "places": gpd.read_file(path / "places.geojson"),
+        "label_places": (
+            gpd.read_file(place_features_path)
+            if place_features_path.exists()
+            else gpd.read_file(path / "places.geojson")
+        ),
         "network": network,
         "context": context,
     }

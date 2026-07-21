@@ -24,6 +24,9 @@ from satn.urban import derive_urban_structure
 
 @dataclass
 class CompiledNetwork:
+    boundary: gpd.GeoDataFrame
+    road_context: gpd.GeoDataFrame
+    label_places: gpd.GeoDataFrame
     places: gpd.GeoDataFrame
     connections: gpd.GeoDataFrame
     gaps: gpd.GeoDataFrame
@@ -234,6 +237,9 @@ def compile_network(
         "atm_comparison": {"compared": TrafficLight.GREY},
     }
     return CompiledNetwork(
+        boundary=source["boundary"].copy(),
+        road_context=source["network"].copy(),
+        label_places=source.get("label_places", places).copy(),
         places=places,
         connections=connections,
         gaps=gaps,

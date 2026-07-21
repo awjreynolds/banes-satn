@@ -353,116 +353,408 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
     if requested not in page_sizes:
         raise ValueError(f"unsupported PDF page size: {requested}")
     width, height = landscape(page_sizes[requested])
-    canvas = Canvas(str(path), pagesize=(width, height), pageCompression=0)
+    canvas = Canvas(str(path), pagesize=(width, height), pageCompression=1)
     canvas.setTitle(config.publication.title)
-    canvas.setFont("Helvetica-Bold", 22)
-    canvas.drawString(42, height - 42, config.publication.title)
-    canvas.setFont("Helvetica", 10)
-    canvas.drawString(42, height - 58, f"Compiled {datetime.now(UTC).date().isoformat()}")
+    canvas.setFillColor(HexColor("#17202a"))
+    canvas.setFont("Helvetica-Bold", 20)
+    canvas.drawString(42, height - 34, config.publication.title)
+    canvas.setFillColor(HexColor("#566573"))
+    canvas.setFont("Helvetica", 9)
+    canvas.drawString(
+        42,
+        height - 50,
+        f"Experimental network review | {len(compiled.connections)} connections | "
+        f"Compiled {datetime.now(UTC).date().isoformat()}",
+    )
     _draw_legend(canvas, width, height, compiled.atm_reference is not None)
-    map_frames = [
-        frame.loc[frame.geometry.notna() & ~frame.geometry.is_empty].to_crs(3857)
-        for frame in (
-            compiled.connections,
-            compiled.urban_spines,
-            compiled.low_traffic_areas,
-            compiled.crossing_warnings,
-            compiled.a_road_spines,
-            compiled.ncn_routes,
-            *([compiled.atm_reference] if compiled.atm_reference is not None else []),
+    if not compiled.boundary.empty:
+        boundary = compiled.boundary.to_crs(3857)
+        boundary_shape = boundary.geometry.union_all()
+        min_x, min_y, max_x, max_y = boundary.total_bounds
+        padding = max(max_x - min_x, max_y - min_y) * 0.025
+        min_x, min_y = min_x - padding, min_y - padding
+        max_x, max_y = max_x + padding, max_y + padding
+        map_left, map_bottom = 42.0, 58.0
+        map_right, map_top = width - 42.0, height - 76.0
+        map_width, map_height = map_right - map_left, map_top - map_bottom
+        scale = min(map_width / (max_x - min_x), map_height / (max_y - min_y))
+        origin_x = map_left + (map_width - (max_x - min_x) * scale) / 2
+        origin_y = map_bottom + (map_height - (max_y - min_y) * scale) / 2
+        clip_shape = boundary_shape.buffer(1200)
+
+        canvas.setFillColor(HexColor("#f5f3eb"))
+        canvas.setStrokeColor(HexColor("#7b8794"))
+        canvas.setLineWidth(0.9)
+        _draw_geometry(
+            canvas, boundary_shape, min_x, min_y, scale, origin_x, origin_y, fill=True
         )
-        if not frame.empty and frame.geometry.notna().any()
-    ]
-    if map_frames:
-        bounds_frame = gpd.GeoDataFrame(
-            geometry=[geometry for frame in map_frames for geometry in frame.geometry], crs=3857
+
+        roads = compiled.road_context.to_crs(3857)
+        context_mask = roads.get("highway", pd.Series(index=roads.index, dtype=object)).map(
+            _is_pdf_context_road
         )
-        min_x, min_y, max_x, max_y = bounds_frame.total_bounds
-        scale = min((width - 84) / max(max_x - min_x, 1), (height - 140) / max(max_y - min_y, 1))
-        if not compiled.low_traffic_areas.empty:
-            canvas.setStrokeColor(HexColor("#2874a6"))
-            canvas.setFillColor(HexColor("#d6eaf8"))
-            for geometry in compiled.low_traffic_areas.to_crs(3857).geometry:
-                _draw_geometry(canvas, geometry, min_x, min_y, scale, fill=True)
-        if not compiled.urban_spines.empty:
-            canvas.setStrokeColor(HexColor("#8e44ad"))
-            canvas.setLineWidth(3)
-            for geometry in compiled.urban_spines.to_crs(3857).geometry:
-                _draw_geometry(canvas, geometry, min_x, min_y, scale)
-        if not compiled.a_road_spines.empty:
-            canvas.setStrokeColor(HexColor("#a04000"))
-            canvas.setLineWidth(6)
-            for geometry in compiled.a_road_spines.to_crs(3857).geometry:
-                _draw_geometry(canvas, geometry, min_x, min_y, scale)
-        if not compiled.ncn_routes.empty:
-            canvas.setStrokeColor(HexColor("#2471a3"))
-            canvas.setLineWidth(3)
-            for geometry in compiled.ncn_routes.to_crs(3857).geometry:
-                _draw_geometry(canvas, geometry, min_x, min_y, scale)
+        road_geometries = [
+            geometry.intersection(boundary_shape)
+            for geometry in roads.loc[context_mask].geometry
+            if geometry is not None and not geometry.is_empty
+        ]
+        canvas.setStrokeColor(HexColor("#d2d5d8"))
+        canvas.setLineWidth(0.32)
+        _draw_line_collection(
+            canvas, road_geometries, min_x, min_y, scale, origin_x, origin_y
+        )
+
+        canvas.setStrokeColor(HexColor("#c56a1a"))
+        canvas.setLineWidth(2.4)
+        _draw_line_collection(
+            canvas,
+            _clipped_linework(compiled.a_road_spines, clip_shape),
+            min_x,
+            min_y,
+            scale,
+            origin_x,
+            origin_y,
+        )
+
+        canvas.setStrokeColor(HexColor("#187aa5"))
+        canvas.setLineWidth(1.25)
+        canvas.setDash(5, 3)
+        _draw_line_collection(
+            canvas,
+            _clipped_linework(compiled.ncn_routes, clip_shape),
+            min_x,
+            min_y,
+            scale,
+            origin_x,
+            origin_y,
+        )
+        canvas.setDash()
+
         if compiled.atm_reference is not None:
-            canvas.setStrokeColor(HexColor("#2980b9"))
-            canvas.setLineWidth(2)
-            for geometry in compiled.atm_reference.to_crs(3857).geometry:
-                _draw_geometry(canvas, geometry, min_x, min_y, scale)
-        canvas.setStrokeColor(HexColor("#196f3d"))
-        canvas.setLineWidth(5)
+            canvas.setStrokeColor(HexColor("#7b61a8"))
+            canvas.setLineWidth(1.1)
+            canvas.setDash(2, 2)
+            _draw_line_collection(
+                canvas,
+                _clipped_linework(compiled.atm_reference, clip_shape),
+                min_x,
+                min_y,
+                scale,
+                origin_x,
+                origin_y,
+            )
+            canvas.setDash()
+
+        connection_geometries: list[object] = []
         for _, connection in compiled.connections.to_crs(3857).iterrows():
-            geometry = connection.geometry
+            geometry = connection.geometry.intersection(clip_shape)
             if connection["classification"] == "strategic-spine":
-                geometry = _offset_linework(geometry, 5 / scale)
-            _draw_geometry(canvas, geometry, min_x, min_y, scale)
+                geometry = _offset_linework(geometry, 3.2 / scale)
+            connection_geometries.append(geometry)
+        canvas.setStrokeColor(HexColor("#ffffff"))
+        canvas.setLineWidth(3.4)
+        _draw_line_collection(
+            canvas,
+            connection_geometries,
+            min_x,
+            min_y,
+            scale,
+            origin_x,
+            origin_y,
+        )
+        canvas.setStrokeColor(HexColor("#08783f"))
+        canvas.setLineWidth(1.8)
+        _draw_line_collection(
+            canvas,
+            connection_geometries,
+            min_x,
+            min_y,
+            scale,
+            origin_x,
+            origin_y,
+        )
+
+        _draw_pdf_places(
+            canvas,
+            compiled.label_places,
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            scale,
+            origin_x,
+            origin_y,
+            boundary_shape,
+        )
         if not compiled.crossing_warnings.empty:
-            canvas.setFillColor(HexColor("#f39c12"))
+            canvas.setStrokeColor(HexColor("#7d5100"))
+            canvas.setFillColor(HexColor("#f4b942"))
             for point in compiled.crossing_warnings.to_crs(3857).geometry:
-                px = 42 + (point.x - min_x) * scale
-                py = 70 + (point.y - min_y) * scale
-                canvas.circle(px, py, 5, stroke=1, fill=1)
-        _draw_scale(canvas, scale)
-    canvas.setFont("Helvetica", 10)
-    text = DISCLAIMER
-    if stringWidth(text, "Helvetica", 10) > width - 84:
-        text = "Experimental SATN POC — not an adopted council plan."
-    canvas.drawString(42, 32, text)
+                px, py = _page_point(point.x, point.y, min_x, min_y, scale, origin_x, origin_y)
+                canvas.circle(px, py, 2.8, stroke=1, fill=1)
+        _draw_scale(canvas, scale, origin_x, origin_y)
+
+    canvas.setFillColor(HexColor("#566573"))
+    canvas.setFont("Helvetica", 7.5)
+    canvas.drawString(
+        42,
+        24,
+        "Sources: OpenStreetMap contributors (ODbL); Walk Wheel Cycle Trust NCN (OGL v3.0).",
+    )
+    canvas.drawRightString(width - 42, 24, DISCLAIMER)
     canvas.save()
 
 
 def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool) -> None:
     entries = [
-        ("#a04000", "A-road strategic corridor"),
-        ("#196f3d", "Community Connection"),
-        ("#2471a3", "National Cycle Network"),
-        ("#8e44ad", "Urban protected spine"),
-        ("#2874a6", "Candidate Low-Traffic Area"),
-        ("#c0392b", "Network Gap"),
-        ("#f39c12", "Crossing Warning"),
+        ("#c56a1a", "A-road corridor"),
+        ("#08783f", "Community connection"),
+        ("#187aa5", "National Cycle Network"),
+        ("#f4b942", "Crossing warning"),
     ]
     if include_atm:
-        entries.append(("#2980b9", "ATM reference"))
-    x = width - 225
-    y = height - 38
-    canvas.setFont("Helvetica-Bold", 10)
-    canvas.drawString(x, y, "Legend")
-    canvas.setFont("Helvetica", 9)
-    for colour, label in entries:
-        y -= 14
+        entries.append(("#7b61a8", "ATM reference"))
+    x = width - 430
+    y = height - 31
+    canvas.setFillColor(HexColor("#17202a"))
+    canvas.setFont("Helvetica-Bold", 8)
+    canvas.drawRightString(x - 10, y, "Legend")
+    canvas.setFont("Helvetica", 8)
+    for index, (colour, label) in enumerate(entries):
+        column = index % 2
+        row = index // 2
+        item_x = x + column * 190
+        item_y = y - row * 16
         canvas.setStrokeColor(HexColor(colour))
-        canvas.setLineWidth(4)
-        canvas.line(x, y + 3, x + 24, y + 3)
+        canvas.setLineWidth(3)
+        canvas.line(item_x, item_y + 2, item_x + 22, item_y + 2)
         canvas.setFillColor(HexColor("#17202a"))
-        canvas.drawString(x + 31, y, label)
+        canvas.drawString(item_x + 28, item_y, label)
 
 
-def _draw_scale(canvas: Canvas, map_scale: float) -> None:
+def _is_pdf_context_road(value: object) -> bool:
+    text = str(value).lower()
+    return any(
+        road_class in text
+        for road_class in (
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary",
+            "residential",
+            "unclassified",
+        )
+    )
+
+
+def _clipped_linework(frame: gpd.GeoDataFrame, clip_shape: object) -> list[object]:
+    if frame.empty:
+        return []
+    return [
+        geometry.intersection(clip_shape)
+        for geometry in frame.to_crs(3857).geometry
+        if geometry is not None and not geometry.is_empty and geometry.intersects(clip_shape)
+    ]
+
+
+def _line_coordinate_sets(geometry: object) -> list[object]:
+    if geometry is None or geometry.is_empty:
+        return []
+    if geometry.geom_type == "LineString":
+        return [geometry.coords]
+    if geometry.geom_type == "MultiLineString":
+        return [part.coords for part in geometry.geoms]
+    if hasattr(geometry, "geoms"):
+        return [
+            coordinates
+            for part in geometry.geoms
+            for coordinates in _line_coordinate_sets(part)
+        ]
+    return []
+
+
+def _page_point(
+    x: float,
+    y: float,
+    min_x: float,
+    min_y: float,
+    scale: float,
+    origin_x: float,
+    origin_y: float,
+) -> tuple[float, float]:
+    return origin_x + (x - min_x) * scale, origin_y + (y - min_y) * scale
+
+
+def _draw_line_collection(
+    canvas: Canvas,
+    geometries: list[object],
+    min_x: float,
+    min_y: float,
+    scale: float,
+    origin_x: float,
+    origin_y: float,
+) -> None:
+    path_obj = canvas.beginPath()
+    drew_line = False
+    for geometry in geometries:
+        for coordinates in _line_coordinate_sets(geometry):
+            for index, (x, y) in enumerate(coordinates):
+                px, py = _page_point(x, y, min_x, min_y, scale, origin_x, origin_y)
+                (path_obj.moveTo if index == 0 else path_obj.lineTo)(px, py)
+            drew_line = True
+    if drew_line:
+        canvas.drawPath(path_obj, stroke=1, fill=0)
+
+
+def _draw_pdf_places(
+    canvas: Canvas,
+    places: gpd.GeoDataFrame,
+    min_x: float,
+    min_y: float,
+    max_x: float,
+    max_y: float,
+    scale: float,
+    origin_x: float,
+    origin_y: float,
+    boundary_shape: object,
+) -> None:
+    projected = places.to_crs(3857)
+    if "kind" in projected.columns:
+        projected = projected[
+            projected["kind"].isin(["community", "cross_boundary_gateway"])
+        ].copy()
+    else:
+        projected = projected.copy()
+        projected["kind"] = "community"
+        projected["place_class"] = projected.get("place", "village")
+    if "place_class" not in projected.columns:
+        projected["place_class"] = projected["kind"].map(
+            {"cross_boundary_gateway": "gateway", "community": "village"}
+        )
+    projected = projected[
+        projected["name"].notna()
+        & ~projected["name"].astype(str).str.startswith("Towards ")
+        & projected["place_class"].ne("hamlet")
+    ].copy()
+    projected["geometry"] = projected.geometry.representative_point()
+    projected = projected.cx[min_x:max_x, min_y:max_y]
+    projected = projected[projected.geometry.map(boundary_shape.covers)]
+    projected = projected.drop_duplicates("name")
+    priorities = {
+        "city": 0,
+        "gateway": 1,
+        "town": 2,
+        "quarter": 3,
+        "neighbourhood": 4,
+        "village": 5,
+        "suburb": 6,
+    }
+    projected["_priority"] = projected["place_class"].map(priorities).fillna(9)
+    projected = projected.sort_values(["_priority", "name"])
+
+    canvas.setStrokeColor(HexColor("#34495e"))
+    for _, place in projected.iterrows():
+        px, py = _page_point(
+            place.geometry.x,
+            place.geometry.y,
+            min_x,
+            min_y,
+            scale,
+            origin_x,
+            origin_y,
+        )
+        radius = 2.8 if place["place_class"] in {"city", "town", "gateway"} else 1.45
+        canvas.setFillColor(HexColor("#ffffff"))
+        canvas.circle(px, py, radius, stroke=1, fill=1)
+
+    occupied: list[tuple[float, float, float, float]] = []
+    label_count = 0
+    map_right = origin_x + (max_x - min_x) * scale
+    map_top = origin_y + (max_y - min_y) * scale
+    for _, place in projected.iterrows():
+        if label_count >= 48:
+            break
+        name = str(place["name"])
+        place_class = str(place["place_class"])
+        font_size = (
+            8.4
+            if place_class == "city"
+            else 7.2
+            if place_class in {"town", "gateway"}
+            else 5.8
+        )
+        font_name = "Helvetica-Bold" if place_class in {"city", "town", "gateway"} else "Helvetica"
+        width = stringWidth(name, font_name, font_size)
+        px, py = _page_point(
+            place.geometry.x,
+            place.geometry.y,
+            min_x,
+            min_y,
+            scale,
+            origin_x,
+            origin_y,
+        )
+        candidates = (
+            (px + 3.5, py + 1.5),
+            (px + 3.5, py - font_size - 1),
+            (px - width - 3.5, py + 1.5),
+            (px - width - 3.5, py - font_size - 1),
+        )
+        selected: tuple[float, float, float, float] | None = None
+        for label_x, label_y in candidates:
+            box = (label_x - 1, label_y - 1, label_x + width + 1, label_y + font_size + 1)
+            inside = (
+                box[0] >= origin_x
+                and box[1] >= origin_y
+                and box[2] <= map_right
+                and box[3] <= map_top
+            )
+            overlaps = any(
+                box[0] < other[2] + 2
+                and box[2] + 2 > other[0]
+                and box[1] < other[3] + 2
+                and box[3] + 2 > other[1]
+                for other in occupied
+            )
+            if inside and not overlaps:
+                selected = box
+                break
+        if selected is None:
+            continue
+        canvas.setFillColor(HexColor("#ffffff"))
+        canvas.rect(
+            selected[0],
+            selected[1],
+            selected[2] - selected[0],
+            selected[3] - selected[1],
+            stroke=0,
+            fill=1,
+        )
+        canvas.setFillColor(HexColor("#263238"))
+        canvas.setFont(font_name, font_size)
+        canvas.drawString(selected[0] + 1, selected[1] + 1, name)
+        occupied.append(selected)
+        label_count += 1
+
+
+def _draw_scale(
+    canvas: Canvas,
+    map_scale: float,
+    origin_x: float,
+    origin_y: float,
+) -> None:
     distance_km = min((0.5, 1, 2, 5, 10), key=lambda value: abs(value * 1000 * map_scale - 120))
     pixels = distance_km * 1000 * map_scale
     canvas.setStrokeColor(HexColor("#17202a"))
-    canvas.setLineWidth(2)
-    canvas.line(42, 54, 42 + pixels, 54)
-    canvas.line(42, 50, 42, 58)
-    canvas.line(42 + pixels, 50, 42 + pixels, 58)
+    canvas.setLineWidth(1.2)
+    y = origin_y + 7
+    x = origin_x + 8
+    canvas.line(x, y, x + pixels, y)
+    canvas.line(x, y - 3, x, y + 3)
+    canvas.line(x + pixels, y - 3, x + pixels, y + 3)
     canvas.setFillColor(HexColor("#17202a"))
-    canvas.setFont("Helvetica", 9)
-    canvas.drawString(42, 60, f"{distance_km:g} km scale")
+    canvas.setFont("Helvetica", 7)
+    canvas.drawString(x, y + 5, f"{distance_km:g} km scale")
 
 
 def _draw_geometry(
@@ -471,6 +763,8 @@ def _draw_geometry(
     min_x: float,
     min_y: float,
     scale: float,
+    origin_x: float,
+    origin_y: float,
     *,
     fill: bool = False,
 ) -> None:
@@ -489,8 +783,7 @@ def _draw_geometry(
     for coordinates in coordinate_sets:
         path_obj = canvas.beginPath()
         for index, (x, y) in enumerate(coordinates):
-            px = 42 + (x - min_x) * scale
-            py = 70 + (y - min_y) * scale
+            px, py = _page_point(x, y, min_x, min_y, scale, origin_x, origin_y)
             (path_obj.moveTo if index == 0 else path_obj.lineTo)(px, py)
         if fill:
             path_obj.close()
