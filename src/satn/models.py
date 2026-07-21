@@ -24,6 +24,7 @@ class SourceConfig(BaseModel):
     snapshot_dir: Path
     snapshot_id: str = "current"
     osm_place_query: str | None = None
+    ncn_feature_service_url: str | None = None
     network_type: str = "bike"
     external_buffer_km: float = 15.0
     internal_portal_threshold_km: float = 1.0
@@ -107,7 +108,7 @@ class AgentRecord(BaseModel):
     proposal: str
     critique: str
     revision: str
-    decision: Literal["accept", "gap"]
+    decision: Literal["accept", "gap", "superseded"]
     selected_role: str | None = None
     outcome_reason: str = ""
     attempts: list[dict[str, Any]] = Field(default_factory=list)

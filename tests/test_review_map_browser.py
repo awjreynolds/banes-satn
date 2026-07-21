@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -41,7 +42,36 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         page.locator("#criteria-network").check()
         assert page.locator("#criteria-heading").inner_text() == "network criteria"
         assert "connected graph" in page.locator("#criteria-list").inner_text()
-        page.locator("#layer-network-routes").uncheck()
-        assert not page.locator("#layer-network-routes").is_checked()
-        assert page.locator("#layer-atm").count() == 0
+        page.locator("#layer-community-connections").uncheck()
+        assert not page.locator("#layer-community-connections").is_checked()
+        assert not page.locator("#layer-schools").is_checked()
+        page.locator("#layer-schools").check()
+        assert page.locator("#layer-schools").is_checked()
+        assert "education sites" in page.locator("#layer-summary").inner_text()
+        atm_control = page.locator("#layer-atm")
+        assert atm_control.is_disabled()
+        local_atm = tmp_path / "local-atm.geojson"
+        local_atm.write_text(
+            json.dumps(
+                {
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "type": "Feature",
+                            "properties": {"name": "Local ATM reference"},
+                            "geometry": {
+                                "type": "LineString",
+                                "coordinates": [[-2.5, 51.4], [-2.46, 51.42]],
+                            },
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        page.locator("#atm-upload").set_input_files(local_atm)
+        page.wait_for_function("!document.querySelector('#layer-atm').disabled")
+        assert atm_control.is_enabled()
+        assert atm_control.is_checked()
+        assert "1 local ATM features loaded" in page.locator("#atm-status").inner_text()
         browser.close()

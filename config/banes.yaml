@@ -3,6 +3,7 @@ council_name: Bath and North East Somerset
 source:
   kind: osm
   osm_place_query: Bath and North East Somerset, England, United Kingdom
+  ncn_feature_service_url: https://services5.arcgis.com/1ZHcUS1lwPTg4ms0/arcgis/rest/services/National_Cycle_Network_Public/FeatureServer
   snapshot_dir: ../data/snapshots
   snapshot_id: banes-osm-current
   network_type: bike

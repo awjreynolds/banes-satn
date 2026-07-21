@@ -37,6 +37,8 @@ def main() -> None:
             "status": run["status"],
             "connection_count": run["connection_count"],
             "gap_count": run["gap_count"],
+            "superseded_hypotheses": run["superseded_hypotheses"],
+            "layer_counts": run["layer_counts"],
             "criteria": run["criteria"],
             "disclaimer": DISCLAIMER,
         }

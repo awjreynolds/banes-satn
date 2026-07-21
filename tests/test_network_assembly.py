@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 
 from __future__ import annotations
 
@@ -9,7 +8,7 @@ import networkx as nx
 from shapely.geometry import LineString, Point
 
 from satn.agents import FakeAgentRuntime
-from satn.compiler import _crossing_warnings, compile_network
+from satn.compiler import _crossing_warnings, _unresolved_rejections, compile_network
 from satn.models import CouncilConfig
 
 PROJECT = Path(__file__).parents[1]
@@ -19,21 +18,67 @@ def config() -> CouncilConfig:
     return CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
 
 
+def test_only_rejections_that_still_block_the_network_become_gaps() -> None:
+    connected = nx.Graph([("a", "b"), ("b", "c")])
+    superseded = {"from_place": "a", "to_place": "c"}
+
+    assert _unresolved_rejections(connected, [superseded], {"a", "b", "c"}, set()) == []
+
+    disconnected = nx.Graph([("a", "b")])
+    disconnected.add_node("c")
+    blocking = {"from_place": "b", "to_place": "c"}
+    assert _unresolved_rejections(
+        disconnected, [blocking], {"a", "b", "c"}, set()
+    ) == [blocking]
+
+
 def test_components_and_internal_termini_are_repaired_with_unique_bounded_pairs() -> None:
     places = gpd.GeoDataFrame(
         [
-            {"place_id": "a", "name": "A", "kind": "community", "place_class": "village", "geometry": Point(0, 0)},
-            {"place_id": "b", "name": "B", "kind": "community", "place_class": "village", "geometry": Point(0.02, 0)},
-            {"place_id": "c", "name": "C", "kind": "community", "place_class": "village", "geometry": Point(0.20, 0)},
-            {"place_id": "d", "name": "D", "kind": "community", "place_class": "village", "geometry": Point(0.22, 0)},
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.02, 0),
+            },
+            {
+                "place_id": "c",
+                "name": "C",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.20, 0),
+            },
+            {
+                "place_id": "d",
+                "name": "D",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.22, 0),
+            },
         ],
         crs=4326,
     )
     network = gpd.GeoDataFrame(
         [
             {"osmid": "ab", "highway": "unclassified", "geometry": LineString([(0, 0), (0.02, 0)])},
-            {"osmid": "bc", "highway": "unclassified", "geometry": LineString([(0.02, 0), (0.20, 0)])},
-            {"osmid": "cd", "highway": "unclassified", "geometry": LineString([(0.20, 0), (0.22, 0)])},
+            {
+                "osmid": "bc",
+                "highway": "unclassified",
+                "geometry": LineString([(0.02, 0), (0.20, 0)]),
+            },
+            {
+                "osmid": "cd",
+                "highway": "unclassified",
+                "geometry": LineString([(0.20, 0), (0.22, 0)]),
+            },
         ],
         crs=4326,
     )
@@ -44,7 +89,9 @@ def test_components_and_internal_termini_are_repaired_with_unique_bounded_pairs(
         FakeAgentRuntime(),
     )
 
-    graph = nx.Graph(compiled.connections[["from_place", "to_place"]].itertuples(index=False, name=None))
+    graph = nx.Graph(
+        compiled.connections[["from_place", "to_place"]].itertuples(index=False, name=None)
+    )
     pairs = [tuple(sorted(edge)) for edge in graph.edges]
     assert nx.is_connected(graph)
     assert all(graph.degree(place_id) >= 2 for place_id in places["place_id"])
@@ -55,6 +102,7 @@ def test_components_and_internal_termini_are_repaired_with_unique_bounded_pairs(
         "connected_graph": "green",
         "unique_pairs": "green",
         "internal_termini": "green",
+        "intervention_coverage": "green",
     }
     assert len(compiled.network_units) == 1
 
@@ -62,10 +110,34 @@ def test_components_and_internal_termini_are_repaired_with_unique_bounded_pairs(
 def test_disconnected_source_network_emits_an_explicit_gap_and_terminates() -> None:
     places = gpd.GeoDataFrame(
         [
-            {"place_id": "a", "name": "A", "kind": "community", "place_class": "village", "geometry": Point(0, 0)},
-            {"place_id": "b", "name": "B", "kind": "community", "place_class": "village", "geometry": Point(0.02, 0)},
-            {"place_id": "c", "name": "C", "kind": "community", "place_class": "village", "geometry": Point(1, 0)},
-            {"place_id": "d", "name": "D", "kind": "community", "place_class": "village", "geometry": Point(1.02, 0)},
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.02, 0),
+            },
+            {
+                "place_id": "c",
+                "name": "C",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(1, 0),
+            },
+            {
+                "place_id": "d",
+                "name": "D",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(1.02, 0),
+            },
         ],
         crs=4326,
     )
@@ -93,14 +165,38 @@ def test_disconnected_source_network_emits_an_explicit_gap_and_terminates() -> N
 def test_recompilation_is_topologically_stable() -> None:
     places = gpd.GeoDataFrame(
         [
-            {"place_id": "a", "name": "A", "kind": "community", "place_class": "village", "geometry": Point(0, 0)},
-            {"place_id": "b", "name": "B", "kind": "community", "place_class": "village", "geometry": Point(0.05, 0)},
-            {"place_id": "c", "name": "C", "kind": "community", "place_class": "village", "geometry": Point(0.1, 0)},
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.05, 0),
+            },
+            {
+                "place_id": "c",
+                "name": "C",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0),
+            },
         ],
         crs=4326,
     )
     network = gpd.GeoDataFrame(
-        [{"osmid": "abc", "highway": "unclassified", "geometry": LineString([(0, 0), (0.05, 0), (0.1, 0)])}],
+        [
+            {
+                "osmid": "abc",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.05, 0), (0.1, 0)]),
+            }
+        ],
         crs=4326,
     )
     source = {"places": places, "network": network, "boundary": gpd.GeoDataFrame()}
@@ -128,4 +224,3 @@ def test_unjoined_route_crossing_is_an_amber_warning() -> None:
     assert len(warnings) == 1
     assert warnings.iloc[0].status == "amber"
     assert warnings.iloc[0].geometry.equals(Point(0, 0))
-

@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 
 from __future__ import annotations
 
@@ -27,9 +26,23 @@ def edges(rows: list[dict[str, object]]) -> gpd.GeoDataFrame:
 def test_a_road_is_the_priority_strategic_spine() -> None:
     network = edges(
         [
-            {"osmid": "minor", "highway": "unclassified", "geometry": LineString([(0, 0), (0.1, 0)])},
-            {"osmid": "a1", "highway": "primary", "ref": "A37", "geometry": LineString([(0, 0), (0.05, 0.02)])},
-            {"osmid": "a2", "highway": "primary", "ref": "A37", "geometry": LineString([(0.05, 0.02), (0.1, 0)])},
+            {
+                "osmid": "minor",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            },
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A37",
+                "geometry": LineString([(0, 0), (0.05, 0.02)]),
+            },
+            {
+                "osmid": "a2",
+                "highway": "primary",
+                "ref": "A37",
+                "geometry": LineString([(0.05, 0.02), (0.1, 0)]),
+            },
         ]
     )
     graph = RoadGraph(network)
@@ -55,8 +68,16 @@ def test_impracticable_a_road_uses_reasoned_parallel_fallback() -> None:
                 "satn_alongside": "impracticable",
                 "geometry": LineString([(0, 0), (0.1, 0)]),
             },
-            {"osmid": "quiet-1", "highway": "unclassified", "geometry": LineString([(0, 0), (0.05, 0.02)])},
-            {"osmid": "quiet-2", "highway": "unclassified", "geometry": LineString([(0.05, 0.02), (0.1, 0)])},
+            {
+                "osmid": "quiet-1",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.05, 0.02)]),
+            },
+            {
+                "osmid": "quiet-2",
+                "highway": "unclassified",
+                "geometry": LineString([(0.05, 0.02), (0.1, 0)]),
+            },
         ]
     )
     graph = RoadGraph(network)
@@ -72,19 +93,99 @@ def test_impracticable_a_road_uses_reasoned_parallel_fallback() -> None:
     assert "physically impracticable" in reason
 
 
+def test_bidirectionality_requires_reverse_edges_on_the_selected_corridor() -> None:
+    network = edges(
+        [
+            {
+                "osmid": "forward",
+                "highway": "unclassified",
+                "oneway": True,
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            },
+            {
+                "osmid": "return-1",
+                "highway": "unclassified",
+                "geometry": LineString([(0.1, 0), (0.05, 0.01)]),
+            },
+            {
+                "osmid": "return-2",
+                "highway": "unclassified",
+                "geometry": LineString([(0.05, 0.01), (0, 0)]),
+            },
+        ]
+    )
+    graph = RoadGraph(network)
+    start = graph.nearest_node(Point(0, 0))[0]
+    end = graph.nearest_node(Point(0.1, 0))[0]
+
+    option = graph.option(start, end, "direct")
+
+    assert option is not None
+    assert not option.bidirectional
+    assert option.reverse_length_km is not None
+    assert option.reverse_edge_ids == ["return-1", "return-2"]
+    assert option.reverse_corridor_share < 0.5
+
+
+def test_bidirectionality_records_reverse_edges_on_the_selected_corridor() -> None:
+    network = edges(
+        [
+            {
+                "osmid": "two-way",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ]
+    )
+    graph = RoadGraph(network)
+    option = graph.option(
+        graph.nearest_node(Point(0, 0))[0],
+        graph.nearest_node(Point(0.1, 0))[0],
+        "direct",
+    )
+
+    assert option is not None
+    assert option.bidirectional
+    assert option.reverse_length_km == option.length_km
+    assert option.reverse_edge_ids == ["two-way"]
+    assert option.reverse_corridor_share == 1
+
+
 def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> None:
     places = gpd.GeoDataFrame(
         [
-            {"place_id": "a", "name": "A", "kind": "community", "place_class": "village", "geometry": Point(0, 0)},
-            {"place_id": "b", "name": "B", "kind": "community", "place_class": "village", "geometry": Point(0.08, 0)},
-            {"place_id": "c", "name": "C", "kind": "community", "place_class": "village", "geometry": Point(0.25, 0)},
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.08, 0),
+            },
+            {
+                "place_id": "c",
+                "name": "C",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.25, 0),
+            },
         ],
         crs=4326,
     )
     network = edges(
         [
             {"osmid": "ab", "highway": "unclassified", "geometry": LineString([(0, 0), (0.08, 0)])},
-            {"osmid": "bc", "highway": "unclassified", "geometry": LineString([(0.08, 0), (0.25, 0)])},
+            {
+                "osmid": "bc",
+                "highway": "unclassified",
+                "geometry": LineString([(0.08, 0), (0.25, 0)]),
+            },
         ]
     )
     boundary = gpd.GeoDataFrame(geometry=[], crs=4326)
@@ -96,8 +197,7 @@ def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> Non
     )
 
     pairs = {
-        tuple(sorted((row.from_place, row.to_place)))
-        for _, row in compiled.connections.iterrows()
+        tuple(sorted((row.from_place, row.to_place))) for _, row in compiled.connections.iterrows()
     }
     assert pairs == {("a", "b"), ("b", "c"), ("a", "c")}
     assert len(compiled.connections) == len(pairs)
@@ -109,15 +209,35 @@ def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> Non
 def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:
     places = gpd.GeoDataFrame(
         [
-            {"place_id": "a", "name": "A", "kind": "community", "place_class": "village", "geometry": Point(0, 0)},
-            {"place_id": "b", "name": "B", "kind": "community", "place_class": "village", "geometry": Point(1, 0)},
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(1, 0),
+            },
         ],
         crs=4326,
     )
     network = edges(
         [
-            {"osmid": "left", "highway": "unclassified", "geometry": LineString([(0, 0), (0.1, 0)])},
-            {"osmid": "right", "highway": "unclassified", "geometry": LineString([(0.9, 0), (1, 0)])},
+            {
+                "osmid": "left",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            },
+            {
+                "osmid": "right",
+                "highway": "unclassified",
+                "geometry": LineString([(0.9, 0), (1, 0)]),
+            },
         ]
     )
 

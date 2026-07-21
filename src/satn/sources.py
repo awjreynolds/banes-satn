@@ -6,6 +6,8 @@ import hashlib
 import json
 import shutil
 import tempfile
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,10 +20,12 @@ from shapely.geometry import LineString, MultiLineString, MultiPoint, Point
 from shapely.ops import unary_union
 
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
+from satn.evidence import derive_context_layers, empty_context
 from satn.models import CouncilConfig
 
 CORE_SOURCE_FILES = ("boundary.geojson", "places.geojson", "network.geojson")
 OSM_ATTRIBUTION = "© OpenStreetMap contributors; data available under the ODbL"
+NCN_ATTRIBUTION = "Walk Wheel Cycle Trust National Cycle Network; Open Government Licence v3.0"
 
 
 @dataclass
@@ -31,6 +35,8 @@ class OSMData:
     stations: gpd.GeoDataFrame
     network: gpd.GeoDataFrame
     graph: object | None = None
+    ncn_routes: gpd.GeoDataFrame | None = None
+    facilities: gpd.GeoDataFrame | None = None
 
 
 class OSMAdapter(Protocol):
@@ -63,6 +69,28 @@ class OSMnxAdapter:
             governed_polygon,
             tags={"railway": "station", "amenity": "bus_station", "public_transport": "station"},
         ).reset_index()
+        ncn_routes = (
+            _load_ncn_features(config.source.ncn_feature_service_url, boundary)
+            if config.source.ncn_feature_service_url
+            else None
+        )
+        facilities = ox.features_from_polygon(
+            governed_polygon,
+            tags={
+                "amenity": [
+                    "school",
+                    "college",
+                    "university",
+                    "doctors",
+                    "pharmacy",
+                    "clinic",
+                    "hospital",
+                    "marketplace",
+                ],
+                "shop": True,
+                "landuse": "retail",
+            },
+        ).reset_index()
         graph = ox.graph_from_polygon(
             governed_polygon,
             network_type=config.source.network_type,
@@ -71,7 +99,15 @@ class OSMnxAdapter:
         )
         _, network = ox.graph_to_gdfs(graph)
         network = network.reset_index()
-        return OSMData(boundary, place_features, stations, network, graph)
+        return OSMData(
+            boundary,
+            place_features,
+            stations,
+            network,
+            graph=graph,
+            ncn_routes=ncn_routes,
+            facilities=facilities,
+        )
 
 
 def snapshot(
@@ -83,8 +119,10 @@ def snapshot(
     """Materialise an immutable, attributable source snapshot."""
     destination = config.source.snapshot_dir / config.source.snapshot_id
     if destination.exists() and not replace:
-        _validate_snapshot(destination)
-        return destination
+        manifest = json.loads((destination / "snapshot.json").read_text(encoding="utf-8"))
+        if manifest.get("schema_version") == SCHEMA_VERSION:
+            _validate_snapshot(destination)
+            return destination
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=f".{destination.name}-", dir=destination.parent))
@@ -96,7 +134,11 @@ def snapshot(
             source_identifier, files = _write_osm_snapshot(
                 config, temporary, osm_adapter or OSMnxAdapter()
             )
-            attribution = OSM_ATTRIBUTION
+            attribution = (
+                f"{OSM_ATTRIBUTION}; {NCN_ATTRIBUTION}"
+                if config.source.ncn_feature_service_url
+                else OSM_ATTRIBUTION
+            )
         manifest = {
             "schema_version": SCHEMA_VERSION,
             "snapshot_id": config.source.snapshot_id,
@@ -105,7 +147,15 @@ def snapshot(
             "source_identifier": source_identifier,
             "retrieved_at": datetime.now(UTC).isoformat(),
             "attribution": attribution,
+            "evidence_sources": {
+                "osm": config.source.osm_place_query,
+                "ncn": config.source.ncn_feature_service_url,
+            },
             "files": files,
+            "file_sha256": {
+                filename: hashlib.sha256((temporary / filename).read_bytes()).hexdigest()
+                for filename in files
+            },
             "disclaimer": DISCLAIMER,
         }
         (temporary / "snapshot.json").write_text(
@@ -126,7 +176,13 @@ def _write_fixture_snapshot(config: CouncilConfig, temporary: Path) -> tuple[str
         raise ValueError("fixture sources require source.fixture_dir")
     for filename in CORE_SOURCE_FILES:
         shutil.copy2(config.source.fixture_dir / filename, temporary / filename)
-    return str(config.source.fixture_dir), list(CORE_SOURCE_FILES)
+    context_source = config.source.fixture_dir / "context.geojson"
+    if context_source.exists():
+        shutil.copy2(context_source, temporary / "context.geojson")
+    else:
+        network = gpd.read_file(temporary / "network.geojson")
+        derive_context_layers(network).to_file(temporary / "context.geojson", driver="GeoJSON")
+    return str(config.source.fixture_dir), [*CORE_SOURCE_FILES, "context.geojson"]
 
 
 def _write_osm_snapshot(
@@ -142,12 +198,14 @@ def _write_osm_snapshot(
         data.network,
         config,
     )
+    context = derive_context_layers(data.network, data.ncn_routes, data.facilities)
     frames = {
         "boundary.geojson": data.boundary.to_crs(4326),
         "places.geojson": places.to_crs(4326),
         "network.geojson": data.network.to_crs(4326),
         "osm-place-features.geojson": data.place_features.to_crs(4326),
         "osm-stations.geojson": data.stations.to_crs(4326),
+        "context.geojson": context.to_crs(4326),
     }
     for filename, frame in frames.items():
         frame.to_file(temporary / filename, driver="GeoJSON")
@@ -156,6 +214,35 @@ def _write_osm_snapshot(
 
         ox.save_graphml(data.graph, temporary / "network.graphml")
     return str(config.source.osm_place_query), list(frames)
+
+
+def _load_ncn_features(
+    service_url: str,
+    boundary: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    min_x, min_y, max_x, max_y = boundary.to_crs(4326).total_bounds
+    parameters = urllib.parse.urlencode(
+        {
+            "f": "geojson",
+            "where": "RouteType = 'NCN'",
+            "geometry": f"{min_x},{min_y},{max_x},{max_y}",
+            "geometryType": "esriGeometryEnvelope",
+            "inSR": "4326",
+            "outSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "true",
+        }
+    )
+    request = urllib.request.Request(
+        f"{service_url.rstrip('/')}/0/query?{parameters}",
+        headers={"User-Agent": "banes-satn/0.1 NCN snapshot"},
+    )
+    with urllib.request.urlopen(request, timeout=90) as response:
+        payload = json.load(response)
+    if "error" in payload:
+        raise ValueError(f"NCN feature service failed: {payload['error']}")
+    return gpd.GeoDataFrame.from_features(payload.get("features", []), crs=4326)
 
 
 def derive_network_places(
@@ -278,16 +365,24 @@ def _derive_gateways(
     network: gpd.GeoDataFrame,
     external_centres: list[dict[str, object]],
 ) -> list[dict[str, object]]:
-    if not external_centres:
-        return []
-    crossings: list[Point] = []
+    crossings: list[tuple[Point, Point | None]] = []
     for geometry in network.geometry:
         if geometry.crosses(boundary.boundary):
-            crossings.extend(_extract_points(geometry.intersection(boundary.boundary)))
+            for crossing in _extract_points(geometry.intersection(boundary.boundary)):
+                crossings.append((crossing, _outward_endpoint(geometry, boundary, crossing)))
     grouped: dict[str, tuple[Point, float]] = {}
-    for crossing in crossings:
-        destination = min(external_centres, key=lambda item: crossing.distance(item["geometry"]))
-        distance = crossing.distance(destination["geometry"])
+    for crossing, outward in crossings:
+        if outward is None or not external_centres:
+            name = "Unresolved onward corridor"
+            grouped.setdefault(name, (crossing, 0.0))
+            continue
+        destination = min(
+            external_centres,
+            key=lambda item: _gateway_destination_score(
+                crossing, outward, item["geometry"]
+            ),
+        )
+        distance = _gateway_destination_score(crossing, outward, destination["geometry"])
         name = str(destination["name"])
         if name not in grouped or distance < grouped[name][1]:
             grouped[name] = (crossing, distance)
@@ -303,6 +398,43 @@ def _derive_gateways(
         }
         for name, (point, _) in sorted(grouped.items())
     ]
+
+
+def _outward_endpoint(geometry: object, boundary: object, crossing: Point) -> Point | None:
+    """Return the closest exterior endpoint, preserving the road's outward bearing."""
+    parts = list(geometry.geoms) if isinstance(geometry, MultiLineString) else [geometry]
+    candidates: list[Point] = []
+    for part in parts:
+        if not isinstance(part, LineString) or len(part.coords) < 2:
+            continue
+        for coordinate in (part.coords[0], part.coords[-1]):
+            endpoint = Point(coordinate)
+            if not boundary.covers(endpoint):
+                candidates.append(endpoint)
+    return min(candidates, key=crossing.distance) if candidates else None
+
+
+def _gateway_destination_score(
+    crossing: Point,
+    outward: Point | None,
+    destination: object,
+) -> float:
+    """Prefer a named centre lying along the outward road corridor."""
+    if not isinstance(destination, Point) or outward is None:
+        return float("inf")
+    direction_x = outward.x - crossing.x
+    direction_y = outward.y - crossing.y
+    magnitude = (direction_x**2 + direction_y**2) ** 0.5
+    if magnitude == 0:
+        return crossing.distance(destination)
+    direction_x /= magnitude
+    direction_y /= magnitude
+    destination_x = destination.x - crossing.x
+    destination_y = destination.y - crossing.y
+    progress = destination_x * direction_x + destination_y * direction_y
+    perpendicular = abs(destination_x * direction_y - destination_y * direction_x)
+    behind_penalty = 10.0 if progress <= 0 else 0.0
+    return behind_penalty + perpendicular + 0.1 * crossing.distance(destination)
 
 
 def _extract_points(geometry: object) -> list[Point]:
@@ -356,6 +488,11 @@ def _validate_snapshot(path: Path) -> None:
     if not manifest_path.exists():
         raise ValueError(f"invalid snapshot: missing {manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != SCHEMA_VERSION:
+        raise ValueError(
+            f"invalid snapshot schema: expected {SCHEMA_VERSION}, "
+            f"found {manifest.get('schema_version')}"
+        )
     for filename in manifest["files"]:
         file_path = path / filename
         if not file_path.exists():
@@ -363,13 +500,24 @@ def _validate_snapshot(path: Path) -> None:
         frame = gpd.read_file(file_path)
         if frame.crs is None:
             raise ValueError(f"invalid snapshot: {filename} has no CRS")
+        expected_hash = manifest.get("file_sha256", {}).get(filename)
+        if expected_hash and hashlib.sha256(file_path.read_bytes()).hexdigest() != expected_hash:
+            raise ValueError(f"invalid snapshot: {filename} content hash mismatch")
 
 
 def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
     path = config.source.snapshot_dir / config.source.snapshot_id
     _validate_snapshot(path)
+    network = gpd.read_file(path / "network.geojson")
+    context_path = path / "context.geojson"
+    context = (
+        gpd.read_file(context_path) if context_path.exists() else derive_context_layers(network)
+    )
+    if context.empty:
+        context = empty_context(network.crs)
     return {
         "boundary": gpd.read_file(path / "boundary.geojson"),
         "places": gpd.read_file(path / "places.geojson"),
-        "network": gpd.read_file(path / "network.geojson"),
+        "network": network,
+        "context": context,
     }

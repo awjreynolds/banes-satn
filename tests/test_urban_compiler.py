@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 
 from __future__ import annotations
 
@@ -44,9 +43,31 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     )
     network = gpd.GeoDataFrame(
         [
-            {"osmid": "main", "highway": "primary", "geometry": LineString([(0, -0.02), (0, 0.02)])},
-            {"osmid": "minor-west", "highway": "residential", "geometry": LineString([(-0.015, 0), (0, 0)])},
-            {"osmid": "minor-east", "highway": "unclassified", "geometry": LineString([(0, 0), (0.015, 0)])},
+            {
+                "osmid": "main",
+                "highway": "primary",
+                "geometry": LineString([(0, -0.02), (0, 0.02)]),
+            },
+            {
+                "osmid": "minor-west",
+                "highway": "residential",
+                "geometry": LineString([(-0.015, 0), (0, 0)]),
+            },
+            {
+                "osmid": "minor-west-2",
+                "highway": "residential",
+                "geometry": LineString([(-0.015, 0), (-0.015, 0.01)]),
+            },
+            {
+                "osmid": "minor-east",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.015, 0)]),
+            },
+            {
+                "osmid": "minor-east-2",
+                "highway": "residential",
+                "geometry": LineString([(0.015, 0), (0.015, 0.01)]),
+            },
         ],
         crs=4326,
     )
@@ -56,28 +77,77 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     assert len(spines) == 1
     assert set(spines["role"]) == {"urban-main-road-spine"}
     assert set(spines["intervention"]) == {"protected-cycle-infrastructure"}
-    assert len(areas) == 1
+    assert len(areas) == 2
     assert set(areas["role"]) == {"candidate-low-traffic-area"}
     assert areas.iloc[0].geometry.geom_type in {"Polygon", "MultiPolygon"}
-    assert areas.to_crs(27700).iloc[0].geometry.intersects(
-        spines.to_crs(27700).iloc[0].geometry
+    projected_spine = spines.to_crs(27700).iloc[0].geometry
+    assert all(
+        not geometry.intersects(projected_spine) for geometry in areas.to_crs(27700).geometry
     )
 
 
 def test_multi_portal_communities_use_the_nearest_connected_portals() -> None:
     places = gpd.GeoDataFrame(
         [
-            {"place_id": "west", "name": "West", "kind": "community", "place_class": "neighbourhood", "parent_place_id": None, "geometry": Point(-0.05, 0)},
-            {"place_id": "west-outer", "name": "West outer", "kind": "community_portal", "place_class": "neighbourhood", "parent_place_id": "west", "geometry": Point(-0.04, 0)},
-            {"place_id": "west-inner", "name": "West inner", "kind": "community_portal", "place_class": "neighbourhood", "parent_place_id": "west", "geometry": Point(0, 0)},
-            {"place_id": "east", "name": "East", "kind": "community", "place_class": "neighbourhood", "parent_place_id": None, "geometry": Point(0.15, 0)},
-            {"place_id": "east-inner", "name": "East inner", "kind": "community_portal", "place_class": "neighbourhood", "parent_place_id": "east", "geometry": Point(0.1, 0)},
-            {"place_id": "east-outer", "name": "East outer", "kind": "community_portal", "place_class": "neighbourhood", "parent_place_id": "east", "geometry": Point(0.14, 0)},
+            {
+                "place_id": "west",
+                "name": "West",
+                "kind": "community",
+                "place_class": "neighbourhood",
+                "parent_place_id": None,
+                "geometry": Point(-0.05, 0),
+            },
+            {
+                "place_id": "west-outer",
+                "name": "West outer",
+                "kind": "community_portal",
+                "place_class": "neighbourhood",
+                "parent_place_id": "west",
+                "geometry": Point(-0.04, 0),
+            },
+            {
+                "place_id": "west-inner",
+                "name": "West inner",
+                "kind": "community_portal",
+                "place_class": "neighbourhood",
+                "parent_place_id": "west",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "east",
+                "name": "East",
+                "kind": "community",
+                "place_class": "neighbourhood",
+                "parent_place_id": None,
+                "geometry": Point(0.15, 0),
+            },
+            {
+                "place_id": "east-inner",
+                "name": "East inner",
+                "kind": "community_portal",
+                "place_class": "neighbourhood",
+                "parent_place_id": "east",
+                "geometry": Point(0.1, 0),
+            },
+            {
+                "place_id": "east-outer",
+                "name": "East outer",
+                "kind": "community_portal",
+                "place_class": "neighbourhood",
+                "parent_place_id": "east",
+                "geometry": Point(0.14, 0),
+            },
         ],
         crs=4326,
     )
     network = gpd.GeoDataFrame(
-        [{"osmid": "urban-link", "highway": "residential", "geometry": LineString([(0, 0), (0.1, 0)])}],
+        [
+            {
+                "osmid": "urban-link",
+                "highway": "residential",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ],
         crs=4326,
     )
     config = CouncilConfig.from_yaml(

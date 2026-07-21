@@ -20,10 +20,19 @@ class ConnectionCache:
         self.directory = config.compilation.cache_dir / "connections"
         self.directory.mkdir(parents=True, exist_ok=True)
         compilation = config.compilation.model_dump(mode="json", exclude={"full", "cache_dir"})
+        snapshot_manifest = (
+            config.source.snapshot_dir / config.source.snapshot_id / "snapshot.json"
+        )
+        snapshot_fingerprint = (
+            hashlib.sha256(snapshot_manifest.read_bytes()).hexdigest()
+            if snapshot_manifest.exists()
+            else "missing"
+        )
         governed = {
             "schema_version": SCHEMA_VERSION,
             "council_id": config.council_id,
             "snapshot_id": config.source.snapshot_id,
+            "snapshot_fingerprint": snapshot_fingerprint,
             "compilation": compilation,
             "atm_mode": config.atm.mode if config.atm.enabled else "none",
             "atm_fingerprint": atm_fingerprint if config.atm.mode == "seeded" else None,

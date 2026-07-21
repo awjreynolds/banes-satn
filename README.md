@@ -52,12 +52,14 @@ and place derivation remain portable compiler behaviour:
 uv run satn snapshot config/banes.yaml
 ```
 
-This retrieves the full governed boundary, cycling graph, named place features and
-public-transport stations. The immutable snapshot records its query, retrieval time
-and OpenStreetMap attribution. Towns, villages and named urban neighbourhoods are
+This retrieves the full governed boundary, cycling graph, named place features,
+public-transport stations and everyday amenities from OpenStreetMap, plus the current
+National Cycle Network from the Walk Wheel Cycle Trust public feature service. The
+immutable snapshot records retrieval time, content hashes, OSM/ODbL attribution and
+NCN/Open Government Licence v3.0 attribution. Towns, villages and named urban neighbourhoods are
 admitted as Community candidates; hamlets are not mandatory Network Places. Large
 Community polygons can expose connected network portals, and genuine outward road
-crossings are named for their nearest external town or city.
+crossings are named for the relevant external town or city along the onward corridor.
 
 The network request is intentionally live and can take time. Its explicit smoke test
 is:
@@ -77,10 +79,14 @@ Community attachment prefers that dominant routable component instead of snappin
 a nearby isolated digitising fragment.
 
 - a direct A-road corridor is the preferred Strategic Spine, representing a wide
-  alongside shared path rather than cycling in the carriageway;
+  alongside shared path rather than cycling in the carriageway. Its authoritative
+  geometry is an indicative corridor centreline; the review map offsets it
+  cartographically to show “alongside” without inventing survey-level geometry;
 - a parallel route is used when alongside provision is explicitly found physically
   impracticable, with that reason retained;
 - other rural connections compare direct and low-traffic OSM paths;
+- where no qualifying A-road spine wins, NCN overlap can inform the selected
+  continuous alignment;
 - no continuous two-way path becomes a visible Red Network Gap rather than a drawn
   straight line; and
 - a connection over 15 km is challenged Amber, not silently removed.
@@ -138,8 +144,8 @@ Changing `compilation.criteria_version` invalidates all version-one reuse.
 
 ## ATM quality comparison
 
-ATM is an optional B&NES quality reference, not a portable network rule and not
-ground truth. Put the locally governed file at
+ATM is an optional B&NES quality reference, not a portable network rule or an
+authoritative answer. Put the locally governed file at
 `data/local/banes-atm-full.geojson`, set `atm.enabled: true`, and choose one mode:
 
 - `blind` compiles routes before the ATM file is loaded, then compares them;
@@ -155,6 +161,10 @@ For `publication.audience: public`, ATM geometry is omitted unless
 default public B&NES configuration keeps comparison disabled and redistribution
 false because public retrieval is not, by itself, a licence grant.
 
+The public review map still provides a governed local-file control. Select an ATM
+GeoJSON in the browser to load it only into that browser session, then toggle “ATM
+reference (before/after)” without uploading or republishing its geometry.
+
 ## Review and share the result
 
 Every successful compile replaces the configured output directory only after all
@@ -169,10 +179,13 @@ artifacts validate against each other:
   title, date, legend, scale and disclaimer.
 
 Open `review-map/index.html` directly or serve the directory from any static host.
-The visible controls are limited to network routes, places, gaps/warnings and the
-optional ATM overlay. Connections, Network and ATM criteria remain separate. Hover
-or keyboard focus updates the semantic details panel; click pins and unpins it. The
-panel exposes stable IDs, endpoints, length, role, independent criterion states,
+The map presents A-road corridors as its core spine, Community Connections above
+them, and NCN evidence as a distinct overlay. Schools, derived high-street/retail
+centres and healthcare facilities default off to avoid noise; each has its own
+control. Places, urban structure, gaps/warnings and ATM comparison are independently
+toggleable. Connections, Network and ATM criteria remain separate. Hover or keyboard
+focus updates the semantic details panel; click pins and unpins it. The panel exposes
+Community names, stable IDs, length, role, indicative intervention, criterion states,
 rationale, findings and source IDs, so browser agents do not need to infer state from
 the map canvas.
 
@@ -187,7 +200,7 @@ uv run pytest --browser -m browser tests/test_review_map_browser.py
 
 The current full B&NES result is published at
 [awjreynolds.github.io/banes-satn](https://awjreynolds.github.io/banes-satn/).
-It contains 150 unique Community Connections in one end-to-end network, with no Red
+It contains 163 unique Community Connections in one end-to-end network, with no Red
 Network Gaps and five non-blocking route-crossing warnings. The public map excludes
 the governed ATM geometry. After a validated public compile, refresh the tracked
 GitHub Pages bundle with:
@@ -206,10 +219,13 @@ uv run pytest
 ## Status
 
 The POC compiler and its full B&NES reference publication are complete. The current
-snapshot contains 127 Network Places and 41,158 OSM road edges. The resulting 150
-Connections form one network unit; an unchanged incremental run reuses all 150
+snapshot contains 127 Network Places and 41,158 OSM road edges. The same governed
+snapshot also contains 2,373 A-road segments, 195 NCN segments, 104 education sites,
+55 derived retail centres and 78 healthcare sites. The resulting 163 Connections
+form one network unit; an unchanged incremental run reuses all 163
 validated Connections. This is an experimental generated network, not an adopted
 plan, and its alignments still require scheme-level feasibility and design work.
 
 Released under the MIT licence. OpenStreetMap-derived outputs must retain
-OpenStreetMap attribution and comply with the ODbL.
+OpenStreetMap attribution and comply with the ODbL. NCN-derived outputs must retain
+Walk Wheel Cycle Trust attribution and comply with the Open Government Licence v3.0.

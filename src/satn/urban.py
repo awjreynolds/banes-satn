@@ -23,9 +23,7 @@ def derive_urban_structure(
         place_class = [""] * len(places)
     urban = places[
         (places["kind"] == "community")
-        & pd.Series(place_class, index=places.index).isin(
-            ["suburb", "quarter", "neighbourhood"]
-        )
+        & pd.Series(place_class, index=places.index).isin(["suburb", "quarter", "neighbourhood"])
     ]
     if urban.empty or network.empty:
         return (
@@ -40,9 +38,11 @@ def derive_urban_structure(
         highway = [""] * len(projected_network)
     projected_network["_classes"] = [_tag_values(value) for value in highway]
 
-    main_mask = projected_network["_classes"].map(
-        lambda values: bool(set(values) & MAIN_ROADS)
-    ).astype(bool)
+    main_mask = (
+        projected_network["_classes"]
+        .map(lambda values: bool(set(values) & MAIN_ROADS))
+        .astype(bool)
+    )
     main = projected_network.loc[main_mask].copy()
     spine_rows = [
         {
@@ -55,17 +55,30 @@ def derive_urban_structure(
         if isinstance(geometry, LineString)
     ]
 
-    minor_mask = projected_network["_classes"].map(
-        lambda values: bool(set(values) & LOW_TRAFFIC)
-    ).astype(bool)
-    minor = projected_network.loc[minor_mask]
-    area_rows = _minor_road_areas(minor)
+    minor_mask = (
+        projected_network["_classes"]
+        .map(lambda values: bool(set(values) & LOW_TRAFFIC))
+        .astype(bool)
+    )
+    minor = projected_network.loc[minor_mask].copy()
+    area_rows = _minor_road_areas(minor, main)
     spines = gpd.GeoDataFrame(spine_rows, columns=columns, geometry="geometry", crs=27700)
     areas = gpd.GeoDataFrame(area_rows, columns=columns, geometry="geometry", crs=27700)
     return spines.to_crs(network.crs), areas.to_crs(network.crs)
 
 
-def _minor_road_areas(minor: gpd.GeoDataFrame) -> list[dict[str, object]]:
+def _minor_road_areas(
+    minor: gpd.GeoDataFrame,
+    main: gpd.GeoDataFrame,
+) -> list[dict[str, object]]:
+    if not main.empty:
+        main_road_barrier = unary_union(main.geometry.tolist()).buffer(20)
+        minor["geometry"] = minor.geometry.map(
+            lambda geometry: geometry.difference(main_road_barrier)
+        )
+        minor = minor.explode(index_parts=False).loc[
+            lambda frame: frame.geometry.map(lambda geometry: isinstance(geometry, LineString))
+        ]
     graph = nx.Graph()
     geometries: dict[tuple[str, str], LineString] = {}
     for _, row in minor.iterrows():

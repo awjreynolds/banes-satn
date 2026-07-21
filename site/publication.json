@@ -1,8 +1,16 @@
 {
-  "run_id": "run-09c881a24923",
+  "run_id": "run-b7a6413f89bb",
   "status": "complete",
-  "connection_count": 150,
+  "connection_count": 163,
   "gap_count": 0,
+  "superseded_hypotheses": 2,
+  "layer_counts": {
+    "a_road_spines": 2373,
+    "ncn_routes": 195,
+    "schools": 104,
+    "retail_centres": 55,
+    "healthcare": 78
+  },
   "criteria": {
     "connections": {
       "mandatory_checks": "green",
@@ -12,7 +20,8 @@
       "community_coverage": "green",
       "connected_graph": "green",
       "unique_pairs": "green",
-      "internal_termini": "green"
+      "internal_termini": "green",
+      "intervention_coverage": "green"
     },
     "atm_comparison": {
       "compared": "grey"

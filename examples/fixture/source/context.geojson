@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "name": "tiny-context-evidence",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"evidence_id": "a-road-fixture", "feature_type": "a-road-spine", "name": "A1", "category": "A-road strategic spine", "source_id": "a1", "feature_count": 1},
+      "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.405], [-2.46, 51.425]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"evidence_id": "ncn-fixture", "feature_type": "ncn-route", "name": "NCN 1", "category": "National Cycle Network", "source_id": "ncn1", "feature_count": 1},
+      "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.407], [-2.46, 51.427]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"evidence_id": "school-fixture", "feature_type": "school", "name": "Fixture School", "category": "school", "source_id": "school1", "feature_count": 1},
+      "geometry": {"type": "Point", "coordinates": [-2.482, 51.413]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"evidence_id": "retail-fixture", "feature_type": "retail-centre", "name": "Fixture High Street", "category": "shop cluster", "source_id": "shops1", "feature_count": 4},
+      "geometry": {"type": "Point", "coordinates": [-2.481, 51.414]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"evidence_id": "health-fixture", "feature_type": "healthcare", "name": "Fixture Pharmacy", "category": "pharmacy", "source_id": "health1", "feature_count": 1},
+      "geometry": {"type": "Point", "coordinates": [-2.48, 51.415]}
+    }
+  ]
+}

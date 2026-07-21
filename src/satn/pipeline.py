@@ -39,26 +39,43 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     if council.atm.enabled:
         if council.atm.mode == "blind":
             atm_reference = load_atm(council).to_crs(source["network"].crs)
-        compiled.divergence_records = compare_atm(
-            compiled, atm_reference, runtime, council
-        )
-        if (
-            council.publication.audience == "local"
-            or council.atm.redistribution_permitted
-        ):
+        compiled.divergence_records = compare_atm(compiled, atm_reference, runtime, council)
+        if council.publication.audience == "local" or council.atm.redistribution_permitted:
             compiled.atm_reference = atm_reference
         unresolved = any(not record.resolved for record in compiled.divergence_records)
         compiled.criteria["atm_comparison"] = {
             "comparison_available": TrafficLight.GREEN,
-            "unresolved_divergences": (
-                TrafficLight.AMBER if unresolved else TrafficLight.GREEN
-            ),
+            "unresolved_divergences": (TrafficLight.AMBER if unresolved else TrafficLight.GREEN),
         }
     run_fingerprint = json.dumps(
         {
             "council": council.council_id,
             "snapshot": council.source.snapshot_id,
-            "connections": sorted(compiled.connections.get("connection_id", [])),
+            "snapshot_manifest": hashlib.sha256(
+                (
+                    council.source.snapshot_dir / council.source.snapshot_id / "snapshot.json"
+                ).read_bytes()
+            ).hexdigest(),
+            "connections": sorted(
+                (
+                    row.connection_id,
+                    row.classification,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.connections.itertuples()
+            ),
+            "context": sorted(
+                evidence_id
+                for frame in (
+                    compiled.a_road_spines,
+                    compiled.ncn_routes,
+                    compiled.schools,
+                    compiled.retail_centres,
+                    compiled.healthcare,
+                )
+                for evidence_id in frame.get("evidence_id", [])
+            ),
+            "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
         },
         sort_keys=True,
     )
@@ -66,7 +83,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     artifacts = publish(council, compiled, run_id)
     return CompilationResult(
         run_id=run_id,
-        status="complete" if compiled.gaps.empty else "reviewable",
+        status=compiled.status,
         output_dir=council.publication.output_dir,
         connections=len(compiled.connections),
         gaps=len(compiled.gaps),
@@ -75,6 +92,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         agent_records=compiled.agent_records,
         metadata={
             "network_units": compiled.network_units,
+            "superseded_hypotheses": compiled.superseded_hypotheses,
             "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
             "atm_geometry_included": compiled.atm_reference is not None,

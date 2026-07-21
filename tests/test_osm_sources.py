@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.parse
 from pathlib import Path
 
 import geopandas as gpd
@@ -8,7 +9,7 @@ import pytest
 from shapely.geometry import LineString, Point, Polygon
 
 from satn.models import CouncilConfig
-from satn.sources import OSMData, derive_network_places, snapshot
+from satn.sources import OSMData, _load_ncn_features, derive_network_places, snapshot
 
 PROJECT = Path(__file__).parents[1]
 
@@ -89,6 +90,96 @@ def test_derives_places_and_excludes_hamlets() -> None:
     }
 
 
+def test_gateway_name_follows_onward_corridor_not_nearest_centre() -> None:
+    config = base_config()
+    data = source_frames()
+    extra_centres = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": 7,
+                "name": "Closer Off Axis",
+                "place": "town",
+                "geometry": Point(-2.35, 51.53),
+            },
+            {
+                "osmid": 8,
+                "name": "Onward Along Road",
+                "place": "town",
+                "geometry": Point(-2.2, 51.4),
+            },
+        ],
+        crs=4326,
+    )
+    original = data.place_features[data.place_features["osmid"] != 5]
+    data.place_features = gpd.GeoDataFrame(
+        list(original.to_dict("records")) + list(extra_centres.to_dict("records")), crs=4326
+    )
+
+    places = derive_network_places(
+        data.boundary, data.place_features, data.stations, data.network, config
+    )
+
+    gateway_names = set(places.loc[places["kind"] == "cross_boundary_gateway", "name"])
+    assert gateway_names == {"Towards Onward Along Road"}
+
+
+def test_gateway_records_unknown_when_no_onward_centre_is_available() -> None:
+    config = base_config()
+    data = source_frames()
+    data.place_features = data.place_features[data.place_features["osmid"] != 5]
+
+    places = derive_network_places(
+        data.boundary, data.place_features, data.stations, data.network, config
+    )
+
+    gateway_names = set(places.loc[places["kind"] == "cross_boundary_gateway", "name"])
+    assert gateway_names == {"Towards Unresolved onward corridor"}
+
+
+def test_loads_current_ncn_features_from_public_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    boundary = source_frames().boundary
+    payload = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"RouteType": "NCN", "RouteNo": "24", "SegmentID": 12},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[-2.5, 51.4], [-2.45, 51.41]],
+                },
+            }
+        ],
+    }
+
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(payload).encode()
+
+    seen: dict[str, str] = {}
+
+    def fake_urlopen(request: object, timeout: int) -> Response:
+        seen["url"] = request.full_url  # type: ignore[attr-defined]
+        assert timeout == 90
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    result = _load_ncn_features("https://example.test/FeatureServer", boundary)
+
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(seen["url"]).query)
+    assert query["where"] == ["RouteType = 'NCN'"]
+    assert query["geometryType"] == ["esriGeometryEnvelope"]
+    assert result.iloc[0]["RouteNo"] == "24"
+    assert result.crs.to_epsg() == 4326
+
+
 class FakeOSMAdapter:
     def acquire(self, config: CouncilConfig) -> OSMData:
         return source_frames()
@@ -108,7 +199,9 @@ def test_osm_snapshot_is_attributable_and_reloadable(tmp_path: Path) -> None:
         "boundary.geojson",
         "places.geojson",
         "network.geojson",
+        "context.geojson",
     }
+    assert set(manifest["file_sha256"]) == set(manifest["files"])
     reloaded = gpd.read_file(path / "places.geojson")
     assert set(reloaded["kind"]) >= {"community", "station_access", "cross_boundary_gateway"}
     assert snapshot(config, osm_adapter=FakeOSMAdapter()) == path

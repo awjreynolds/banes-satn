@@ -15,11 +15,23 @@
 
       <fieldset id="layer-controls">
         <legend>Map layers</legend>
-        <label><input id="layer-network-routes" type="checkbox" checked> Network routes</label>
+        <label><input id="layer-a-road-spines" type="checkbox" checked> A-road core spines</label>
+        <label><input id="layer-community-connections" type="checkbox" checked> Community connections</label>
+        <label><input id="layer-ncn-routes" type="checkbox" checked> National Cycle Network</label>
+        <label><input id="layer-urban-structure" type="checkbox" checked> Urban network structure</label>
         <label><input id="layer-places" type="checkbox" checked> Places</label>
+        <label><input id="layer-schools" type="checkbox"> Schools &amp; education</label>
+        <label><input id="layer-retail-centres" type="checkbox"> High streets &amp; retail centres</label>
+        <label><input id="layer-healthcare" type="checkbox"> Doctors, pharmacies &amp; hospitals</label>
         <label><input id="layer-gaps-warnings" type="checkbox" checked> Gaps and warnings</label>
-        __ATM_CONTROL__
+        <label><input id="layer-atm" type="checkbox" __ATM_STATE__> ATM reference (before/after)</label>
       </fieldset>
+
+      <p id="layer-summary" class="layer-summary" aria-live="polite"></p>
+      <label class="file-control">Load governed local ATM GeoJSON
+        <input id="atm-upload" type="file" accept=".geojson,.json,application/geo+json,application/json">
+      </label>
+      <p id="atm-status" class="layer-summary" role="status">__ATM_STATUS__</p>
 
       <fieldset id="criteria-controls">
         <legend>Evaluation section</legend>

@@ -32,7 +32,11 @@ class RouteOption:
     length_km: float
     edge_ids: list[str]
     a_road_share: float
+    ncn_share: float
     bidirectional: bool
+    reverse_length_km: float | None
+    reverse_edge_ids: list[str]
+    reverse_corridor_share: float
     impracticable_alongside: bool
 
     def summary(self) -> dict[str, object]:
@@ -40,7 +44,13 @@ class RouteOption:
             "role": self.role,
             "length_km": round(self.length_km, 3),
             "a_road_share": round(self.a_road_share, 3),
+            "ncn_share": round(self.ncn_share, 3),
             "bidirectional": self.bidirectional,
+            "reverse_length_km": (
+                round(self.reverse_length_km, 3) if self.reverse_length_km is not None else None
+            ),
+            "reverse_edge_ids": self.reverse_edge_ids,
+            "reverse_corridor_share": round(self.reverse_corridor_share, 3),
             "impracticable_alongside": self.impracticable_alongside,
         }
 
@@ -73,6 +83,7 @@ class RoadGraph:
                 "ref": _tag_values(row.get("ref")),
                 "oneway": _truthy(row.get("oneway")),
                 "alongside": str(row.get("satn_alongside", "possible")),
+                "ncn": _truthy(row.get("satn_ncn")),
             }
             self._add_best_edge(u, v, attrs)
             if not _present(row.get("u")) and not attrs["oneway"]:
@@ -130,18 +141,45 @@ class RoadGraph:
         if not edge_data:
             return None
         geometry = _merge_route([edge["geometry"] for edge in edge_data])
+        if geometry is None:
+            return None
         length_m = sum(float(edge["length_m"]) for edge in edge_data)
-        a_length = sum(
-            float(edge["length_m"]) for edge in edge_data if _is_a_road(edge["ref"])
+        a_length = sum(float(edge["length_m"]) for edge in edge_data if _is_a_road(edge["ref"]))
+        ncn_length = sum(float(edge["length_m"]) for edge in edge_data if edge["ncn"])
+        try:
+            reverse_nodes = nx.shortest_path(self.graph, end, start, weight=weight)
+            reverse_edges = [
+                self.graph[left][right] for left, right in pairwise(reverse_nodes)
+            ]
+            reverse_geometry = _merge_route([edge["geometry"] for edge in reverse_edges])
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            reverse_edges = []
+            reverse_geometry = None
+        reverse_corridor_share = (
+            min(
+                _corridor_share(reverse_geometry, geometry, self.crs),
+                _corridor_share(geometry, reverse_geometry, self.crs),
+            )
+            if reverse_geometry is not None
+            else 0.0
         )
-        reverse_exists = nx.has_path(self.graph, end, start)
+        reverse_exists = reverse_corridor_share >= 0.5
+        reverse_length_m = (
+            sum(float(edge["length_m"]) for edge in reverse_edges)
+            if reverse_geometry is not None
+            else None
+        )
         return RouteOption(
             role=role,
             geometry=geometry,
             length_km=length_m / 1000,
             edge_ids=[str(edge["edge_id"]) for edge in edge_data],
             a_road_share=a_length / length_m if length_m else 0,
+            ncn_share=ncn_length / length_m if length_m else 0,
             bidirectional=reverse_exists,
+            reverse_length_km=(reverse_length_m / 1000 if reverse_length_m is not None else None),
+            reverse_edge_ids=[str(edge["edge_id"]) for edge in reverse_edges],
+            reverse_corridor_share=reverse_corridor_share,
             impracticable_alongside=any(
                 edge["alongside"] == "impracticable" and _is_a_road(edge["ref"])
                 for edge in edge_data
@@ -158,10 +196,15 @@ def choose_alignment(
     if direct is None:
         return None, [], "No continuous OSM cycling-network path exists."
     strategic = graph.option(start, end, "strategic-spine")
+    ncn = graph.option(start, end, "ncn-informed")
     quiet = graph.option(start, end, "low-traffic")
-    options = _unique_options([direct, strategic, quiet])
+    options = _unique_options([direct, strategic, ncn, quiet])
 
-    if strategic and strategic.a_road_share > 0 and strategic.length_km <= direct.length_km * 1.5:
+    if (
+        strategic
+        and strategic.a_road_share >= 0.8
+        and strategic.length_km <= direct.length_km * 1.5
+    ):
         if strategic.impracticable_alongside:
             fallback = quiet if quiet and quiet.length_km <= direct.length_km * 1.5 else direct
             return (
@@ -174,6 +217,12 @@ def choose_alignment(
             strategic,
             options,
             "A-road Strategic Spine selected for directness and social oversight.",
+        )
+    if ncn and ncn.ncn_share > 0 and ncn.length_km <= direct.length_km * 1.35:
+        return (
+            ncn,
+            options,
+            "National Cycle Network evidence informed the selected continuous alignment.",
         )
     if quiet and quiet.length_km <= direct.length_km * 1.35:
         return (
@@ -197,20 +246,29 @@ def _weight_for(role: str) -> Callable[[str, str, dict[str, object]], float]:
             return length * (0.35 if is_a else 1.6)
         if role == "low-traffic":
             return length * (0.75 if highway & LOW_TRAFFIC else 4.0)
+        if role == "ncn-informed":
+            return length * (0.4 if edge["ncn"] else 1.3)
         return length
 
     return weight
 
 
-def _merge_route(lines: list[LineString]) -> LineString:
+def _merge_route(lines: list[LineString]) -> LineString | None:
     unioned = unary_union(lines)
     if isinstance(unioned, LineString):
         return unioned
     merged = linemerge(unioned)
     if isinstance(merged, LineString):
         return merged
-    longest = max(merged.geoms, key=lambda geometry: geometry.length)
-    return LineString(longest.coords)
+    return None
+
+
+def _corridor_share(route: LineString, corridor: LineString, crs: object) -> float:
+    projected = gpd.GeoSeries([route, corridor], crs=crs).to_crs(3857)
+    route_geometry, corridor_geometry = projected.iloc[0], projected.iloc[1]
+    if not route_geometry.length:
+        return 0.0
+    return route_geometry.intersection(corridor_geometry.buffer(250)).length / route_geometry.length
 
 
 def _unique_options(options: list[RouteOption | None]) -> list[RouteOption]:

@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 import geopandas as gpd
+import pyogrio
 
 from satn import compile
 from satn.constants import DISCLAIMER
@@ -52,19 +53,33 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     connections = gpd.read_file(result.artifacts["geopackage"], layer="connections")
     assert list(connections["status"]) == ["validated"]
     assert list(connections["classification"]) == ["low-traffic"]
+    assert {
+        "a_road_spines",
+        "ncn_routes",
+        "schools",
+        "retail_centres",
+        "healthcare",
+    } <= set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
     geojson = json.loads(result.artifacts["geojson"].read_text())
     assert geojson["disclaimer"] == DISCLAIMER
     assert result.artifacts["pdf"].read_bytes().startswith(b"%PDF")
     html = result.artifacts["review_map"].read_text()
     assert DISCLAIMER in html
     assert 'id="feature-details"' in html
-    assert 'id="layer-network-routes"' in html
+    assert 'id="layer-a-road-spines"' in html
+    assert 'id="layer-community-connections"' in html
+    assert 'id="layer-ncn-routes"' in html
+    assert 'id="layer-schools"' in html
+    assert 'id="layer-retail-centres"' in html
+    assert 'id="layer-healthcare"' in html
     data = (result.artifacts["review_map"].parent / "data.js").read_text()
     assert '"id": "connection-' in data
     app = (result.artifacts["review_map"].parent / "assets" / "review-map.js").read_text()
     assert "button.dataset.featureId = feature.id" in app
     assert "Typed agent records" in html
     assert (result.artifacts["review_map"].parent / "agent-records.json").exists()
+    assert '"from_place_name": "Eastfield"' in data
+    assert '"to_place_name": "Westfield"' in data
 
 
 def test_external_cli_snapshot_and_compile(tmp_path: Path) -> None:

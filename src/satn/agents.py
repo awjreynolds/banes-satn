@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from satn.models import AgentConfig, AgentRecord
 
@@ -23,19 +23,33 @@ class AgentRole(StrEnum):
 
 
 class ChallengeFinding(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     code: str
     severity: str
     message: str
-    evidence_ids: list[str] = Field(default_factory=list)
+    evidence_ids: tuple[str, ...] = ()
+
+
+class EvidenceFacts(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    from_place: str
+    to_place: str
+    selection_reason: str = ""
+    evidence_ids: tuple[str, ...] = ()
 
 
 class EvidencePacket(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    schema_version: str = "1"
     connection_id: str
     current_role: str | None
-    available_roles: list[str]
-    facts: dict[str, Any]
-    deterministic_findings: list[ChallengeFinding]
-    prior_feedback: list[ChallengeFinding] = Field(default_factory=list)
+    available_roles: tuple[str, ...]
+    facts: EvidenceFacts
+    deterministic_findings: tuple[ChallengeFinding, ...]
+    prior_feedback: tuple[ChallengeFinding, ...] = ()
     attempt: int
 
 
@@ -141,7 +155,7 @@ class FakeAgentRuntime(AgentRuntime):
             return {
                 "selected_role": packet.current_role,
                 "rationale": "Use the best current OSM alignment under the governed rules.",
-                "evidence_ids": ["osm-network", *packet.facts.get("evidence_ids", [])],
+                "evidence_ids": ["osm-network", *packet.facts.evidence_ids],
             }
         if role in {AgentRole.EVIDENCE_CRITIC, AgentRole.NETWORK_RED_TEAM}:
             packet = EvidencePacket.model_validate(payload)
@@ -239,10 +253,12 @@ class CompilationGate:
             packet = EvidencePacket(
                 connection_id=connection_id,
                 current_role=current_role,
-                available_roles=available_roles,
-                facts={key: value for key, value in facts.items() if key != "checks_by_role"},
-                deterministic_findings=findings,
-                prior_feedback=feedback,
+                available_roles=tuple(available_roles),
+                facts=EvidenceFacts.model_validate(
+                    {key: value for key, value in facts.items() if key != "checks_by_role"}
+                ),
+                deterministic_findings=tuple(findings),
+                prior_feedback=tuple(feedback),
                 attempt=attempt_number,
             )
             try:
@@ -253,17 +269,28 @@ class CompilationGate:
                 tokens += used
                 proposed_role = proposal.selected_role
                 if proposed_role not in available_roles:
-                    packet.deterministic_findings.append(
-                        ChallengeFinding(
-                            code="unknown-alignment",
-                            severity="blocking",
-                            message="The proposal selected an unavailable alignment.",
-                        )
+                    packet = packet.model_copy(
+                        update={
+                            "deterministic_findings": (
+                                *packet.deterministic_findings,
+                                ChallengeFinding(
+                                    code="unknown-alignment",
+                                    severity="blocking",
+                                    message="The proposal selected an unavailable alignment.",
+                                ),
+                            )
+                        }
                     )
                 else:
                     current_role = proposed_role
-                    packet.current_role = current_role
-                    packet.deterministic_findings = _deterministic_findings(facts, current_role)
+                    packet = packet.model_copy(
+                        update={
+                            "current_role": current_role,
+                            "deterministic_findings": tuple(
+                                _deterministic_findings(facts, current_role)
+                            ),
+                        }
+                    )
                 critique, used = self._call(
                     AgentRole.EVIDENCE_CRITIC, packet, RoleReview, requests, tokens
                 )

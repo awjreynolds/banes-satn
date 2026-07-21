@@ -16,6 +16,7 @@ from shapely.geometry import MultiPoint
 from satn.agents import AgentRuntime, CompilationGate
 from satn.atm import choose_seeded_alignment
 from satn.cache import ConnectionCache
+from satn.evidence import empty_context, mark_ncn_edges
 from satn.models import AgentRecord, CouncilConfig, DivergenceRecord, TrafficLight
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
 from satn.urban import derive_urban_structure
@@ -29,6 +30,11 @@ class CompiledNetwork:
     urban_spines: gpd.GeoDataFrame
     low_traffic_areas: gpd.GeoDataFrame
     crossing_warnings: gpd.GeoDataFrame
+    a_road_spines: gpd.GeoDataFrame
+    ncn_routes: gpd.GeoDataFrame
+    schools: gpd.GeoDataFrame
+    retail_centres: gpd.GeoDataFrame
+    healthcare: gpd.GeoDataFrame
     agent_records: list[AgentRecord]
     criteria: dict[str, dict[str, TrafficLight]]
     network_units: list[dict[str, object]]
@@ -36,6 +42,16 @@ class CompiledNetwork:
     divergence_records: list[DivergenceRecord]
     cache_hits: int
     cache_misses: int
+    superseded_hypotheses: int
+
+    @property
+    def status(self) -> str:
+        has_red = any(
+            status == TrafficLight.RED
+            for section in self.criteria.values()
+            for status in section.values()
+        )
+        return "complete" if self.gaps.empty and not has_red else "reviewable"
 
 
 def _connection_id(left: str, right: str) -> str:
@@ -52,6 +68,7 @@ def compile_network(
     atm_seed: gpd.GeoDataFrame | None = None,
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
+    context = source.get("context", empty_context(source["network"].crs)).copy()
     communities = places[places["kind"] == "community"].copy()
     if len(communities) < 2:
         raise ValueError("a network requires at least two Communities")
@@ -61,13 +78,12 @@ def compile_network(
         geometry="geometry",
         crs=places.crs,
     )
-    road_graph = RoadGraph(source["network"])
+    routable_network = mark_ncn_edges(source["network"], context)
+    road_graph = RoadGraph(routable_network)
     gate = CompilationGate(runtime, config.compilation.agent)
     attachments = _network_place_attachments(places, participants, road_graph)
-    candidate_pairs = _nearest_neighbour_pairs(communities, road_graph, attachments)
-    candidate_pairs.update(
-        _gateway_pairs(gateways, communities, road_graph, attachments)
-    )
+    candidate_pairs = _local_adjacency_pairs(communities, road_graph, attachments)
+    candidate_pairs.update(_gateway_pairs(gateways, communities, road_graph, attachments))
     accepted: list[dict[str, object]] = []
     rejected: list[dict[str, object]] = []
     records: list[AgentRecord] = []
@@ -75,8 +91,12 @@ def compile_network(
         "connection_id",
         "from_place",
         "to_place",
+        "from_place_name",
+        "to_place_name",
         "distance_km",
         "classification",
+        "intervention_archetype",
+        "geometry_semantics",
         "status",
         "selection_reason",
         "agent_outcome",
@@ -116,9 +136,7 @@ def compile_network(
             road_graph, attachments[left_id], attachments[right_id]
         )
         if atm_seed is not None:
-            seeded = choose_seeded_alignment(
-                options, atm_seed, left.geometry, right.geometry
-            )
+            seeded = choose_seeded_alignment(options, atm_seed, left.geometry, right.geometry)
             if seeded is not None:
                 selected = seeded
                 reason = (
@@ -159,24 +177,41 @@ def compile_network(
     connections = gpd.GeoDataFrame(
         accepted, columns=connection_columns, geometry="geometry", crs=crs
     )
-    gaps = gpd.GeoDataFrame(rejected, columns=connection_columns, geometry="geometry", crs=crs)
     urban_spines, low_traffic_areas = derive_urban_structure(places, source["network"])
     crossing_warnings = _crossing_warnings(connections)
     connection_graph = _connection_graph(participants, accepted)
     covered = all(place_id in connection_graph for place_id in communities["place_id"])
     connected = bool(connection_graph) and covered and nx.is_connected(connection_graph)
     internal_termini = [
-        place_id
-        for place_id in communities["place_id"]
-        if connection_graph.degree(place_id) == 1
+        place_id for place_id in communities["place_id"] if connection_graph.degree(place_id) == 1
     ]
     if len(communities) <= 2:
         internal_termini = []
+    unresolved = _unresolved_rejections(
+        connection_graph,
+        rejected,
+        set(communities["place_id"]),
+        set(internal_termini),
+    )
+    gaps = gpd.GeoDataFrame(
+        unresolved, columns=connection_columns, geometry="geometry", crs=crs
+    )
+    unresolved_ids = {str(row["connection_id"]) for row in unresolved}
+    superseded = [
+        row for row in rejected if str(row["connection_id"]) not in unresolved_ids
+    ]
+    record_by_id = {record.connection_id: record for record in records}
+    for row in superseded:
+        row["status"] = "superseded"
+        row["agent_outcome"] = "Rejected hypothesis superseded by the complete assembled network."
+        record = record_by_id[str(row["connection_id"])]
+        record.decision = "superseded"
+        record.outcome_reason = str(row["agent_outcome"])
     pairs = [tuple(sorted((row["from_place"], row["to_place"]))) for row in accepted]
     network_units = _network_units(connection_graph, accepted)
     criteria = {
         "connections": {
-            "mandatory_checks": TrafficLight.RED if rejected else TrafficLight.GREEN,
+            "mandatory_checks": TrafficLight.RED if unresolved else TrafficLight.GREEN,
             "distance_challenges": (
                 TrafficLight.AMBER
                 if "amber" in set(connections.get("criterion_distance", []))
@@ -184,17 +219,16 @@ def compile_network(
             ),
         },
         "network": {
-            "community_coverage": (
-                TrafficLight.GREEN
-                if covered
-                else TrafficLight.RED
-            ),
+            "community_coverage": (TrafficLight.GREEN if covered else TrafficLight.RED),
             "connected_graph": TrafficLight.GREEN if connected else TrafficLight.RED,
             "unique_pairs": (
                 TrafficLight.GREEN if len(pairs) == len(set(pairs)) else TrafficLight.RED
             ),
-            "internal_termini": (
-                TrafficLight.GREEN if not internal_termini else TrafficLight.RED
+            "internal_termini": (TrafficLight.GREEN if not internal_termini else TrafficLight.RED),
+            "intervention_coverage": (
+                TrafficLight.GREEN
+                if not connections.empty and connections["intervention_archetype"].notna().all()
+                else TrafficLight.RED
             ),
         },
         "atm_comparison": {"compared": TrafficLight.GREY},
@@ -206,6 +240,11 @@ def compile_network(
         urban_spines=urban_spines,
         low_traffic_areas=low_traffic_areas,
         crossing_warnings=crossing_warnings,
+        a_road_spines=_context_frame(context, "a-road-spine"),
+        ncn_routes=_context_frame(context, "ncn-route"),
+        schools=_context_frame(context, "school"),
+        retail_centres=_context_frame(context, "retail-centre"),
+        healthcare=_context_frame(context, "healthcare"),
         agent_records=records,
         criteria=criteria,
         network_units=network_units,
@@ -213,6 +252,7 @@ def compile_network(
         divergence_records=[],
         cache_hits=cache_hits,
         cache_misses=cache_misses,
+        superseded_hypotheses=len(superseded),
     )
 
 
@@ -244,9 +284,7 @@ def _gateway_pairs(
     for gateway_id in gateways["place_id"]:
         candidates = [
             (
-                _network_distance(
-                    graph, attachments[gateway_id], attachments[community_id]
-                ),
+                _network_distance(graph, attachments[gateway_id], attachments[community_id]),
                 community_id,
             )
             for community_id in communities["place_id"]
@@ -257,29 +295,52 @@ def _gateway_pairs(
     return pairs
 
 
-def _nearest_neighbour_pairs(
+def _local_adjacency_pairs(
     communities: gpd.GeoDataFrame,
     graph: RoadGraph,
     attachments: dict[str, list[tuple[str, float]]],
 ) -> set[tuple[str, str]]:
+    """Build a cycling-network relative-neighbourhood frontier.
+
+    A pair remains local when no third Community is closer to both endpoints. The
+    rule has no fixed radius or neighbour count, so an isolated long bridge remains
+    eligible for challenge by the compilation gate.
+    """
     identifiers = list(communities["place_id"])
     geometries = communities.set_index("place_id")["geometry"]
-    pairs: set[tuple[str, str]] = set()
-    for left in identifiers:
-        distances: list[tuple[float, str]] = []
-        for right in identifiers:
-            if left == right:
-                continue
-            distance = _network_distance(graph, attachments[left], attachments[right])
-            distances.append((distance, right))
-        reachable = [item for item in distances if item[0] < float("inf")]
-        if reachable:
-            right = min(reachable)[1]
-        else:
-            right = min(
-                (candidate for candidate in identifiers if candidate != left),
-                key=lambda candidate: geometries[left].distance(geometries[candidate]),
+    distances: dict[tuple[str, str], float] = {}
+    ranks: dict[tuple[str, str], tuple[float, float, str]] = {}
+    for index, left in enumerate(identifiers):
+        for right in identifiers[index + 1 :]:
+            pair = tuple(sorted((left, right)))
+            distances[pair] = _network_distance(
+                graph, attachments[left], attachments[right]
             )
+            ranks[pair] = (
+                distances[pair],
+                geometries[left].distance(geometries[right]),
+                "::".join(pair),
+            )
+
+    pairs: set[tuple[str, str]] = set()
+    for (left, right), distance in distances.items():
+        if distance == float("inf"):
+            continue
+        blocked = any(
+            ranks[tuple(sorted((left, third)))] < ranks[(left, right)]
+            and ranks[tuple(sorted((right, third)))] < ranks[(left, right)]
+            for third in identifiers
+            if third not in {left, right}
+        )
+        if not blocked:
+            pairs.add((left, right))
+
+    covered = {place_id for pair in pairs for place_id in pair}
+    for left in set(identifiers) - covered:
+        right = min(
+            (candidate for candidate in identifiers if candidate != left),
+            key=lambda candidate: geometries[left].distance(geometries[candidate]),
+        )
         pairs.add(tuple(sorted((left, right))))
     return pairs
 
@@ -348,9 +409,7 @@ def _repair_internal_termini(
     while len(attempted) < maximum_pairs:
         assembled = _connection_graph(participants, accepted)
         termini = sorted(
-            place_id
-            for place_id in communities["place_id"]
-            if assembled.degree(place_id) == 1
+            place_id for place_id in communities["place_id"] if assembled.degree(place_id) == 1
         )
         if not termini:
             return
@@ -362,13 +421,23 @@ def _repair_internal_termini(
                 pair = tuple(sorted((terminus, neighbour)))
                 if pair in attempted:
                     continue
-                distance = _network_distance(
-                    graph, attachments[terminus], attachments[neighbour]
-                )
+                distance = _network_distance(graph, attachments[terminus], attachments[neighbour])
                 if distance < float("inf"):
                     candidates.append((distance, pair))
         if not candidates:
-            return
+            geometry = participants.set_index("place_id")["geometry"]
+            unresolved = [
+                (
+                    geometry[terminus].distance(geometry[neighbour]),
+                    tuple(sorted((terminus, neighbour))),
+                )
+                for terminus in termini
+                for neighbour in participant_ids
+                if terminus != neighbour and tuple(sorted((terminus, neighbour))) not in attempted
+            ]
+            if not unresolved or not compile_pair(min(unresolved)[1]):
+                return
+            continue
         compile_pair(min(candidates)[1])
 
 
@@ -380,6 +449,30 @@ def _connection_graph(
     graph.add_nodes_from(participants["place_id"])
     graph.add_edges_from((row["from_place"], row["to_place"]) for row in accepted)
     return graph
+
+
+def _unresolved_rejections(
+    graph: nx.Graph,
+    rejected: list[dict[str, object]],
+    communities: set[str],
+    internal_termini: set[str],
+) -> list[dict[str, object]]:
+    """Keep only failures that still correspond to an unresolved network obligation."""
+    component_by_place = {
+        place_id: index
+        for index, component in enumerate(nx.connected_components(graph))
+        for place_id in component
+    }
+    uncovered = {place_id for place_id in communities if graph.degree(place_id) == 0}
+    unresolved_places = uncovered | internal_termini
+    unresolved: list[dict[str, object]] = []
+    for row in rejected:
+        left = str(row["from_place"])
+        right = str(row["to_place"])
+        separates_components = component_by_place.get(left) != component_by_place.get(right)
+        if separates_components or left in unresolved_places or right in unresolved_places:
+            unresolved.append(row)
+    return unresolved
 
 
 def _network_units(
@@ -491,8 +584,16 @@ def _gate_connection(
         "connection_id": connection_id,
         "from_place": left.place_id,
         "to_place": right.place_id,
+        "from_place_name": left.get("name", left.place_id),
+        "to_place_name": right.get("name", right.place_id),
         "distance_km": round(distance_km, 3) if selected else None,
         "classification": classification,
+        "intervention_archetype": _intervention_archetype(classification),
+        "geometry_semantics": (
+            "A-road corridor centreline; cartographically offset to depict alongside provision"
+            if classification == "strategic-spine"
+            else "indicative OSM alignment centreline"
+        ),
         "status": "validated" if record.decision == "accept" else "gap",
         "selection_reason": (
             reason
@@ -520,6 +621,19 @@ def _gate_connection(
     return row, record
 
 
+def _intervention_archetype(classification: str) -> str | None:
+    return {
+        "strategic-spine": "wide shared path alongside A-road corridor",
+        "ncn-informed": "NCN-aligned route upgrade",
+        "low-traffic": "low-traffic route treatment",
+        "direct": "protected or filtered direct link",
+    }.get(classification)
+
+
+def _context_frame(context: gpd.GeoDataFrame, feature_type: str) -> gpd.GeoDataFrame:
+    return context[context["feature_type"] == feature_type].copy()
+
+
 def _option_checks(
     config: CouncilConfig,
     option: RouteOption,
@@ -530,9 +644,7 @@ def _option_checks(
         "continuity": "green" if not option.geometry.is_empty else "red",
         "bidirectional": "green" if option.bidirectional else "red",
         "distance": (
-            "green"
-            if option.length_km <= config.compilation.max_connection_km
-            else "amber"
+            "green" if option.length_km <= config.compilation.max_connection_km else "amber"
         ),
     }
 

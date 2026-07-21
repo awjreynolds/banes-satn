@@ -19,12 +19,12 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A2, A3, A4, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
-from shapely.geometry import mapping
+from shapely.geometry import MultiLineString, mapping
 
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
 from satn.models import CouncilConfig
-from satn.sources import OSM_ATTRIBUTION
+from satn.sources import NCN_ATTRIBUTION, OSM_ATTRIBUTION
 
 
 def publish(
@@ -91,6 +91,15 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.crossing_warnings.to_file(
             path, layer="crossing_warnings", driver="GPKG"
         )
+    for layer_name, frame in (
+        ("a_road_spines", compiled.a_road_spines),
+        ("ncn_routes", compiled.ncn_routes),
+        ("schools", compiled.schools),
+        ("retail_centres", compiled.retail_centres),
+        ("healthcare", compiled.healthcare),
+    ):
+        if not frame.empty:
+            _geopackage_safe(frame).to_file(path, layer=layer_name, driver="GPKG")
     if compiled.atm_reference is not None:
         _geopackage_safe(compiled.atm_reference).to_file(
             path, layer="atm_reference", driver="GPKG"
@@ -139,6 +148,7 @@ def _feature_id(row: pd.Series) -> str:
         "structure_id",
         "warning_id",
         "portal_feature_id",
+        "evidence_id",
         "id",
         "fid",
     ):
@@ -172,6 +182,11 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
             + _features(compiled.crossing_warnings, "crossing-warning")
+            + _features(compiled.a_road_spines, "a-road-spine")
+            + _features(compiled.ncn_routes, "ncn-route")
+            + _features(compiled.schools, "school")
+            + _features(compiled.retail_centres, "retail-centre")
+            + _features(compiled.healthcare, "healthcare")
             + (
                 _features(compiled.atm_reference, "atm-reference")
                 if compiled.atm_reference is not None
@@ -195,7 +210,7 @@ def _write_json_records(
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
         "council_id": config.council_id,
-        "status": "complete" if compiled.gaps.empty else "reviewable",
+        "status": compiled.status,
         "criteria": {
             section: {criterion: status.value for criterion, status in values.items()}
             for section, values in compiled.criteria.items()
@@ -203,7 +218,15 @@ def _write_json_records(
         "connection_count": len(compiled.connections),
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
+        "layer_counts": {
+            "a_road_spines": len(compiled.a_road_spines),
+            "ncn_routes": len(compiled.ncn_routes),
+            "schools": len(compiled.schools),
+            "retail_centres": len(compiled.retail_centres),
+            "healthcare": len(compiled.healthcare),
+        },
         "network_units": compiled.network_units,
+        "superseded_hypotheses": compiled.superseded_hypotheses,
         "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
         "atm_mode": config.atm.mode if config.atm.enabled else "disabled",
         "atm_geometry_included": compiled.atm_reference is not None,
@@ -247,15 +270,17 @@ def _write_review_map(
     ):
         (asset_output / name).write_bytes((asset_root / name).read_bytes())
     template = (asset_root / "review-map.html").read_text(encoding="utf-8")
-    atm_control = (
-        '<label><input id="layer-atm" type="checkbox" checked> ATM comparison</label>'
+    atm_state = "" if compiled.atm_reference is not None else "disabled"
+    atm_status = (
+        "A governed ATM reference is bundled locally; toggle it to compare before/after."
         if compiled.atm_reference is not None
-        else ""
+        else "ATM geometry is not published. Load a governed local GeoJSON to compare it."
     )
     html = (
         template.replace("__TITLE__", escape(config.publication.title))
         .replace("__DISCLAIMER__", DISCLAIMER)
-        .replace("__ATM_CONTROL__", atm_control)
+        .replace("__ATM_STATE__", atm_state)
+        .replace("__ATM_STATUS__", atm_status)
     )
     (review / "index.html").write_text(html, encoding="utf-8")
     data = {
@@ -269,6 +294,13 @@ def _write_review_map(
             for section, values in compiled.criteria.items()
         },
         "disclaimer": DISCLAIMER,
+        "layer_counts": {
+            "a_road_spines": len(compiled.a_road_spines),
+            "ncn_routes": len(compiled.ncn_routes),
+            "schools": len(compiled.schools),
+            "retail_centres": len(compiled.retail_centres),
+            "healthcare": len(compiled.healthcare),
+        },
     }
     (review / "data.js").write_text(
         f"window.SATN_DATA = {json.dumps(data).replace('</', '<\\/')};\n",
@@ -305,7 +337,7 @@ def _write_review_map(
         encoding="utf-8",
     )
     (review / "README.txt").write_text(
-        f"{DISCLAIMER}\n{OSM_ATTRIBUTION}\n", encoding="utf-8"
+        f"{DISCLAIMER}\n{OSM_ATTRIBUTION}\n{NCN_ATTRIBUTION}\n", encoding="utf-8"
     )
 
 
@@ -335,6 +367,8 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             compiled.urban_spines,
             compiled.low_traffic_areas,
             compiled.crossing_warnings,
+            compiled.a_road_spines,
+            compiled.ncn_routes,
             *([compiled.atm_reference] if compiled.atm_reference is not None else []),
         )
         if not frame.empty and frame.geometry.notna().any()
@@ -355,6 +389,16 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             canvas.setLineWidth(3)
             for geometry in compiled.urban_spines.to_crs(3857).geometry:
                 _draw_geometry(canvas, geometry, min_x, min_y, scale)
+        if not compiled.a_road_spines.empty:
+            canvas.setStrokeColor(HexColor("#a04000"))
+            canvas.setLineWidth(6)
+            for geometry in compiled.a_road_spines.to_crs(3857).geometry:
+                _draw_geometry(canvas, geometry, min_x, min_y, scale)
+        if not compiled.ncn_routes.empty:
+            canvas.setStrokeColor(HexColor("#2471a3"))
+            canvas.setLineWidth(3)
+            for geometry in compiled.ncn_routes.to_crs(3857).geometry:
+                _draw_geometry(canvas, geometry, min_x, min_y, scale)
         if compiled.atm_reference is not None:
             canvas.setStrokeColor(HexColor("#2980b9"))
             canvas.setLineWidth(2)
@@ -362,7 +406,10 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
                 _draw_geometry(canvas, geometry, min_x, min_y, scale)
         canvas.setStrokeColor(HexColor("#196f3d"))
         canvas.setLineWidth(5)
-        for geometry in compiled.connections.to_crs(3857).geometry:
+        for _, connection in compiled.connections.to_crs(3857).iterrows():
+            geometry = connection.geometry
+            if connection["classification"] == "strategic-spine":
+                geometry = _offset_linework(geometry, 5 / scale)
             _draw_geometry(canvas, geometry, min_x, min_y, scale)
         if not compiled.crossing_warnings.empty:
             canvas.setFillColor(HexColor("#f39c12"))
@@ -381,7 +428,9 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
 
 def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool) -> None:
     entries = [
+        ("#a04000", "A-road strategic corridor"),
         ("#196f3d", "Community Connection"),
+        ("#2471a3", "National Cycle Network"),
         ("#8e44ad", "Urban protected spine"),
         ("#2874a6", "Candidate Low-Traffic Area"),
         ("#c0392b", "Network Gap"),
@@ -448,6 +497,15 @@ def _draw_geometry(
         canvas.drawPath(path_obj, stroke=1, fill=int(fill))
 
 
+def _offset_linework(geometry: object, distance: float) -> object:
+    """Apply a print-only cartographic offset without changing governed geometry."""
+    if geometry.geom_type == "LineString":
+        return geometry.offset_curve(distance)
+    if geometry.geom_type == "MultiLineString":
+        return MultiLineString([part.offset_curve(distance) for part in geometry.geoms])
+    return geometry
+
+
 def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     required = (
         "network.gpkg",
@@ -484,6 +542,24 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     run = json.loads((output / "run.json").read_text(encoding="utf-8"))
     if run.get("disclaimer") != DISCLAIMER or run.get("connection_count") != len(connections):
         raise ValueError("run manifest does not describe the current publication")
+    spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
+    layer_types = {
+        "a_road_spines": "a-road-spine",
+        "ncn_routes": "ncn-route",
+        "schools": "school",
+        "retail_centres": "retail-centre",
+        "healthcare": "healthcare",
+    }
+    for layer_name, feature_type in layer_types.items():
+        expected_count = run.get("layer_counts", {}).get(layer_name, 0)
+        actual_count = sum(
+            feature["properties"].get("feature_type") == feature_type
+            for feature in geojson["features"]
+        )
+        if actual_count != expected_count:
+            raise ValueError(f"{layer_name} count differs between run and GeoJSON")
+        if expected_count and layer_name not in spatial_layer_names:
+            raise ValueError(f"GeoPackage is missing populated layer: {layer_name}")
     for filename in ("agent-records.json", "divergence-records.json"):
         record_file = json.loads((output / filename).read_text(encoding="utf-8"))
         if record_file.get("disclaimer") != DISCLAIMER:
@@ -491,6 +567,18 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     html = (output / "review-map" / "index.html").read_text(encoding="utf-8")
     if DISCLAIMER not in html:
         raise ValueError("review map disclaimer missing")
+    for control in (
+        "layer-a-road-spines",
+        "layer-community-connections",
+        "layer-ncn-routes",
+        "layer-schools",
+        "layer-retail-centres",
+        "layer-healthcare",
+        "layer-atm",
+        "atm-upload",
+    ):
+        if f'id="{control}"' not in html:
+            raise ValueError(f"review map control missing: {control}")
     expected_zip_files = {
         f"review-map/{item.relative_to(output / 'review-map')}"
         for item in (output / "review-map").rglob("*")

@@ -4,8 +4,8 @@
   const network = data.network;
   const places = data.places;
   const state = { pinned: null, active: null };
-  const routeLayers = ["low-traffic-areas", "urban-spines", "connections"];
   const warningLayers = ["gaps", "crossing-warnings"];
+  const evidenceLayers = ["a-road-spines", "ncn-routes", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -63,12 +63,26 @@
     panel.replaceChildren();
     const heading = document.createElement("h2");
     heading.id = "details-heading";
-    heading.textContent = `${value(properties.from_place)} → ${value(properties.to_place)}`;
+    const isConnection = ["connection", "gap"].includes(properties.feature_type);
+    heading.textContent = isConnection
+      ? `${value(properties.from_place_name, properties.from_place)} → ${value(properties.to_place_name, properties.to_place)}`
+      : value(properties.name, properties.feature_type.replaceAll("-", " "));
     const list = document.createElement("dl");
     addDefinition(list, "Stable ID", id);
+    addDefinition(list, "Layer", properties.feature_type.replaceAll("-", " "));
+    if (!isConnection) {
+      addDefinition(list, "Category", value(properties.category));
+      addDefinition(list, "Mapped features", value(properties.feature_count, 1));
+      addDefinition(list, "Source identifiers", value(properties.source_id));
+      panel.append(heading, list);
+      setHighlight(null);
+      return;
+    }
     addDefinition(list, "Status", value(properties.status));
     addDefinition(list, "Length", properties.distance_km == null ? "Unknown" : `${properties.distance_km} km`);
     addDefinition(list, "Route role", value(properties.classification));
+    addDefinition(list, "Indicative intervention", value(properties.intervention_archetype));
+    addDefinition(list, "Geometry meaning", value(properties.geometry_semantics));
     addDefinition(list, "Endpoint criterion", value(properties.criterion_endpoints));
     addDefinition(list, "Continuity criterion", value(properties.criterion_continuity));
     addDefinition(list, "Two-way criterion", value(properties.criterion_bidirectional));
@@ -89,6 +103,22 @@
     }
   }
 
+  function showPlaceDetails(feature) {
+    if (state.pinned) return;
+    const properties = feature.properties;
+    const panel = document.querySelector("#feature-details");
+    panel.replaceChildren();
+    const heading = document.createElement("h2");
+    heading.id = "details-heading";
+    heading.textContent = value(properties.name, "Unnamed Network Place");
+    const list = document.createElement("dl");
+    addDefinition(list, "Stable ID", value(properties.place_id));
+    addDefinition(list, "Place role", value(properties.kind));
+    addDefinition(list, "OSM place class", value(properties.place_class));
+    addDefinition(list, "Source identifier", value(properties.source_id));
+    panel.append(heading, list);
+  }
+
   function togglePin(id) {
     state.pinned = state.pinned === id ? null : id;
     if (state.pinned) showDetails(id); else clearTransient();
@@ -107,7 +137,7 @@
         button.dataset.featureId = feature.id;
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
-        title.textContent = `${value(feature.properties.from_place)} → ${value(feature.properties.to_place)}`;
+        title.textContent = `${value(feature.properties.from_place_name, feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.to_place)}`;
         const summary = document.createElement("span");
         summary.textContent = `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
@@ -134,8 +164,14 @@
       input.addEventListener("change", () => renderCriteria(input.value));
     });
     const groups = {
-      "layer-network-routes": routeLayers,
+      "layer-a-road-spines": ["a-road-spines"],
+      "layer-community-connections": ["connections"],
+      "layer-ncn-routes": ["ncn-routes"],
+      "layer-urban-structure": ["low-traffic-areas", "urban-spines"],
       "layer-places": ["places"],
+      "layer-schools": ["schools"],
+      "layer-retail-centres": ["retail-centres"],
+      "layer-healthcare": ["healthcare"],
       "layer-gaps-warnings": warningLayers,
       "layer-atm": ["atm-reference"]
     };
@@ -148,6 +184,31 @@
         });
       });
     });
+    document.querySelector("#atm-upload").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const status = document.querySelector("#atm-status");
+      try {
+        const uploaded = JSON.parse(await file.text());
+        if (uploaded.type !== "FeatureCollection" || !Array.isArray(uploaded.features)) {
+          throw new Error("Expected a GeoJSON FeatureCollection");
+        }
+        network.features = network.features.filter((feature) => feature.properties.feature_type !== "atm-reference");
+        uploaded.features.forEach((feature, index) => {
+          feature.id = feature.id || `local-atm-${index + 1}`;
+          feature.properties = { ...(feature.properties || {}), feature_type: "atm-reference" };
+          network.features.push(feature);
+        });
+        if (map.getSource("network")) map.getSource("network").setData(network);
+        const control = document.querySelector("#layer-atm");
+        control.disabled = false;
+        control.checked = true;
+        if (map.getLayer("atm-reference")) map.setLayoutProperty("atm-reference", "visibility", "visible");
+        status.textContent = `${uploaded.features.length} local ATM features loaded; uncheck ATM reference for the before view.`;
+      } catch (error) {
+        status.textContent = `ATM file was not loaded: ${error.message}`;
+      }
+    });
   }
 
   function extendBounds(bounds, coordinates) {
@@ -158,23 +219,43 @@
   map.on("load", () => {
     map.addSource("network", { type: "geojson", data: network });
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#85c1e9", "fill-opacity": .3, "fill-outline-color": "#2874a6" } });
-    map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
+    map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
+    map.addLayer({ id: "ncn-routes", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "ncn-route"], paint: { "line-color": "#2471a3", "line-width": 4, "line-dasharray": [2, 1] } });
+    map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
     map.addLayer({ id: "urban-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-spine"], paint: { "line-color": "#8e44ad", "line-width": 5 } });
-    map.addLayer({ id: "connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "connection"], paint: { "line-color": "#196f3d", "line-width": 6 } });
+    map.addLayer({ id: "connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "connection"], paint: { "line-color": "#196f3d", "line-width": 5, "line-offset": ["case", ["==", ["get", "classification"], "strategic-spine"], 5, 0] } });
+    map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school"], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
+    map.addLayer({ id: "retail-centres", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "retail-centre"], layout: { visibility: "none" }, paint: { "circle-color": "#d35400", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
+    map.addLayer({ id: "healthcare", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "healthcare"], layout: { visibility: "none" }, paint: { "circle-color": "#c0392b", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "gap"], paint: { "circle-color": "#c0392b", "circle-radius": 8 } });
     map.addLayer({ id: "crossing-warnings", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "crossing-warning"], paint: { "circle-color": "#f39c12", "circle-radius": 7, "circle-stroke-color": "#17202a", "circle-stroke-width": 2 } });
     map.addLayer({ id: "connections-highlight", type: "line", source: "network", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 11 } });
     map.addSource("places", { type: "geojson", data: places });
     map.addLayer({ id: "places", type: "circle", source: "places", paint: { "circle-radius": 7, "circle-color": "#17202a", "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     const bounds = new maplibregl.LngLatBounds();
-    [...network.features, ...places.features].forEach((feature) => extendBounds(bounds, feature.geometry.coordinates));
+    [...network.features, ...places.features].forEach((feature) => {
+      if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
+    });
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
     map.on("mousemove", "connections", (event) => { if (!state.pinned) showDetails(event.features[0].id); });
     map.on("mouseleave", "connections", clearTransient);
     map.on("click", "connections", (event) => togglePin(event.features[0].id));
+    map.on("mousemove", "places", (event) => showPlaceDetails(event.features[0]));
+    map.on("mouseleave", "places", clearTransient);
+    evidenceLayers.forEach((layer) => {
+      if (!map.getLayer(layer)) return;
+      map.on("mousemove", layer, (event) => { if (!state.pinned) showDetails(event.features[0].id); });
+      map.on("mouseleave", layer, clearTransient);
+      map.on("click", layer, (event) => togglePin(event.features[0].id));
+    });
   });
 
   renderCards();
   renderCriteria("connections");
   bindControls();
+  const counts = data.layer_counts || {};
+  document.querySelector("#layer-summary").textContent =
+    `${counts.a_road_spines || 0} A-road segments · ${counts.ncn_routes || 0} NCN features · ` +
+    `${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
+    `${counts.healthcare || 0} healthcare sites`;
 })();

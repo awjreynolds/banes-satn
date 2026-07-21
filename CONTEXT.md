@@ -36,10 +36,6 @@ _Avoid_: single route, Community boundary, guaranteed LTN
 A proposed Low-Traffic Area inferred from a connected urban minor-road fabric bounded by the main-road network. It may cross Community or administrative boundaries and does not claim that low-traffic conditions already exist.
 _Avoid_: existing LTN, neighbourhood boundary, quiet-road assumption
 
-**Required Access Target**:
-A school, hospital, major employment site or comparable centre of activity that must receive safe access from the network through its nearest Community or Low-Traffic Area without becoming a Community or generating inter-community adjacency.
-_Avoid_: Community, optional amenity, strategic-network hub
-
 **Network Place**:
 A named endpoint admitted to the network as a Community, standalone Strategic Destination or interchange, or Cross-Boundary Gateway.
 _Avoid_: arbitrary endpoint, map point
