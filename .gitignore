@@ -9,4 +9,5 @@ cache/
 examples/*/work/
 data/snapshots/
 data/local/*.geojson
+dist/
 output/

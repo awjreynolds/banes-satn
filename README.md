@@ -151,6 +151,36 @@ For `publication.audience: public`, ATM geometry is omitted unless
 default public B&NES configuration keeps comparison disabled and redistribution
 false because public retrieval is not, by itself, a licence grant.
 
+## Review and share the result
+
+Every successful compile replaces the configured output directory only after all
+artifacts validate against each other:
+
+- `network.gpkg` is the authoritative multi-layer spatial output;
+- `network.geojson`, `run.json`, `agent-records.json` and
+  `divergence-records.json` expose the same stable identifiers;
+- `review-map/` is a backend-free static site with a vendored, pinned MapLibre build;
+- `review-map.zip` contains that complete directory unchanged; and
+- `network-map.pdf` is A3 landscape by default, with configurable A2/A3/A4 size,
+  title, date, legend, scale and disclaimer.
+
+Open `review-map/index.html` directly or serve the directory from any static host.
+The visible controls are limited to network routes, places, gaps/warnings and the
+optional ATM overlay. Connections, Network and ATM criteria remain separate. Hover
+or keyboard focus updates the semantic details panel; click pins and unpins it. The
+panel exposes stable IDs, endpoints, length, role, independent criterion states,
+rationale, findings and source IDs, so browser agents do not need to infer state from
+the map canvas.
+
+Publisher tests include cross-artifact identifiers, ZIP equivalence, PDF extraction
+and preservation of the previous output after a simulated print failure. Install the
+pinned Chromium once and run the interaction test explicitly:
+
+```shell
+uv run playwright install chromium
+uv run pytest --browser -m browser tests/test_review_map_browser.py
+```
+
 ## Check
 
 ```shell

@@ -58,8 +58,12 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     html = result.artifacts["review_map"].read_text()
     assert DISCLAIMER in html
     assert 'id="feature-details"' in html
-    assert 'data-feature-id="connection-' in html
-    assert "Download full typed agent records" in html
+    assert 'id="layer-network-routes"' in html
+    data = (result.artifacts["review_map"].parent / "data.js").read_text()
+    assert '"id": "connection-' in data
+    app = (result.artifacts["review_map"].parent / "assets" / "review-map.js").read_text()
+    assert "button.dataset.featureId = feature.id" in app
+    assert "Typed agent records" in html
     assert (result.artifacts["review_map"].parent / "agent-records.json").exists()
 
 

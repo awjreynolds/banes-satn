@@ -1,19 +1,22 @@
 """Atomic publication of spatial, machine-readable and visual artifacts."""
 
-# Generated HTML, CSS and JavaScript are kept together so the review map is one portable file.
-# ruff: noqa: E501
-
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import tempfile
 import zipfile
+from datetime import UTC, datetime
+from html import escape
+from importlib.resources import files
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
+from pypdf import PdfReader
 from reportlab.lib.colors import HexColor
-from reportlab.lib.pagesizes import A3, landscape
+from reportlab.lib.pagesizes import A2, A3, A4, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
 from shapely.geometry import mapping
@@ -21,6 +24,7 @@ from shapely.geometry import mapping
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
 from satn.models import CouncilConfig
+from satn.sources import OSM_ATTRIBUTION
 
 
 def publish(
@@ -40,7 +44,7 @@ def publish(
         _write_review_map(review, config, compiled)
         _zip_review_map(temporary / "review-map.zip", review)
         _write_pdf(temporary / "network-map.pdf", config, compiled)
-        _validate_artifacts(temporary)
+        _validate_artifacts(temporary, config)
         backup = output.with_name(f".{output.name}-previous")
         if backup.exists():
             shutil.rmtree(backup)
@@ -96,17 +100,46 @@ def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, obje
     return [
         {
             "type": "Feature",
-            "id": row.get("connection_id", row.get("place_id", row.get("structure_id"))),
+            "id": _feature_id(row),
             "properties": {
-                key: value
+                key: _json_value(value)
                 for key, value in row.items()
-                if key != "geometry" and value is not None
+                if key != "geometry" and _json_value(value) is not None
             }
             | {"feature_type": feature_type},
             "geometry": mapping(row.geometry) if row.geometry is not None else None,
         }
         for _, row in frame.to_crs(4326).iterrows()
     ]
+
+
+def _feature_id(row: pd.Series) -> str:
+    for key in (
+        "connection_id",
+        "place_id",
+        "structure_id",
+        "warning_id",
+        "portal_feature_id",
+        "id",
+        "fid",
+    ):
+        value = _json_value(row.get(key))
+        if value is not None:
+            return str(value)
+    digest = hashlib.sha256(row.geometry.wkb).hexdigest()[:12]
+    return f"feature-{digest}"
+
+
+def _json_value(value: object) -> object:
+    if isinstance(value, dict):
+        return {str(key): _json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    if value is None or (not isinstance(value, str) and bool(pd.isna(value))):
+        return None
+    if hasattr(value, "item"):
+        return value.item()
+    return value
 
 
 def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
@@ -183,42 +216,45 @@ def _write_review_map(
     config: CouncilConfig,
     compiled: CompiledNetwork,
 ) -> None:
-    payload = json.dumps(_network_collection(compiled)).replace("</", "<\\/")
-    places = json.dumps(
-        {"type": "FeatureCollection", "features": _features(compiled.places, "place")}
-    ).replace("</", "<\\/")
-    cards = "".join(
-        f'<button class="connection" id="item-{row.connection_id}" '
-        f'data-feature-id="{row.connection_id}"><strong>{row.from_place} → '
-        f'{row.to_place}</strong><span>{row.distance_km:.2f} km · {row.status}</span></button>'
-        for _, row in compiled.connections.iterrows()
+    asset_root = files("satn.assets")
+    asset_output = review / "assets"
+    asset_output.mkdir()
+    for name in (
+        "maplibre-gl.js",
+        "maplibre-gl.css",
+        "MAPLIBRE-LICENSE.txt",
+        "review-map.js",
+        "review-map.css",
+    ):
+        (asset_output / name).write_bytes((asset_root / name).read_bytes())
+    template = (asset_root / "review-map.html").read_text(encoding="utf-8")
+    atm_control = (
+        '<label><input id="layer-atm" type="checkbox" checked> ATM comparison</label>'
+        if compiled.atm_reference is not None
+        else ""
     )
-    html = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>{config.publication.title}</title>
-<link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
-<style>
-html,body{{margin:0;height:100%;font:16px system-ui;color:#17202a}}main{{display:grid;grid-template-columns:minmax(18rem,28rem) 1fr;height:100%}}aside{{padding:1rem;overflow:auto;border-right:1px solid #ccd1d1}}#map{{min-height:28rem}}.notice{{padding:.65rem;background:#fff4cc;border-left:5px solid #f1c40f}}.connection{{display:block;width:100%;text-align:left;margin:.5rem 0;padding:.75rem;border:2px solid #196f3d;background:white;border-radius:.4rem}}.connection span{{display:block}}.connection:hover,.connection:focus,.connection.active{{background:#e9f7ef;outline:3px solid #17202a}}@media(max-width:760px){{main{{grid-template-columns:1fr;grid-template-rows:auto 55vh}}aside{{border:0}}}}
-</style></head><body><main><aside aria-label="Network information"><h1>{config.publication.title}</h1>
-<p class="notice" role="note">{DISCLAIMER}</p><fieldset><legend>Evaluation section</legend>
-<label><input type="radio" name="section" checked> Connections</label>
-<label><input type="radio" name="section"> Network</label>
-<label><input type="radio" name="section"> ATM comparison</label></fieldset>
-<p><a href="agent-records.json" download>Download full typed agent records</a></p>
-<p><a href="divergence-records.json" download>Download ATM divergence records</a></p>
-<section id="connection-list" aria-label="Connections">{cards}</section>
-<section id="feature-details" aria-live="polite"><h2>Details</h2><p>Hover or focus a connection.</p></section>
-</aside><div id="map" role="application" aria-label="Interactive SATN review map"></div></main>
-<script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script><script>
-const network={payload}; const places={places};
-const map=new maplibregl.Map({{container:'map',style:{{version:8,sources:{{osm:{{type:'raster',tiles:['https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png'],tileSize:256,attribution:'© OpenStreetMap contributors'}}}},layers:[{{id:'osm',type:'raster',source:'osm'}}]}},center:[-2.5,51.4],zoom:11}});
-map.addControl(new maplibregl.NavigationControl());
-function details(id){{const f=network.features.find(x=>x.id===id);if(!f)return;document.querySelector('#feature-details').innerHTML=`<h2>${{f.properties.from_place}} → ${{f.properties.to_place}}</h2><dl><dt>Status</dt><dd>${{f.properties.status}}</dd><dt>Distance</dt><dd>${{f.properties.distance_km ?? 'unknown'}} km</dd><dt>Rationale</dt><dd>${{f.properties.selection_reason ?? ''}}</dd><dt>Agent gate</dt><dd>${{f.properties.agent_outcome ?? ''}}</dd><dt>Stable ID</dt><dd><code>${{id}}</code></dd></dl>`;document.querySelectorAll('.connection').forEach(x=>x.classList.toggle('active',x.dataset.featureId===id));map.setFilter('connections-highlight',['==',['id'],id]);}}
-function extendBounds(bounds,coordinates){{if(typeof coordinates[0]==='number')bounds.extend(coordinates);else coordinates.forEach(item=>extendBounds(bounds,item));}}
-map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'low-traffic-areas',type:'fill',source:'network',filter:['==',['get','feature_type'],'low-traffic-area'],paint:{{'fill-color':'#85c1e9','fill-opacity':0.3,'fill-outline-color':'#2874a6'}}}});map.addLayer({{id:'atm-reference',type:'line',source:'network',filter:['==',['get','feature_type'],'atm-reference'],paint:{{'line-color':'#2980b9','line-width':3,'line-dasharray':[2,2]}}}});map.addLayer({{id:'urban-spines',type:'line',source:'network',filter:['==',['get','feature_type'],'urban-spine'],paint:{{'line-color':'#8e44ad','line-width':5}}}});map.addLayer({{id:'connections',type:'line',source:'network',filter:['==',['get','feature_type'],'connection'],paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'gaps',type:'circle',source:'network',filter:['==',['get','feature_type'],'gap'],paint:{{'circle-color':'#c0392b','circle-radius':8}}}});map.addLayer({{id:'crossing-warnings',type:'circle',source:'network',filter:['==',['get','feature_type'],'crossing-warning'],paint:{{'circle-color':'#f39c12','circle-radius':7,'circle-stroke-color':'#17202a','circle-stroke-width':2}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>extendBounds(b,f.geometry.coordinates));places.features.forEach(f=>extendBounds(b,f.geometry.coordinates));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
-document.querySelectorAll('.connection').forEach(x=>{{x.addEventListener('mouseenter',()=>details(x.dataset.featureId));x.addEventListener('focus',()=>details(x.dataset.featureId));x.addEventListener('click',()=>details(x.dataset.featureId));}});
-</script></body></html>"""
+    html = (
+        template.replace("__TITLE__", escape(config.publication.title))
+        .replace("__DISCLAIMER__", DISCLAIMER)
+        .replace("__ATM_CONTROL__", atm_control)
+    )
     (review / "index.html").write_text(html, encoding="utf-8")
+    data = {
+        "network": _network_collection(compiled),
+        "places": {
+            "type": "FeatureCollection",
+            "features": _features(compiled.places, "place"),
+        },
+        "criteria": {
+            section: {criterion: status.value for criterion, status in values.items()}
+            for section, values in compiled.criteria.items()
+        },
+        "disclaimer": DISCLAIMER,
+    }
+    (review / "data.js").write_text(
+        f"window.SATN_DATA = {json.dumps(data).replace('</', '<\\/')};\n",
+        encoding="utf-8",
+    )
     (review / "network.geojson").write_text(
         json.dumps(_network_collection(compiled), indent=2), encoding="utf-8"
     )
@@ -249,21 +285,30 @@ document.querySelectorAll('.connection').forEach(x=>{{x.addEventListener('mousee
         ),
         encoding="utf-8",
     )
-    (review / "README.txt").write_text(f"{DISCLAIMER}\n", encoding="utf-8")
+    (review / "README.txt").write_text(
+        f"{DISCLAIMER}\n{OSM_ATTRIBUTION}\n", encoding="utf-8"
+    )
 
 
 def _zip_review_map(path: Path, review: Path) -> None:
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for item in sorted(review.iterdir()):
-            archive.write(item, arcname=f"review-map/{item.name}")
+        for item in sorted(path for path in review.rglob("*") if path.is_file()):
+            archive.write(item, arcname=f"review-map/{item.relative_to(review)}")
 
 
 def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> None:
-    width, height = landscape(A3)
-    canvas = Canvas(str(path), pagesize=(width, height))
+    page_sizes = {"A2": A2, "A3": A3, "A4": A4}
+    requested = config.publication.pdf_page_size.upper()
+    if requested not in page_sizes:
+        raise ValueError(f"unsupported PDF page size: {requested}")
+    width, height = landscape(page_sizes[requested])
+    canvas = Canvas(str(path), pagesize=(width, height), pageCompression=0)
     canvas.setTitle(config.publication.title)
     canvas.setFont("Helvetica-Bold", 22)
     canvas.drawString(42, height - 42, config.publication.title)
+    canvas.setFont("Helvetica", 10)
+    canvas.drawString(42, height - 58, f"Compiled {datetime.now(UTC).date().isoformat()}")
+    _draw_legend(canvas, width, height, compiled.atm_reference is not None)
     map_frames = [
         frame.to_crs(3857)
         for frame in (
@@ -306,12 +351,50 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
                 px = 42 + (point.x - min_x) * scale
                 py = 70 + (point.y - min_y) * scale
                 canvas.circle(px, py, 5, stroke=1, fill=1)
+        _draw_scale(canvas, scale)
     canvas.setFont("Helvetica", 10)
     text = DISCLAIMER
     if stringWidth(text, "Helvetica", 10) > width - 84:
         text = "Experimental SATN POC — not an adopted council plan."
     canvas.drawString(42, 32, text)
     canvas.save()
+
+
+def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool) -> None:
+    entries = [
+        ("#196f3d", "Community Connection"),
+        ("#8e44ad", "Urban protected spine"),
+        ("#2874a6", "Candidate Low-Traffic Area"),
+        ("#c0392b", "Network Gap"),
+        ("#f39c12", "Crossing Warning"),
+    ]
+    if include_atm:
+        entries.append(("#2980b9", "ATM reference"))
+    x = width - 225
+    y = height - 38
+    canvas.setFont("Helvetica-Bold", 10)
+    canvas.drawString(x, y, "Legend")
+    canvas.setFont("Helvetica", 9)
+    for colour, label in entries:
+        y -= 14
+        canvas.setStrokeColor(HexColor(colour))
+        canvas.setLineWidth(4)
+        canvas.line(x, y + 3, x + 24, y + 3)
+        canvas.setFillColor(HexColor("#17202a"))
+        canvas.drawString(x + 31, y, label)
+
+
+def _draw_scale(canvas: Canvas, map_scale: float) -> None:
+    distance_km = min((0.5, 1, 2, 5, 10), key=lambda value: abs(value * 1000 * map_scale - 120))
+    pixels = distance_km * 1000 * map_scale
+    canvas.setStrokeColor(HexColor("#17202a"))
+    canvas.setLineWidth(2)
+    canvas.line(42, 54, 42 + pixels, 54)
+    canvas.line(42, 50, 42, 58)
+    canvas.line(42 + pixels, 50, 42 + pixels, 58)
+    canvas.setFillColor(HexColor("#17202a"))
+    canvas.setFont("Helvetica", 9)
+    canvas.drawString(42, 60, f"{distance_km:g} km scale")
 
 
 def _draw_geometry(
@@ -344,7 +427,7 @@ def _draw_geometry(
         canvas.drawPath(path_obj, stroke=1, fill=int(fill))
 
 
-def _validate_artifacts(output: Path) -> None:
+def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     required = (
         "network.gpkg",
         "network.geojson",
@@ -352,13 +435,60 @@ def _validate_artifacts(output: Path) -> None:
         "agent-records.json",
         "divergence-records.json",
         "review-map/index.html",
+        "review-map/data.js",
+        "review-map/assets/maplibre-gl.js",
+        "review-map/assets/maplibre-gl.css",
+        "review-map/assets/review-map.js",
+        "review-map/assets/review-map.css",
         "review-map.zip",
         "network-map.pdf",
     )
     missing = [name for name in required if not (output / name).exists()]
     if missing:
         raise ValueError(f"publication incomplete: {', '.join(missing)}")
-    gpd.read_file(output / "network.gpkg", layer="connections")
-    json.loads((output / "network.geojson").read_text(encoding="utf-8"))
+    connections = gpd.read_file(output / "network.gpkg", layer="connections")
+    metadata = gpd.read_file(output / "network.gpkg", layer="metadata")
+    if set(metadata["disclaimer"]) != {DISCLAIMER}:
+        raise ValueError("GeoPackage metadata disclaimer mismatch")
+    geojson = json.loads((output / "network.geojson").read_text(encoding="utf-8"))
+    if geojson.get("disclaimer") != DISCLAIMER:
+        raise ValueError("GeoJSON disclaimer mismatch")
+    geojson_connection_ids = {
+        feature["id"]
+        for feature in geojson["features"]
+        if feature["properties"].get("feature_type") == "connection"
+    }
+    if geojson_connection_ids != set(connections["connection_id"]):
+        raise ValueError("connection identifiers differ between GeoPackage and GeoJSON")
+    run = json.loads((output / "run.json").read_text(encoding="utf-8"))
+    if run.get("disclaimer") != DISCLAIMER or run.get("connection_count") != len(connections):
+        raise ValueError("run manifest does not describe the current publication")
+    for filename in ("agent-records.json", "divergence-records.json"):
+        record_file = json.loads((output / filename).read_text(encoding="utf-8"))
+        if record_file.get("disclaimer") != DISCLAIMER:
+            raise ValueError(f"{filename} disclaimer mismatch")
+    html = (output / "review-map" / "index.html").read_text(encoding="utf-8")
+    if DISCLAIMER not in html:
+        raise ValueError("review map disclaimer missing")
+    expected_zip_files = {
+        f"review-map/{item.relative_to(output / 'review-map')}"
+        for item in (output / "review-map").rglob("*")
+        if item.is_file()
+    }
+    with zipfile.ZipFile(output / "review-map.zip") as archive:
+        if set(archive.namelist()) != expected_zip_files:
+            raise ValueError("review-map ZIP differs from the static directory")
     if not (output / "network-map.pdf").read_bytes().startswith(b"%PDF"):
         raise ValueError("invalid PDF output")
+    pdf_text = "\n".join(
+        page.extract_text() or "" for page in PdfReader(output / "network-map.pdf").pages
+    )
+    for required_text in (
+        config.publication.title,
+        DISCLAIMER,
+        "Legend",
+        "scale",
+        "Compiled",
+    ):
+        if required_text not in pdf_text:
+            raise ValueError(f"PDF is missing required text: {required_text}")

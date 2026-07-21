@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>__TITLE__</title>
+  <link href="assets/maplibre-gl.css" rel="stylesheet">
+  <link href="assets/review-map.css" rel="stylesheet">
+</head>
+<body>
+  <main>
+    <aside aria-label="Network information">
+      <h1>__TITLE__</h1>
+      <p class="notice" role="note">__DISCLAIMER__</p>
+
+      <fieldset id="layer-controls">
+        <legend>Map layers</legend>
+        <label><input id="layer-network-routes" type="checkbox" checked> Network routes</label>
+        <label><input id="layer-places" type="checkbox" checked> Places</label>
+        <label><input id="layer-gaps-warnings" type="checkbox" checked> Gaps and warnings</label>
+        __ATM_CONTROL__
+      </fieldset>
+
+      <fieldset id="criteria-controls">
+        <legend>Evaluation section</legend>
+        <label><input id="criteria-connections" type="radio" name="section" value="connections" checked> Connections</label>
+        <label><input id="criteria-network" type="radio" name="section" value="network"> Network</label>
+        <label><input id="criteria-atm-comparison" type="radio" name="section" value="atm_comparison"> ATM comparison</label>
+      </fieldset>
+
+      <section id="criteria-panel" aria-live="polite" aria-labelledby="criteria-heading">
+        <h2 id="criteria-heading">Connections criteria</h2>
+        <dl id="criteria-list"></dl>
+      </section>
+
+      <nav aria-label="Downloads">
+        <a href="network.geojson" download>Network GeoJSON</a>
+        <a href="agent-records.json" download>Typed agent records</a>
+        <a href="divergence-records.json" download>ATM divergence records</a>
+      </nav>
+
+      <section aria-labelledby="connection-heading">
+        <h2 id="connection-heading">Connections and gaps</h2>
+        <div id="connection-list"></div>
+      </section>
+
+      <section id="feature-details" aria-live="polite" aria-labelledby="details-heading">
+        <h2 id="details-heading">Details</h2>
+        <p>Hover or focus a route. Click to pin its details.</p>
+      </section>
+    </aside>
+    <div id="map" role="application" aria-label="Interactive SATN review map"></div>
+  </main>
+  <script src="assets/maplibre-gl.js"></script>
+  <script src="data.js"></script>
+  <script src="assets/review-map.js"></script>
+</body>
+</html>

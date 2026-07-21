@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import combinations
@@ -80,6 +81,8 @@ def compile_network(
         "selection_reason",
         "agent_outcome",
         "agent_attempt_count",
+        "agent_findings",
+        "source_ids",
         "cache_status",
         "alignment_options",
         "criterion_endpoints",
@@ -498,6 +501,8 @@ def _gate_connection(
         ),
         "agent_outcome": record.outcome_reason,
         "agent_attempt_count": len(record.attempts),
+        "agent_findings": json.dumps(_agent_findings(record), sort_keys=True),
+        "source_ids": json.dumps(option_evidence_ids(options), sort_keys=True),
         "cache_status": "compiled",
         "alignment_options": serialise_options(options),
         "criterion_endpoints": "green" if endpoints_valid else "red",
@@ -534,3 +539,18 @@ def _option_checks(
 
 def option_evidence_ids(options: list[RouteOption]) -> list[str]:
     return sorted({edge_id for option in options for edge_id in option.edge_ids})
+
+
+def _agent_findings(record: AgentRecord) -> list[dict[str, object]]:
+    findings: list[dict[str, object]] = []
+    for attempt in record.attempts:
+        findings.extend(attempt.get("deterministic_findings", []))
+        for role in ("critique", "red_team"):
+            findings.extend(attempt.get(role, {}).get("findings", []))
+        findings.extend(attempt.get("findings", []))
+    unique = {
+        json.dumps(finding, sort_keys=True): finding
+        for finding in findings
+        if isinstance(finding, dict)
+    }
+    return list(unique.values())
