@@ -32,6 +32,7 @@ def test_tracked_pages_site_is_complete_and_contains_no_atm_geometry() -> None:
         feature["properties"]["feature_type"] for feature in features
     }
     assert (site / ".nojekyll").exists()
+    assert (site / "network-map.pdf").read_bytes().startswith(b"%PDF-")
     html = (site / "index.html").read_text(encoding="utf-8")
     assert 'id="layer-a-road-spines"' in html
     assert 'id="layer-community-connections"' in html

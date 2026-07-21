@@ -200,6 +200,8 @@ uv run pytest --browser -m browser tests/test_review_map_browser.py
 
 The current full B&NES result is published at
 [awjreynolds.github.io/banes-satn](https://awjreynolds.github.io/banes-satn/).
+The [A3 PDF network map](https://awjreynolds.github.io/banes-satn/network-map.pdf)
+is published beside it for download and printing.
 It contains 163 unique Community Connections in one end-to-end network, with no Red
 Network Gaps and five non-blocking route-crossing warnings. The public map excludes
 the governed ATM geometry. After a validated public compile, refresh the tracked

@@ -17,7 +17,8 @@ SITE = PROJECT / "site"
 def main() -> None:
     run_path = OUTPUT / "run.json"
     review_map = OUTPUT / "review-map"
-    if not run_path.exists() or not (review_map / "index.html").exists():
+    pdf_map = OUTPUT / "network-map.pdf"
+    if not run_path.exists() or not (review_map / "index.html").exists() or not pdf_map.exists():
         raise SystemExit("compile config/banes.yaml before publishing the site")
     run = json.loads(run_path.read_text(encoding="utf-8"))
     if run["council_id"] != "bath-and-north-east-somerset":
@@ -31,6 +32,7 @@ def main() -> None:
     try:
         shutil.copytree(review_map, temporary / "content", dirs_exist_ok=True)
         content = temporary / "content"
+        shutil.copy2(pdf_map, content / "network-map.pdf")
         (content / ".nojekyll").write_text("", encoding="utf-8")
         publication = {
             "run_id": run["run_id"],
