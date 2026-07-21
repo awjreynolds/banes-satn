@@ -19,13 +19,17 @@ def snapshot(config: Path, replace: bool = typer.Option(False, "--replace")) -> 
 
 
 @app.command("compile")
-def compile_command(config: Path) -> None:
+def compile_command(
+    config: Path,
+    full: bool = typer.Option(False, "--full", help="Ignore all reusable connections."),
+) -> None:
     """Compile and atomically publish the current network."""
-    result = compile_satn(config)
+    council = CouncilConfig.from_yaml(config)
+    council.compilation.full = full
+    result = compile_satn(council)
     typer.echo(f"{result.status}: {result.connections} connections, {result.gaps} gaps")
     typer.echo(result.output_dir)
 
 
 if __name__ == "__main__":
     app()
-

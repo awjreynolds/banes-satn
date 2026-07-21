@@ -13,7 +13,9 @@ import pandas as pd
 from shapely.geometry import MultiPoint
 
 from satn.agents import AgentRuntime, CompilationGate
-from satn.models import AgentRecord, CouncilConfig, TrafficLight
+from satn.atm import choose_seeded_alignment
+from satn.cache import ConnectionCache
+from satn.models import AgentRecord, CouncilConfig, DivergenceRecord, TrafficLight
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
 from satn.urban import derive_urban_structure
 
@@ -29,6 +31,10 @@ class CompiledNetwork:
     agent_records: list[AgentRecord]
     criteria: dict[str, dict[str, TrafficLight]]
     network_units: list[dict[str, object]]
+    atm_reference: gpd.GeoDataFrame | None
+    divergence_records: list[DivergenceRecord]
+    cache_hits: int
+    cache_misses: int
 
 
 def _connection_id(left: str, right: str) -> str:
@@ -40,6 +46,9 @@ def compile_network(
     config: CouncilConfig,
     source: dict[str, gpd.GeoDataFrame],
     runtime: AgentRuntime,
+    *,
+    cache: ConnectionCache | None = None,
+    atm_seed: gpd.GeoDataFrame | None = None,
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
     communities = places[places["kind"] == "community"].copy()
@@ -71,6 +80,7 @@ def compile_network(
         "selection_reason",
         "agent_outcome",
         "agent_attempt_count",
+        "cache_status",
         "alignment_options",
         "criterion_endpoints",
         "criterion_continuity",
@@ -80,22 +90,45 @@ def compile_network(
     ]
     place_lookup = participants.set_index("place_id", drop=False)
     attempted_pairs: set[tuple[str, str]] = set()
+    cache_hits = 0
+    cache_misses = 0
 
     def compile_pair(pair: tuple[str, str]) -> bool:
+        nonlocal cache_hits, cache_misses
         if pair in attempted_pairs:
             return False
         attempted_pairs.add(pair)
+        cached = cache.load(pair) if cache is not None else None
+        if cached is not None:
+            row, record = cached
+            accepted.append(row)
+            records.append(record)
+            cache_hits += 1
+            return True
+        cache_misses += 1
         left_id, right_id = pair
         left = place_lookup.loc[left_id]
         right = place_lookup.loc[right_id]
         selected, options, reason, snap_distance = _route_pair(
             road_graph, attachments[left_id], attachments[right_id]
         )
+        if atm_seed is not None:
+            seeded = choose_seeded_alignment(
+                options, atm_seed, left.geometry, right.geometry
+            )
+            if seeded is not None:
+                selected = seeded
+                reason = (
+                    "ATM-seeded starting hypothesis selected the closest available OSM "
+                    f"alignment role: {seeded.role}."
+                )
         row, record = _gate_connection(
             config, gate, left, right, selected, options, reason, snap_distance
         )
         records.append(record)
         (accepted if record.decision == "accept" else rejected).append(row)
+        if cache is not None:
+            cache.store(pair, row, record)
         return record.decision == "accept"
 
     for left_id, right_id in sorted(candidate_pairs):
@@ -164,15 +197,19 @@ def compile_network(
         "atm_comparison": {"compared": TrafficLight.GREY},
     }
     return CompiledNetwork(
-        places,
-        connections,
-        gaps,
-        urban_spines,
-        low_traffic_areas,
-        crossing_warnings,
-        records,
-        criteria,
-        network_units,
+        places=places,
+        connections=connections,
+        gaps=gaps,
+        urban_spines=urban_spines,
+        low_traffic_areas=low_traffic_areas,
+        crossing_warnings=crossing_warnings,
+        agent_records=records,
+        criteria=criteria,
+        network_units=network_units,
+        atm_reference=None,
+        divergence_records=[],
+        cache_hits=cache_hits,
+        cache_misses=cache_misses,
     )
 
 
@@ -461,6 +498,7 @@ def _gate_connection(
         ),
         "agent_outcome": record.outcome_reason,
         "agent_attempt_count": len(record.attempts),
+        "cache_status": "compiled",
         "alignment_options": serialise_options(options),
         "criterion_endpoints": "green" if endpoints_valid else "red",
         "criterion_continuity": "green" if continuous else "red",

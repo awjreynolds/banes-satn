@@ -16,10 +16,16 @@ source:
     - neighbourhood
 compilation:
   max_connection_km: 15
+  criteria_version: "1"
   agent:
     provider: fake
+atm:
+  enabled: false
+  mode: blind
+  path: ../data/local/banes-atm-full.geojson
+  redistribution_permitted: false
 publication:
   output_dir: ../output
   title: B&NES Strategic Active Travel Network Review
   pdf_page_size: A3
-
+  audience: public

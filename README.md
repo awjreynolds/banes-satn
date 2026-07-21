@@ -114,6 +114,43 @@ termini. A pair is attempted at most once, every successful iteration changes th
 graph, and the finite pair set guarantees termination. Unjoinable components produce
 visible Network Gaps; unjoined route crossings produce non-blocking Amber warnings.
 
+## Incremental and full compilation
+
+Validated Connections are cached outside the replaceable publication directory. A
+cache key covers the council, immutable snapshot, Criteria Set version, compilation
+and agent configuration, ATM mode and — for seeded runs — the ATM file fingerprint.
+The same governed inputs reuse the validated result without invoking its agent gate.
+Gaps are never cached.
+
+```shell
+# reuse unchanged Validated Connections
+uv run satn compile config/banes.yaml
+
+# ignore every reusable connection and rebuild the network units
+uv run satn compile config/banes.yaml --full
+```
+
+Changing `compilation.criteria_version` invalidates all version-one reuse.
+
+## ATM quality comparison
+
+ATM is an optional B&NES quality reference, not a portable network rule and not
+ground truth. Put the locally governed file at
+`data/local/banes-atm-full.geojson`, set `atm.enabled: true`, and choose one mode:
+
+- `blind` compiles routes before the ATM file is loaded, then compares them;
+- `seeded` uses ATM proximity to choose the starting hypothesis among available OSM
+  alignments and records any later deviation.
+
+The typed divergence output distinguishes matches, deviations, additions and
+omissions. Each receives a bounded agent review, but there is no aggregate agreement
+score and a match does not prove correctness.
+
+For `publication.audience: public`, ATM geometry is omitted unless
+`atm.redistribution_permitted: true`. A `local` review may include the overlay. The
+default public B&NES configuration keeps comparison disabled and redistribution
+false because public retrieval is not, by itself, a licence grant.
+
 ## Check
 
 ```shell
@@ -123,9 +160,9 @@ uv run pytest
 
 ## Status
 
-The synthetic end-to-end tracer and full-boundary OSM snapshot path are implemented.
-Multi-community network assembly, ATM comparison and GitHub Pages publication are
-being delivered through the linked PRD issues.
+The complete compiler, full-boundary OSM snapshot path, network assembly and governed
+ATM comparison are implemented. Publication and full B&NES validation remain in the
+linked PRD issues.
 
 Released under the MIT licence. OpenStreetMap-derived outputs must retain
 OpenStreetMap attribution and comply with the ODbL.

@@ -57,6 +57,7 @@ def publish(
         "geojson": output / "network.geojson",
         "run": output / "run.json",
         "agents": output / "agent-records.json",
+        "divergences": output / "divergence-records.json",
         "review_map": output / "review-map" / "index.html",
         "review_zip": output / "review-map.zip",
         "pdf": output / "network-map.pdf",
@@ -86,6 +87,8 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.crossing_warnings.to_file(
             path, layer="crossing_warnings", driver="GPKG"
         )
+    if compiled.atm_reference is not None:
+        compiled.atm_reference.to_file(path, layer="atm_reference", driver="GPKG")
     _metadata_frame(compiled.places.crs).to_file(path, layer="metadata", driver="GPKG")
 
 
@@ -117,6 +120,11 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
             + _features(compiled.crossing_warnings, "crossing-warning")
+            + (
+                _features(compiled.atm_reference, "atm-reference")
+                if compiled.atm_reference is not None
+                else []
+            )
         ),
     }
 
@@ -144,6 +152,9 @@ def _write_json_records(
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
         "network_units": compiled.network_units,
+        "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
+        "atm_mode": config.atm.mode if config.atm.enabled else "disabled",
+        "atm_geometry_included": compiled.atm_reference is not None,
         "disclaimer": DISCLAIMER,
     }
     (output / "run.json").write_text(json.dumps(run, indent=2), encoding="utf-8")
@@ -154,6 +165,16 @@ def _write_json_records(
     }
     (output / "agent-records.json").write_text(
         json.dumps(records, indent=2), encoding="utf-8"
+    )
+    divergences = {
+        "schema_version": SCHEMA_VERSION,
+        "disclaimer": DISCLAIMER,
+        "records": [
+            record.model_dump(mode="json") for record in compiled.divergence_records
+        ],
+    }
+    (output / "divergence-records.json").write_text(
+        json.dumps(divergences, indent=2), encoding="utf-8"
     )
 
 
@@ -184,6 +205,7 @@ html,body{{margin:0;height:100%;font:16px system-ui;color:#17202a}}main{{display
 <label><input type="radio" name="section"> Network</label>
 <label><input type="radio" name="section"> ATM comparison</label></fieldset>
 <p><a href="agent-records.json" download>Download full typed agent records</a></p>
+<p><a href="divergence-records.json" download>Download ATM divergence records</a></p>
 <section id="connection-list" aria-label="Connections">{cards}</section>
 <section id="feature-details" aria-live="polite"><h2>Details</h2><p>Hover or focus a connection.</p></section>
 </aside><div id="map" role="application" aria-label="Interactive SATN review map"></div></main>
@@ -193,7 +215,7 @@ const map=new maplibregl.Map({{container:'map',style:{{version:8,sources:{{osm:{
 map.addControl(new maplibregl.NavigationControl());
 function details(id){{const f=network.features.find(x=>x.id===id);if(!f)return;document.querySelector('#feature-details').innerHTML=`<h2>${{f.properties.from_place}} → ${{f.properties.to_place}}</h2><dl><dt>Status</dt><dd>${{f.properties.status}}</dd><dt>Distance</dt><dd>${{f.properties.distance_km ?? 'unknown'}} km</dd><dt>Rationale</dt><dd>${{f.properties.selection_reason ?? ''}}</dd><dt>Agent gate</dt><dd>${{f.properties.agent_outcome ?? ''}}</dd><dt>Stable ID</dt><dd><code>${{id}}</code></dd></dl>`;document.querySelectorAll('.connection').forEach(x=>x.classList.toggle('active',x.dataset.featureId===id));map.setFilter('connections-highlight',['==',['id'],id]);}}
 function extendBounds(bounds,coordinates){{if(typeof coordinates[0]==='number')bounds.extend(coordinates);else coordinates.forEach(item=>extendBounds(bounds,item));}}
-map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'low-traffic-areas',type:'fill',source:'network',filter:['==',['get','feature_type'],'low-traffic-area'],paint:{{'fill-color':'#85c1e9','fill-opacity':0.3,'fill-outline-color':'#2874a6'}}}});map.addLayer({{id:'urban-spines',type:'line',source:'network',filter:['==',['get','feature_type'],'urban-spine'],paint:{{'line-color':'#8e44ad','line-width':5}}}});map.addLayer({{id:'connections',type:'line',source:'network',filter:['==',['get','feature_type'],'connection'],paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'gaps',type:'circle',source:'network',filter:['==',['get','feature_type'],'gap'],paint:{{'circle-color':'#c0392b','circle-radius':8}}}});map.addLayer({{id:'crossing-warnings',type:'circle',source:'network',filter:['==',['get','feature_type'],'crossing-warning'],paint:{{'circle-color':'#f39c12','circle-radius':7,'circle-stroke-color':'#17202a','circle-stroke-width':2}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>extendBounds(b,f.geometry.coordinates));places.features.forEach(f=>extendBounds(b,f.geometry.coordinates));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
+map.on('load',()=>{{map.addSource('network',{{type:'geojson',data:network,promoteId:'connection_id'}});map.addLayer({{id:'low-traffic-areas',type:'fill',source:'network',filter:['==',['get','feature_type'],'low-traffic-area'],paint:{{'fill-color':'#85c1e9','fill-opacity':0.3,'fill-outline-color':'#2874a6'}}}});map.addLayer({{id:'atm-reference',type:'line',source:'network',filter:['==',['get','feature_type'],'atm-reference'],paint:{{'line-color':'#2980b9','line-width':3,'line-dasharray':[2,2]}}}});map.addLayer({{id:'urban-spines',type:'line',source:'network',filter:['==',['get','feature_type'],'urban-spine'],paint:{{'line-color':'#8e44ad','line-width':5}}}});map.addLayer({{id:'connections',type:'line',source:'network',filter:['==',['get','feature_type'],'connection'],paint:{{'line-color':'#196f3d','line-width':6}}}});map.addLayer({{id:'gaps',type:'circle',source:'network',filter:['==',['get','feature_type'],'gap'],paint:{{'circle-color':'#c0392b','circle-radius':8}}}});map.addLayer({{id:'crossing-warnings',type:'circle',source:'network',filter:['==',['get','feature_type'],'crossing-warning'],paint:{{'circle-color':'#f39c12','circle-radius':7,'circle-stroke-color':'#17202a','circle-stroke-width':2}}}});map.addLayer({{id:'connections-highlight',type:'line',source:'network',filter:['==',['id'],''],paint:{{'line-color':'#f4d03f','line-width':11}}}});map.addSource('places',{{type:'geojson',data:places}});map.addLayer({{id:'places',type:'circle',source:'places',paint:{{'circle-radius':7,'circle-color':'#17202a','circle-stroke-color':'white','circle-stroke-width':2}}}});const b=new maplibregl.LngLatBounds();network.features.forEach(f=>extendBounds(b,f.geometry.coordinates));places.features.forEach(f=>extendBounds(b,f.geometry.coordinates));if(!b.isEmpty())map.fitBounds(b,{{padding:60}});map.on('mousemove','connections',e=>details(e.features[0].id));map.on('click','connections',e=>details(e.features[0].id));}});
 document.querySelectorAll('.connection').forEach(x=>{{x.addEventListener('mouseenter',()=>details(x.dataset.featureId));x.addEventListener('focus',()=>details(x.dataset.featureId));x.addEventListener('click',()=>details(x.dataset.featureId));}});
 </script></body></html>"""
     (review / "index.html").write_text(html, encoding="utf-8")
@@ -207,6 +229,20 @@ document.querySelectorAll('.connection').forEach(x=>{{x.addEventListener('mousee
                 "disclaimer": DISCLAIMER,
                 "records": [
                     record.model_dump(mode="json") for record in compiled.agent_records
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (review / "divergence-records.json").write_text(
+        json.dumps(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "disclaimer": DISCLAIMER,
+                "records": [
+                    record.model_dump(mode="json")
+                    for record in compiled.divergence_records
                 ],
             },
             indent=2,
@@ -235,6 +271,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             compiled.urban_spines,
             compiled.low_traffic_areas,
             compiled.crossing_warnings,
+            *([compiled.atm_reference] if compiled.atm_reference is not None else []),
         )
         if not frame.empty
     ]
@@ -253,6 +290,11 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             canvas.setStrokeColor(HexColor("#8e44ad"))
             canvas.setLineWidth(3)
             for geometry in compiled.urban_spines.to_crs(3857).geometry:
+                _draw_geometry(canvas, geometry, min_x, min_y, scale)
+        if compiled.atm_reference is not None:
+            canvas.setStrokeColor(HexColor("#2980b9"))
+            canvas.setLineWidth(2)
+            for geometry in compiled.atm_reference.to_crs(3857).geometry:
                 _draw_geometry(canvas, geometry, min_x, min_y, scale)
         canvas.setStrokeColor(HexColor("#196f3d"))
         canvas.setLineWidth(5)
@@ -308,6 +350,7 @@ def _validate_artifacts(output: Path) -> None:
         "network.geojson",
         "run.json",
         "agent-records.json",
+        "divergence-records.json",
         "review-map/index.html",
         "review-map.zip",
         "network-map.pdf",

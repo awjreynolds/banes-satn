@@ -1,10 +1,12 @@
 .DS_Store
 .pytest_cache/
 .ruff_cache/
+.satn-cache/
 .venv/
 __pycache__/
 *.py[cod]
 cache/
 examples/*/work/
 data/snapshots/
+data/local/*.geojson
 output/

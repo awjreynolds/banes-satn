@@ -48,12 +48,23 @@ class PublicationConfig(BaseModel):
     output_dir: Path
     title: str
     pdf_page_size: str = "A3"
+    audience: Literal["public", "local"] = "public"
 
 
 class CompilationConfig(BaseModel):
     max_connection_km: float = 15.0
     full: bool = False
+    criteria_version: str = "1"
+    cache_dir: Path = Path(".satn-cache")
     agent: AgentConfig = Field(default_factory=AgentConfig)
+
+
+class ATMConfig(BaseModel):
+    enabled: bool = False
+    mode: Literal["blind", "seeded"] = "blind"
+    path: Path | None = None
+    redistribution_permitted: bool = False
+    match_buffer_m: float = 100.0
 
 
 class CouncilConfig(BaseModel):
@@ -64,6 +75,7 @@ class CouncilConfig(BaseModel):
     council_name: str
     source: SourceConfig
     compilation: CompilationConfig = Field(default_factory=CompilationConfig)
+    atm: ATMConfig = Field(default_factory=ATMConfig)
     publication: PublicationConfig
 
     @model_validator(mode="after")
@@ -75,6 +87,10 @@ class CouncilConfig(BaseModel):
             self.source.snapshot_dir = (root / self.source.snapshot_dir).resolve()
         if not self.publication.output_dir.is_absolute():
             self.publication.output_dir = (root / self.publication.output_dir).resolve()
+        if not self.compilation.cache_dir.is_absolute():
+            self.compilation.cache_dir = (root / self.compilation.cache_dir).resolve()
+        if self.atm.path is not None and not self.atm.path.is_absolute():
+            self.atm.path = (root / self.atm.path).resolve()
         return self
 
     @classmethod
@@ -97,6 +113,16 @@ class AgentRecord(BaseModel):
     attempts: list[dict[str, Any]] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DivergenceRecord(BaseModel):
+    connection_id: str
+    status: Literal["match", "omission", "deviation", "addition"]
+    atm_feature_ids: list[str] = Field(default_factory=list)
+    overlap_ratio: float = Field(ge=0, le=1)
+    explanation: str
+    resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
+    resolved: bool = False
 
 
 class CompilationResult(BaseModel):

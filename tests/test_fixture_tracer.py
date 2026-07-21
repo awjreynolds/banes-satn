@@ -43,6 +43,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
         "geojson",
         "run",
         "agents",
+        "divergences",
         "review_map",
         "review_zip",
         "pdf",

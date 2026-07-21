@@ -18,6 +18,7 @@ class AgentRole(StrEnum):
     EVIDENCE_CRITIC = "evidence-critic"
     NETWORK_RED_TEAM = "network-red-team"
     SYNTHESISER = "synthesiser"
+    DIVERGENCE = "divergence"
 
 
 class ChallengeFinding(BaseModel):
@@ -59,6 +60,20 @@ class RouteSynthesis(BaseModel):
     decision: str
     selected_role: str | None
     rationale: str
+
+
+class DivergenceInput(BaseModel):
+    connection_id: str
+    status: str
+    atm_feature_ids: list[str]
+    overlap_ratio: float
+    attempt: int = 1
+
+
+class DivergenceAssessment(BaseModel):
+    explanation: str
+    resolution: str
+    resolved: bool
 
 
 @dataclass
@@ -106,6 +121,19 @@ class FakeAgentRuntime(AgentRuntime):
         return RuntimeReply(output_type.model_validate(output), tokens=1)
 
     def _default(self, role: AgentRole, payload: BaseModel) -> dict[str, object]:
+        if role == AgentRole.DIVERGENCE:
+            divergence = DivergenceInput.model_validate(payload)
+            return {
+                "explanation": (
+                    f"{divergence.status.title()} identified from the governed geometry comparison."
+                ),
+                "resolution": (
+                    "No correction is required."
+                    if divergence.status == "match"
+                    else "Retain for red-team inspection; agreement is not assumed correct."
+                ),
+                "resolved": divergence.status == "match",
+            }
         if role == AgentRole.PROPOSER:
             packet = EvidencePacket.model_validate(payload)
             return {
@@ -415,5 +443,9 @@ _ROLE_INSTRUCTIONS = {
     AgentRole.NETWORK_RED_TEAM: "Try to falsify continuity, endpoint and network claims.",
     AgentRole.SYNTHESISER: (
         "Accept only when mandatory findings are clear; otherwise revise or gap."
+    ),
+    AgentRole.DIVERGENCE: (
+        "Explain the ATM comparison status, challenge both sources and attempt a bounded "
+        "resolution."
     ),
 }
