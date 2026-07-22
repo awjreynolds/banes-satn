@@ -32,6 +32,7 @@ OSM_ATTRIBUTION = "© OpenStreetMap contributors; data available under the ODbL"
 NCN_ATTRIBUTION = "Walk Wheel Cycle Trust National Cycle Network; Open Government Licence v3.0"
 ROAD_CLASSIFICATION_FILENAME = "official-road-classification.geojson"
 OBSERVED_THROUGH_TRAFFIC_FILENAME = "observed-through-traffic.geojson"
+ELEVATION_EVIDENCE_FILENAME = "elevation-evidence.geojson"
 ROAD_CLASSIFICATION_COLUMNS = [
     "official_feature_id",
     "official_classification",
@@ -190,6 +191,7 @@ def snapshot(
                 "ncn": config.source.ncn_feature_service_url,
                 "official_road_classification": _road_classification_manifest(config, temporary),
                 "observed_through_traffic": _observed_through_traffic_manifest(config, temporary),
+                "elevation": _elevation_evidence_manifest(temporary),
             },
             "files": files,
             "file_sha256": {
@@ -227,6 +229,11 @@ def _write_fixture_snapshot(config: CouncilConfig, temporary: Path) -> tuple[str
         files.append(ROAD_CLASSIFICATION_FILENAME)
     if _snapshot_observed_through_traffic(config, temporary):
         files.append(OBSERVED_THROUGH_TRAFFIC_FILENAME)
+    elevation_source = config.source.fixture_dir / ELEVATION_EVIDENCE_FILENAME
+    if elevation_source.exists():
+        _validate_fixture_elevation_evidence(elevation_source)
+        shutil.copy2(elevation_source, temporary / ELEVATION_EVIDENCE_FILENAME)
+        files.append(ELEVATION_EVIDENCE_FILENAME)
     return str(config.source.fixture_dir), files
 
 
@@ -370,6 +377,45 @@ def _snapshot_observed_through_traffic(
         driver="GeoJSON",
     )
     return True
+
+
+def _validate_fixture_elevation_evidence(path: Path) -> None:
+    evidence = gpd.read_file(path)
+    required = {
+        "evidence_id",
+        "source_id",
+        "effective_date",
+        "licence",
+        "elevation_m",
+    }
+    missing = sorted(required - set(evidence.columns))
+    if missing:
+        raise ValueError(
+            f"fixture Elevation Evidence is missing governed fields: {', '.join(missing)}"
+        )
+    if evidence.empty or not evidence.geometry.geom_type.eq("Point").all():
+        raise ValueError("fixture Elevation Evidence requires Point samples")
+    if pd.to_numeric(evidence["elevation_m"], errors="coerce").isna().any():
+        raise ValueError("fixture Elevation Evidence has unusable elevation_m values")
+    for field in ("evidence_id", "source_id", "effective_date", "licence"):
+        if evidence[field].isna().any() or evidence[field].astype(str).str.strip().eq("").any():
+            raise ValueError(f"fixture Elevation Evidence has missing {field}")
+
+
+def _elevation_evidence_manifest(path: Path) -> dict[str, object] | None:
+    evidence_path = path / ELEVATION_EVIDENCE_FILENAME
+    if not evidence_path.exists():
+        return None
+    evidence = gpd.read_file(evidence_path)
+    return {
+        "source_ids": sorted({str(value) for value in evidence["source_id"]}),
+        "effective_dates": sorted(
+            {str(value).split(" ", maxsplit=1)[0] for value in evidence["effective_date"]}
+        ),
+        "licences": sorted({str(value) for value in evidence["licence"]}),
+        "sample_count": len(evidence),
+        "content_fingerprint": hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+    }
 
 
 def _load_governed_line_source(
@@ -792,6 +838,7 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
     place_features_path = path / "osm-place-features.geojson"
     classification_path = path / ROAD_CLASSIFICATION_FILENAME
     observed_traffic_path = path / OBSERVED_THROUGH_TRAFFIC_FILENAME
+    elevation_path = path / ELEVATION_EVIDENCE_FILENAME
     return {
         "boundary": gpd.read_file(path / "boundary.geojson"),
         "places": gpd.read_file(path / "places.geojson"),
@@ -821,6 +868,22 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
                     "effective_date",
                     "licence",
                     "content_fingerprint",
+                    "geometry",
+                ],
+                geometry="geometry",
+                crs=network.crs,
+            )
+        ),
+        "elevation_evidence": (
+            gpd.read_file(elevation_path)
+            if elevation_path.exists()
+            else gpd.GeoDataFrame(
+                columns=[
+                    "evidence_id",
+                    "source_id",
+                    "effective_date",
+                    "licence",
+                    "elevation_m",
                     "geometry",
                 ],
                 geometry="geometry",

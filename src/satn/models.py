@@ -129,6 +129,29 @@ class AgentConfig(BaseModel):
     max_tokens: int = Field(default=4000, ge=100)
 
 
+class TopographyConfig(BaseModel):
+    """Governed trial settings for Topography Profile calculation."""
+
+    gentle_max_pct: float = Field(default=3.0, gt=0)
+    noticeable_max_pct: float = Field(default=5.0, gt=0)
+    steep_max_pct: float = Field(default=8.0, gt=0)
+    very_steep_max_pct: float = Field(default=12.5, gt=0)
+    maximum_sample_spacing_m: float = Field(default=250.0, gt=0)
+    minimum_sustained_spacing_m: float = Field(default=10.0, gt=0)
+
+    @model_validator(mode="after")
+    def validate_gradient_bands(self) -> TopographyConfig:
+        thresholds = (
+            self.gentle_max_pct,
+            self.noticeable_max_pct,
+            self.steep_max_pct,
+            self.very_steep_max_pct,
+        )
+        if tuple(sorted(thresholds)) != thresholds or len(set(thresholds)) != len(thresholds):
+            raise ValueError("Topography gradient thresholds must be strictly increasing")
+        return self
+
+
 class PublicationConfig(BaseModel):
     output_dir: Path
     title: str
@@ -142,6 +165,7 @@ class CompilationConfig(BaseModel):
     criteria_version: str = "1"
     cache_dir: Path = Path(".satn-cache")
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    topography: TopographyConfig = Field(default_factory=TopographyConfig)
 
 
 class ATMConfig(BaseModel):

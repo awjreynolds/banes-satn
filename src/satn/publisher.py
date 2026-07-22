@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import shutil
 import tempfile
 import zipfile
@@ -86,6 +87,14 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
     if not compiled.school_street_assessments.empty:
         compiled.school_street_assessments.to_file(
             path, layer="school_street_assessments", driver="GPKG"
+        )
+    if not compiled.topography_profiles.empty:
+        compiled.topography_profiles.to_file(
+            path, layer="topography_profiles", driver="GPKG"
+        )
+    if not compiled.gradient_sections.empty:
+        compiled.gradient_sections.to_file(
+            path, layer="gradient_sections", driver="GPKG"
         )
     if not compiled.spine_access_connections.empty:
         compiled.spine_access_connections.to_file(
@@ -170,6 +179,8 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "access-obligation": "obligation_id",
         "school-access-obligation": "obligation_id",
         "school-street-assessment": "assessment_id",
+        "topography-profile": "profile_id",
+        "gradient-section": "section_id",
         "spine-access-connection": "access_connection_id",
         "school-access-connection": "access_connection_id",
         "spine-access-branch": "branch_id",
@@ -222,6 +233,14 @@ def _json_value(value: object) -> object:
     return value
 
 
+def _artifact_values_equal(left: object, right: object) -> bool:
+    if left is None:
+        return right is None or (not isinstance(right, str) and bool(pd.isna(right)))
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return math.isclose(float(left), float(right), rel_tol=1e-9, abs_tol=1e-9)
+    return left == right
+
+
 def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
     community_obligations = compiled.access_obligations[
         compiled.access_obligations["obligation_kind"] == "community"
@@ -272,6 +291,8 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
                 compiled.school_street_assessments,
                 "school-street-assessment",
             )
+            + _features(compiled.topography_profiles, "topography-profile")
+            + _features(compiled.gradient_sections, "gradient-section")
             + _features(compiled.retail_centres, "retail-centre")
             + _features(compiled.healthcare, "healthcare")
             + (
@@ -307,6 +328,8 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
         "low_traffic_area_portals": len(compiled.low_traffic_area_portals),
         "schools": len(compiled.schools),
         "school_street_assessments": len(compiled.school_street_assessments),
+        "topography_profiles": len(compiled.topography_profiles),
+        "gradient_sections": len(compiled.gradient_sections),
         "retail_centres": len(compiled.retail_centres),
         "healthcare": len(compiled.healthcare),
     }
@@ -331,6 +354,13 @@ def _write_json_records(
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
         "urban_classification_status": compiled.urban_classification_status,
+        "topography": {
+            "profile_count": len(compiled.topography_profiles),
+            "gradient_section_count": len(compiled.gradient_sections),
+            "evidence_unavailable_count": int(
+                (compiled.topography_profiles["evidence_status"] == "evidence-unavailable").sum()
+            ),
+        },
         "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
         "superseded_hypotheses": compiled.superseded_hypotheses,
@@ -384,6 +414,22 @@ def _write_review_map(
         .replace("__DISCLAIMER__", DISCLAIMER)
         .replace("__ATM_STATE__", atm_state)
         .replace("__ATM_STATUS__", atm_status)
+        .replace(
+            "__GENTLE_MAX_PCT__",
+            f"{config.compilation.topography.gentle_max_pct:g}",
+        )
+        .replace(
+            "__NOTICEABLE_MAX_PCT__",
+            f"{config.compilation.topography.noticeable_max_pct:g}",
+        )
+        .replace(
+            "__STEEP_MAX_PCT__",
+            f"{config.compilation.topography.steep_max_pct:g}",
+        )
+        .replace(
+            "__VERY_STEEP_MAX_PCT__",
+            f"{config.compilation.topography.very_steep_max_pct:g}",
+        )
     )
     (review / "index.html").write_text(html, encoding="utf-8")
     data = {
@@ -939,6 +985,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "low_traffic_area_portals": ("low-traffic-area-portal",),
         "schools": ("school",),
         "school_street_assessments": ("school-street-assessment",),
+        "topography_profiles": ("topography-profile",),
+        "gradient_sections": ("gradient-section",),
         "retail_centres": ("retail-centre",),
         "healthcare": ("healthcare",),
     }
@@ -952,6 +1000,97 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             raise ValueError(f"{layer_name} count differs between run and GeoJSON")
         if expected_count and layer_name not in spatial_layer_names:
             raise ValueError(f"GeoPackage is missing populated layer: {layer_name}")
+    profile_features = {
+        feature["id"]: feature
+        for feature in geojson["features"]
+        if feature["properties"].get("feature_type") == "topography-profile"
+    }
+    if profile_features:
+        profiles = gpd.read_file(output / "network.gpkg", layer="topography_profiles")
+        profile_rows = profiles.set_index("profile_id", drop=False)
+        if set(profile_features) != set(profile_rows.index):
+            raise ValueError("Topography Profile identifiers differ between artifacts")
+        for profile_id, feature in profile_features.items():
+            row = profile_rows.loc[profile_id]
+            properties = feature["properties"]
+            for field in (
+                "edge_id",
+                "edge_type",
+                "evidence_status",
+                "evidence_rationale",
+                "distance_m",
+                "forward_ascent_m",
+                "forward_descent_m",
+                "reverse_ascent_m",
+                "reverse_descent_m",
+                "steepest_sustained_gradient_pct",
+                "steepest_sustained_gradient_rationale",
+                "gradient_section_ids",
+                "elevation_evidence_ids",
+                "elevation_source_ids",
+            ):
+                if not _artifact_values_equal(properties.get(field), row[field]):
+                    raise ValueError(
+                        f"Topography Profile {profile_id} differs for {field}"
+                    )
+        generated_edge_types = {
+            "connection",
+            "strategic-spine",
+            "spine-access-connection",
+            "school-access-connection",
+            "branch-meeting-connection",
+            "cross-spine-connector",
+            "urban-spine",
+        }
+        for feature in geojson["features"]:
+            if feature["properties"].get("feature_type") not in generated_edge_types:
+                continue
+            profile_id = feature["properties"].get("topography_profile_id")
+            profile = profile_features.get(profile_id)
+            if profile is None or profile["properties"].get("edge_id") != feature["id"]:
+                raise ValueError(
+                    f"generated edge {feature['id']} has inconsistent Topography Profile"
+                )
+    topography_run = run.get("topography", {})
+    if topography_run.get("profile_count") != len(profile_features):
+        raise ValueError("Topography Profile count differs between run and GeoJSON")
+    unavailable_count = sum(
+        feature["properties"].get("evidence_status") == "evidence-unavailable"
+        for feature in profile_features.values()
+    )
+    if topography_run.get("evidence_unavailable_count") != unavailable_count:
+        raise ValueError("Topography evidence-unavailable count differs between artifacts")
+    section_features = {
+        feature["id"]: feature
+        for feature in geojson["features"]
+        if feature["properties"].get("feature_type") == "gradient-section"
+    }
+    if topography_run.get("gradient_section_count") != len(section_features):
+        raise ValueError("Gradient Section count differs between run and GeoJSON")
+    if section_features:
+        sections = gpd.read_file(output / "network.gpkg", layer="gradient_sections")
+        section_rows = sections.set_index("section_id", drop=False)
+        if set(section_features) != set(section_rows.index):
+            raise ValueError("Gradient Section identifiers differ between artifacts")
+        for section_id, feature in section_features.items():
+            row = section_rows.loc[section_id]
+            for field in (
+                "profile_id",
+                "edge_id",
+                "edge_type",
+                "start_distance_m",
+                "end_distance_m",
+                "length_m",
+                "forward_gradient_pct",
+                "absolute_gradient_pct",
+                "gradient_band",
+                "uphill_direction",
+                "sustained",
+                "sustained_rationale",
+                "elevation_evidence_ids",
+            ):
+                if not _artifact_values_equal(feature["properties"].get(field), row[field]):
+                    raise ValueError(f"Gradient Section {section_id} differs for {field}")
     for filename in ("agent-records.json", "divergence-records.json"):
         record_file = json.loads((output / filename).read_text(encoding="utf-8"))
         if record_file.get("disclaimer") != DISCLAIMER:
@@ -970,6 +1109,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "layer-low-traffic-areas",
         "layer-schools",
         "layer-school-streets",
+        "layer-gradient-sections",
         "layer-retail-centres",
         "layer-healthcare",
         "layer-atm",

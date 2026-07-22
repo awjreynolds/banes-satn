@@ -31,6 +31,11 @@ from satn.models import (
 )
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
 from satn.school_street import assess_school_street_candidates
+from satn.topography import (
+    GradientThresholds,
+    build_topography_profiles,
+    empty_elevation_evidence,
+)
 from satn.urban import derive_urban_structure
 from satn.urban_school import assess_urban_school_access
 
@@ -59,6 +64,8 @@ class CompiledNetwork:
     ncn_routes: gpd.GeoDataFrame
     schools: gpd.GeoDataFrame
     school_street_assessments: gpd.GeoDataFrame
+    topography_profiles: gpd.GeoDataFrame
+    gradient_sections: gpd.GeoDataFrame
     retail_centres: gpd.GeoDataFrame
     healthcare: gpd.GeoDataFrame
     agent_records: list[AgentRecord]
@@ -265,6 +272,42 @@ def compile_network(
         and urban_classification_unknowns.empty
         else UrbanClassificationStatus.EXPLICIT_UNKNOWN
     )
+    topography_edge_frames = [
+        ("connection", "connection_id", connections),
+        ("strategic-spine", "spine_id", strategic_spines),
+        (
+            "spine-access-connection",
+            "access_connection_id",
+            spine_access_connections,
+        ),
+        (
+            "branch-meeting-connection",
+            "meeting_connection_id",
+            branch_meeting_connections,
+        ),
+        (
+            "cross-spine-connector",
+            "cross_spine_connector_id",
+            cross_spine_connectors,
+        ),
+        ("urban-spine", "structure_id", urban_spines),
+    ]
+    topography_profiles, gradient_sections = build_topography_profiles(
+        topography_edge_frames,
+        source.get("elevation_evidence", empty_elevation_evidence(crs)),
+        thresholds=GradientThresholds(
+            gentle=config.compilation.topography.gentle_max_pct,
+            noticeable=config.compilation.topography.noticeable_max_pct,
+            steep=config.compilation.topography.steep_max_pct,
+            very_steep=config.compilation.topography.very_steep_max_pct,
+        ),
+        maximum_sample_spacing_m=(
+            config.compilation.topography.maximum_sample_spacing_m
+        ),
+        minimum_sustained_spacing_m=(
+            config.compilation.topography.minimum_sustained_spacing_m
+        ),
+    )
     crossing_warnings = _crossing_warnings(connections)
     connection_graph = _connection_graph(participants, accepted)
     covered = all(place_id in connection_graph for place_id in communities["place_id"])
@@ -440,6 +483,25 @@ def compile_network(
                 else TrafficLight.RED
             ),
         },
+        "topography": {
+            "all_generated_edges_profiled": (
+                TrafficLight.GREEN
+                if len(topography_profiles)
+                == sum(len(frame) for _, _, frame in topography_edge_frames)
+                else TrafficLight.RED
+            ),
+            "elevation_evidence_coverage": (
+                TrafficLight.GREEN
+                if not topography_profiles.empty
+                and (topography_profiles["evidence_status"] == "available").all()
+                else TrafficLight.GREY
+            ),
+            "gradient_sections_published": (
+                TrafficLight.GREEN
+                if not gradient_sections.empty
+                else TrafficLight.GREY
+            ),
+        },
         "atm_comparison": {"compared": TrafficLight.GREY},
     }
     return CompiledNetwork(
@@ -465,6 +527,8 @@ def compile_network(
         ncn_routes=_context_frame(context, "ncn-route"),
         schools=_context_frame(context, "school"),
         school_street_assessments=school_street_assessments,
+        topography_profiles=topography_profiles,
+        gradient_sections=gradient_sections,
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
         agent_records=[*records, *backbone.agent_records],

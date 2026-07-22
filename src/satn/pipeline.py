@@ -85,6 +85,36 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for row in compiled.school_street_assessments.itertuples()
             ),
+            "topography_profiles": sorted(
+                (
+                    row.profile_id,
+                    row.edge_id,
+                    row.edge_type,
+                    row.evidence_status,
+                    row.distance_m,
+                    row.forward_ascent_m,
+                    row.forward_descent_m,
+                    row.reverse_ascent_m,
+                    row.reverse_descent_m,
+                    row.steepest_sustained_gradient_pct,
+                    row.steepest_sustained_gradient_rationale,
+                    row.gradient_section_ids,
+                    row.elevation_evidence_ids,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.topography_profiles.itertuples()
+            ),
+            "gradient_sections": sorted(
+                (
+                    row.section_id,
+                    row.profile_id,
+                    row.gradient_band,
+                    row.length_m,
+                    row.forward_gradient_pct,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.gradient_sections.itertuples()
+            ),
             "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
             "urban_classification_status": compiled.urban_classification_status,
             "urban_spines": sorted(
@@ -296,6 +326,32 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "source_ids": row.source_ids,
                 }
                 for row in compiled.school_street_assessments.itertuples()
+            ],
+            "topography_profiles": len(compiled.topography_profiles),
+            "gradient_sections": len(compiled.gradient_sections),
+            "topography_profile_records": [
+                {
+                    "profile_id": row.profile_id,
+                    "edge_id": row.edge_id,
+                    "edge_type": row.edge_type,
+                    "evidence_status": row.evidence_status,
+                    "evidence_rationale": row.evidence_rationale,
+                    "distance_m": row.distance_m,
+                    "forward_ascent_m": row.forward_ascent_m,
+                    "forward_descent_m": row.forward_descent_m,
+                    "reverse_ascent_m": row.reverse_ascent_m,
+                    "reverse_descent_m": row.reverse_descent_m,
+                    "steepest_sustained_gradient_pct": (
+                        row.steepest_sustained_gradient_pct
+                    ),
+                    "steepest_sustained_gradient_rationale": (
+                        row.steepest_sustained_gradient_rationale
+                    ),
+                    "gradient_section_ids": row.gradient_section_ids,
+                    "elevation_evidence_ids": row.elevation_evidence_ids,
+                    "elevation_source_ids": row.elevation_source_ids,
+                }
+                for row in compiled.topography_profiles.itertuples()
             ],
             "spine_access_connections": len(compiled.spine_access_connections),
             "spine_access_branches": len(compiled.spine_access_branches),

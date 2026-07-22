@@ -69,6 +69,16 @@
           <p>Grey — Not Evaluated</p>
           <p>Qualitative evidence for investigation — not scheme feasibility or calibrated probability</p>
         </div>
+        <label><input id="layer-gradient-sections" type="checkbox" aria-describedby="legend-gradient-sections"> Gradient Sections</label>
+        <div id="legend-gradient-sections" class="layer-summary" role="note" hidden>
+          <p>Gentle — up to __GENTLE_MAX_PCT__%</p>
+          <p>Noticeable — above __GENTLE_MAX_PCT__% to __NOTICEABLE_MAX_PCT__%</p>
+          <p>Steep — above __NOTICEABLE_MAX_PCT__% to __STEEP_MAX_PCT__%</p>
+          <p>Very Steep — above __STEEP_MAX_PCT__% to __VERY_STEEP_MAX_PCT__%</p>
+          <p>Severe — above __VERY_STEEP_MAX_PCT__%</p>
+          <p>Grey — Elevation Evidence unavailable</p>
+          <p>Sequential blue terrain colours show physical gradient severity, not Criterion Status or route rejection.</p>
+        </div>
         <label><input id="layer-retail-centres" type="checkbox"> High streets &amp; retail centres</label>
         <label><input id="layer-healthcare" type="checkbox"> Doctors, pharmacies &amp; hospitals</label>
         <label><input id="layer-gaps-warnings" type="checkbox" checked> Gaps and warnings</label>
@@ -87,6 +97,7 @@
         <label><input id="criteria-network" type="radio" name="section" value="network"> Network</label>
         <label><input id="criteria-spine-network" type="radio" name="section" value="spine_network"> Spine network</label>
         <label><input id="criteria-school-street-assessments" type="radio" name="section" value="school_street_candidate_assessments"> School Street Candidate Assessments</label>
+        <label><input id="criteria-topography" type="radio" name="section" value="topography"> Topography</label>
         <label><input id="criteria-atm-comparison" type="radio" name="section" value="atm_comparison"> ATM comparison</label>
       </fieldset>
 
@@ -102,7 +113,7 @@
       </nav>
 
       <section aria-labelledby="connection-heading">
-        <h2 id="connection-heading">Connections and gaps</h2>
+        <h2 id="connection-heading">Connections, gaps and profiles</h2>
         <div id="connection-list"></div>
       </section>
 

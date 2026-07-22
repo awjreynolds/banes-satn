@@ -134,6 +134,41 @@ essential access, alternative through-route evidence and displacement risk. Unkn
 inputs remain explicit; an inferred entrance cannot produce Green or Red. These are
 qualitative investigation prompts, never scheme feasibility or calibrated probability.
 
+Every generated Community Connection, Strategic Spine section, Spine Access
+Connection, Branch Meeting Connection, Cross-Spine Connector and Urban Main-Road
+Spine also receives a directional Topography Profile. Governed Elevation Evidence
+sampled throughout the edge records distance, cumulative ascent and descent in both
+directions, steepest sustained gradient and stable Gradient Sections. The adjustable
+display bands are Gentle (up to 3%), Noticeable (above 3% to 5%), Steep (above 5% to
+8%), Very Steep (above 8% to 12.5%) and Severe (above 12.5%). These sections are
+informational in this stage and do not change route selection. Missing or unusable
+Elevation Evidence is published as an explicit Grey evidence-unavailable Topography
+Profile; it never implies flat terrain.
+
+The display bands and evidence-spacing rules are governed trial configuration. The
+maximum spacing prevents sparse endpoint-only evidence from being mistaken for a
+profile, while the minimum sustained spacing suppresses isolated sub-window noise.
+Governed short steeper sections still contribute to cumulative ascent/descent and
+remain visible with an explicit non-sustained rationale; only the separately named
+steepest-sustained-gradient statistic applies the sustained window.
+
+```yaml
+compilation:
+  topography:
+    gentle_max_pct: 3
+    noticeable_max_pct: 5
+    steep_max_pct: 8
+    very_steep_max_pct: 12.5
+    maximum_sample_spacing_m: 250
+    minimum_sustained_spacing_m: 10
+```
+
+Offline fixtures can supply `source/elevation-evidence.geojson` containing Point
+samples with `evidence_id`, `source_id`, `effective_date`, `licence` and
+`elevation_m`. Snapshot creation validates and fingerprints that governed file, and
+normal compilation loads it without a live lookup. National terrain acquisition for
+real council snapshots is a separate subsequent integration boundary.
+
 Configure a council-governed classification dataset as follows. The source must be
 line geometry with an `official_classification`, `road_classification` or
 `classification` field; common A, B, C/Classified Unnumbered and Unclassified values
@@ -278,7 +313,10 @@ The map presents A-road corridors as its core spine, Community Connections above
 them, and NCN evidence as a distinct overlay. Schools, derived high-street/retail
 centres and healthcare facilities default off to avoid noise; each has its own
 control. Places, urban structure, gaps/warnings and ATM comparison are independently
-toggleable. Connections, Network and ATM criteria remain separate. Hover or keyboard
+toggleable. Gradient Sections use a separately selectable sequential blue terrain
+palette with a text-labelled legend distinct from Criterion Status colours; Grey
+dashed profiles expose unavailable Elevation Evidence. Connections, Network,
+Topography and ATM criteria remain separate. Hover or keyboard
 focus updates the semantic details panel; click pins and unpins it. The panel exposes
 Community names, stable IDs, length, role, indicative intervention, criterion states,
 rationale, findings and source IDs, so browser agents do not need to infer state from
