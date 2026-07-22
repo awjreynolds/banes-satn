@@ -12,13 +12,19 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString, MultiLineString, MultiPoint
-from shapely.ops import linemerge
+from shapely.ops import linemerge, unary_union
 
 from satn.agents import AgentRuntime, CompilationGate
 from satn.atm import choose_seeded_alignment
 from satn.cache import ConnectionCache
 from satn.evidence import empty_context, mark_ncn_edges
-from satn.models import AgentRecord, CouncilConfig, DivergenceRecord, TrafficLight
+from satn.models import (
+    AgentRecord,
+    CouncilConfig,
+    DivergenceRecord,
+    NetworkScope,
+    TrafficLight,
+)
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
 from satn.urban import derive_urban_structure
 
@@ -91,7 +97,7 @@ def compile_network(
     attachments = _network_place_attachments(places, participants, road_graph)
     strategic_spines = _strategic_spines(context)
     spine_access_connections = _first_spine_access_connection(
-        communities, strategic_spines, road_graph, attachments
+        communities, strategic_spines, road_graph
     )
     access_obligations = _access_obligations(communities, spine_access_connections)
     candidate_pairs = _local_adjacency_pairs(communities, road_graph, attachments)
@@ -205,13 +211,9 @@ def compile_network(
         set(communities["place_id"]),
         set(internal_termini),
     )
-    gaps = gpd.GeoDataFrame(
-        unresolved, columns=connection_columns, geometry="geometry", crs=crs
-    )
+    gaps = gpd.GeoDataFrame(unresolved, columns=connection_columns, geometry="geometry", crs=crs)
     unresolved_ids = {str(row["connection_id"]) for row in unresolved}
-    superseded = [
-        row for row in rejected if str(row["connection_id"]) not in unresolved_ids
-    ]
+    superseded = [row for row in rejected if str(row["connection_id"]) not in unresolved_ids]
     record_by_id = {record.connection_id: record for record in records}
     for row in superseded:
         row["status"] = "superseded"
@@ -350,9 +352,7 @@ def _local_adjacency_pairs(
     for index, left in enumerate(identifiers):
         for right in identifiers[index + 1 :]:
             pair = tuple(sorted((left, right)))
-            distances[pair] = _network_distance(
-                graph, attachments[left], attachments[right]
-            )
+            distances[pair] = _network_distance(graph, attachments[left], attachments[right])
             ranks[pair] = (
                 distances[pair],
                 geometries[left].distance(geometries[right]),
@@ -692,13 +692,12 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         "provenance",
         "geometry",
     ]
-    network_scope = context.get(
-        "network_scope", pd.Series("unresolved", index=context.index, dtype=object)
-    )
-    candidates = context[
-        context["feature_type"].isin(["a-road-spine", "ncn-route"])
-        & network_scope.eq("rural")
-    ]
+    candidates = context[context["feature_type"].isin(["a-road-spine", "ncn-route"])].copy()
+    network_scope = candidates.get(
+        "network_scope",
+        pd.Series(NetworkScope.UNRESOLVED.value, index=candidates.index, dtype=object),
+    ).map(_network_scope)
+    candidates = candidates[network_scope.eq(NetworkScope.RURAL)]
     rows: list[dict[str, object]] = []
     for feature_type, spine_kind in (
         ("a-road-spine", "a-road"),
@@ -725,7 +724,7 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         "category": evidence.get("category"),
                         "evidence_id": evidence_id,
                         "source_id": source_id,
-                        "network_scope": "rural",
+                        "network_scope": NetworkScope.RURAL.value,
                         "intervention_assumption": (
                             "Major engineering required to provide high-quality protected or "
                             "shared provision"
@@ -745,7 +744,7 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                                 "evidence_id": evidence_id,
                                 "source_id": source_id,
                                 "source_feature_type": feature_type,
-                                "network_scope": "rural",
+                                "network_scope": NetworkScope.RURAL.value,
                             },
                             sort_keys=True,
                         ),
@@ -773,11 +772,21 @@ def _continuous_linework(geometry: object) -> list[LineString]:
     return []
 
 
+def _network_scope(value: object) -> NetworkScope:
+    try:
+        return NetworkScope(str(value))
+    except ValueError as error:
+        raise ValueError(f"invalid governed network_scope: {value!r}") from error
+
+
+MAX_COMMUNITY_ATTACHMENT_M = 2000.0
+MAX_SPINE_ATTACHMENT_M = 20.0
+
+
 def _first_spine_access_connection(
     communities: gpd.GeoDataFrame,
     strategic_spines: gpd.GeoDataFrame,
     graph: RoadGraph,
-    attachments: dict[str, list[tuple[str, float]]],
 ) -> gpd.GeoDataFrame:
     """Publish the smallest deterministic tracer: one reachable Community-to-Spine route."""
     columns = [
@@ -800,8 +809,11 @@ def _first_spine_access_connection(
     ]
     spine_rows = [spine for _, spine in strategic_spines.sort_values("spine_id").iterrows()]
     spine_attachments = {
-        str(spine["spine_id"]): graph.nodes_on_geometry(spine.geometry)
-        for spine in spine_rows
+        str(spine["spine_id"]): graph.nodes_on_geometry(spine.geometry) for spine in spine_rows
+    }
+    community_attachments = {
+        str(community["place_id"]): [graph.nearest_node(community.geometry)]
+        for _, community in communities.iterrows()
     }
     pair_candidates: list[
         tuple[tuple[object, ...], pd.Series, pd.Series, list[tuple[str, float]]]
@@ -810,7 +822,7 @@ def _first_spine_access_connection(
         community_id = str(community["place_id"])
         for spine in spine_rows:
             targets = spine_attachments[str(spine["spine_id"])]
-            distance_m = graph.network_distance(attachments[community_id], targets)
+            distance_m = graph.network_distance(community_attachments[community_id], targets)
             if distance_m == float("inf"):
                 continue
             rank = (
@@ -821,19 +833,25 @@ def _first_spine_access_connection(
             )
             pair_candidates.append((rank, community, spine, targets))
 
-    for _, community, spine, targets in sorted(
-        pair_candidates, key=lambda candidate: candidate[0]
-    ):
+    for _, community, spine, targets in sorted(pair_candidates, key=lambda candidate: candidate[0]):
         community_id = str(community["place_id"])
-        routes: list[tuple[tuple[object, ...], RouteOption, float]] = []
-        for start_node, start_snap in attachments[community_id]:
+        routes: list[tuple[tuple[object, ...], RouteOption, float, LineString]] = []
+        for start_node, start_snap in community_attachments[community_id]:
             for end_node, end_snap in targets:
+                if start_snap > MAX_COMMUNITY_ATTACHMENT_M or end_snap > MAX_SPINE_ATTACHMENT_M:
+                    continue
                 option = graph.option(start_node, end_node, "direct")
                 if option is None or not option.bidirectional:
                     continue
-                if not option.geometry.intersects(community.geometry):
-                    continue
-                if not option.geometry.intersects(spine.geometry):
+                geometry = _route_with_attachments(
+                    graph,
+                    option.geometry,
+                    start_node,
+                    community.geometry,
+                    end_node,
+                    spine.geometry,
+                )
+                if geometry is None:
                     continue
                 total_distance_km = option.length_km + (start_snap + end_snap) / 1000
                 route_rank = (
@@ -841,10 +859,10 @@ def _first_spine_access_connection(
                     start_node,
                     end_node,
                 )
-                routes.append((route_rank, option, total_distance_km))
+                routes.append((route_rank, option, total_distance_km, geometry))
         if not routes:
             continue
-        _, option, total_distance_km = min(routes, key=lambda candidate: candidate[0])
+        _, option, total_distance_km, geometry = min(routes, key=lambda candidate: candidate[0])
         source_ids = sorted(
             {
                 *option.edge_ids,
@@ -871,17 +889,42 @@ def _first_spine_access_connection(
                 "arbitrary Community pair."
             ),
             "geometry_semantics": (
-                "routed OSM network alignment; indicative, not final design"
+                "bounded Community and Spine attachment lines joined to a routed OSM "
+                "network alignment; indicative, not final design"
             ),
             "source_ids": json.dumps(source_ids),
             "criterion_continuity": "green",
             "criterion_bidirectional": "green",
-            "geometry": option.geometry,
+            "geometry": geometry,
         }
-        return gpd.GeoDataFrame(
-            [row], columns=columns, geometry="geometry", crs=communities.crs
-        )
+        return gpd.GeoDataFrame([row], columns=columns, geometry="geometry", crs=communities.crs)
     return gpd.GeoDataFrame([], columns=columns, geometry="geometry", crs=communities.crs)
+
+
+def _route_with_attachments(
+    graph: RoadGraph,
+    route: LineString,
+    start_node: str,
+    community_geometry: object,
+    end_node: str,
+    spine_geometry: object,
+) -> LineString | None:
+    parts = [
+        part
+        for part in (
+            graph.attachment_line(start_node, community_geometry),
+            route,
+            graph.attachment_line(end_node, spine_geometry),
+        )
+        if part is not None and not part.is_empty
+    ]
+    unioned = unary_union(parts)
+    merged = unioned if isinstance(unioned, LineString) else linemerge(unioned)
+    if not isinstance(merged, LineString):
+        return None
+    if not merged.intersects(community_geometry) or not merged.intersects(spine_geometry):
+        return None
+    return merged
 
 
 def _access_obligations(

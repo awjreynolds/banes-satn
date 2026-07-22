@@ -3,7 +3,7 @@ from __future__ import annotations
 import geopandas as gpd
 from shapely.geometry import LineString, Point
 
-from satn.evidence import derive_context_layers, mark_ncn_edges
+from satn.evidence import derive_context_layers, govern_network_scope, mark_ncn_edges
 from satn.routing import RoadGraph, choose_alignment
 
 
@@ -87,15 +87,38 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
     retail = context[context["feature_type"] == "retail-centre"].iloc[0]
     assert retail["name"] == "High Street retail centre"
     assert retail["feature_count"] == 3
-    assert list(context.loc[context["feature_type"] == "ncn-route", "source_id"]) == [
-        "relation-24"
-    ]
+    assert list(context.loc[context["feature_type"] == "ncn-route", "source_id"]) == ["relation-24"]
     assert set(
         context.loc[
             context["feature_type"].isin(["a-road-spine", "ncn-route"]),
             "network_scope",
         ]
     ) == {"unresolved"}
+
+
+def test_governed_urban_extent_splits_strategic_evidence_into_typed_parts() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "a1",
+                "ref": "A1",
+                "geometry": LineString([(-0.02, 0), (0.02, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+    urban_places = gpd.GeoDataFrame([{"place": "town", "geometry": Point(0, 0)}], crs=4326)
+
+    context = govern_network_scope(
+        derive_context_layers(network),
+        urban_places,
+        urban_place_types=["town"],
+        urban_scope_buffer_km=0.5,
+    )
+
+    assert context.groupby("network_scope").size().to_dict() == {"rural": 2, "urban": 1}
+    assert context["evidence_id"].is_unique
+    assert set(context.geometry.geom_type) == {"LineString"}
 
 
 def test_ncn_evidence_informs_alignment_without_overriding_an_a_road_spine() -> None:

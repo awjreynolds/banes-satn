@@ -60,6 +60,11 @@ NCN/Open Government Licence v3.0 attribution. Towns, villages and named urban ne
 admitted as Community candidates; hamlets are not mandatory Network Places. Large
 Community polygons can expose connected network portals, and genuine outward road
 crossings are named for the relevant external town or city along the onward corridor.
+The Council Configuration also governs which OSM place types define urban extents and
+their evidence buffer. Snapshot creation splits A-road and established NCN linework at
+that extent, recording each continuous part as `rural` or `urban`; invalid scope values
+are rejected rather than silently omitted. This lets the normal live snapshot path
+produce rural Strategic Spines without hard-coding a B&NES-only geography.
 
 The network request is intentionally live and can take time. Its explicit smoke test
 is:
@@ -77,6 +82,11 @@ compiler compares only continuous OSM alignments:
 Where one strongly connected cycling component contains at least 90% of graph nodes,
 Community attachment prefers that dominant routable component instead of snapping to
 a nearby isolated digitising fragment.
+
+The Backbone-and-Access tracer promotes only governed rural A-road and established NCN
+evidence. Its first Spine Access Connection includes bounded attachment linework from
+the Community Reference Point to the routable graph and from that graph to the selected
+spine, so a legitimate nearby snap remains visible and auditable.
 
 - a direct A-road corridor is the preferred Strategic Spine, representing a wide
   alongside shared path rather than cycling in the carriageway. Its authoritative
