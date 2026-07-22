@@ -107,6 +107,10 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         )
     if not compiled.low_traffic_areas.empty:
         compiled.low_traffic_areas.to_file(path, layer="candidate_low_traffic_areas", driver="GPKG")
+    if not compiled.low_traffic_area_portals.empty:
+        compiled.low_traffic_area_portals.to_file(
+            path, layer="low_traffic_area_portals", driver="GPKG"
+        )
     if not compiled.crossing_warnings.empty:
         compiled.crossing_warnings.to_file(path, layer="crossing_warnings", driver="GPKG")
     for layer_name, frame in (
@@ -166,6 +170,7 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "spine-access-branch": "branch_id",
         "branch-meeting-connection": "meeting_connection_id",
         "cross-spine-connector": "cross_spine_connector_id",
+        "low-traffic-area-portal": "portal_id",
         "strategic-spine": "spine_id",
         "connection": "connection_id",
         "gap": "connection_id",
@@ -253,6 +258,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
                 "urban-classification-unknown",
             )
             + _features(compiled.low_traffic_areas, "low-traffic-area")
+            + _features(compiled.low_traffic_area_portals, "low-traffic-area-portal")
             + _features(compiled.crossing_warnings, "crossing-warning")
             + _features(compiled.a_road_spines, "a-road-spine")
             + _features(compiled.ncn_routes, "ncn-route")
@@ -289,6 +295,7 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
         "urban_spines": len(compiled.urban_spines),
         "urban_classification_unknowns": len(compiled.urban_classification_unknowns),
         "candidate_low_traffic_areas": len(compiled.low_traffic_areas),
+        "low_traffic_area_portals": len(compiled.low_traffic_area_portals),
         "schools": len(compiled.schools),
         "retail_centres": len(compiled.retail_centres),
         "healthcare": len(compiled.healthcare),
@@ -919,6 +926,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "urban_spines": ("urban-spine",),
         "urban_classification_unknowns": ("urban-classification-unknown",),
         "candidate_low_traffic_areas": ("low-traffic-area",),
+        "low_traffic_area_portals": ("low-traffic-area-portal",),
         "schools": ("school",),
         "retail_centres": ("retail-centre",),
         "healthcare": ("healthcare",),
@@ -947,6 +955,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "layer-a-road-spines",
         "layer-community-connections",
         "layer-ncn-routes",
+        "layer-urban-spines",
+        "layer-low-traffic-areas",
         "layer-schools",
         "layer-retail-centres",
         "layer-healthcare",

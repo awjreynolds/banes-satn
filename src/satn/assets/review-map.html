@@ -36,13 +36,19 @@
         <div id="legend-ncn-routes" class="layer-summary" role="note" hidden>
           <p>Established NCN geometry — permeability evidence, not automatically a Circulation Boundary</p>
         </div>
-        <label><input id="layer-urban-structure" type="checkbox" checked aria-describedby="legend-urban-structure"> Urban Main-Road Spines &amp; Candidate Low-Traffic Areas</label>
-        <div id="legend-urban-structure" class="layer-summary" role="note">
+        <label><input id="layer-urban-spines" type="checkbox" checked aria-describedby="legend-urban-spines"> Urban Main-Road Spines</label>
+        <div id="legend-urban-spines" class="layer-summary" role="note">
           <p>A road — major engineering/protected provision assumption</p>
           <p>B road — official through-road spine</p>
           <p>Classified Unnumbered (C) road — official through-road spine</p>
           <p>Missing official classification — Explicit Unknown; OSM tags are not substituted</p>
           <p>Grey dashed line — governed road with classification still unknown</p>
+        </div>
+        <label><input id="layer-low-traffic-areas" type="checkbox" checked aria-describedby="legend-low-traffic-areas"> Candidate Low-Traffic Areas &amp; portals</label>
+        <div id="legend-low-traffic-areas" class="layer-summary" role="note">
+          <p>Blue area — Candidate Low-Traffic Area, not an existing LTN</p>
+          <p>Blue dot — named portal to a qualifying Circulation Boundary</p>
+          <p>Area permeability only — no preferred residential cycling centreline asserted</p>
         </div>
         <label><input id="layer-places" type="checkbox" checked> Places</label>
         <label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label>

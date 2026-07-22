@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import geopandas as gpd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 
 from satn.evidence import derive_context_layers, govern_network_scope, mark_ncn_edges
 from satn.routing import RoadGraph, choose_alignment
@@ -119,6 +119,122 @@ def test_governed_urban_extent_splits_strategic_evidence_into_typed_parts() -> N
     assert context.groupby("network_scope").size().to_dict() == {"rural": 2, "urban": 1}
     assert context["evidence_id"].is_unique
     assert set(context.geometry.geom_type) == {"LineString"}
+
+
+def test_only_stable_non_road_edges_become_circulation_boundary_evidence() -> None:
+    network = gpd.GeoDataFrame(
+        [{"osmid": "street", "geometry": LineString([(0, 0), (0.02, 0)])}],
+        crs=4326,
+    )
+    boundary_features = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "river-1",
+                "waterway": "river",
+                "name": "River Test",
+                "geometry": LineString([(0, -0.01), (0, 0.01)]),
+            },
+            {
+                "osmid": "canal-1",
+                "waterway": "canal",
+                "name": "Test Canal",
+                "geometry": LineString([(0.01, -0.01), (0.01, 0.01)]),
+            },
+            {
+                "osmid": "rail-1",
+                "railway": "rail",
+                "name": "Main line",
+                "geometry": LineString([(0.02, -0.01), (0.02, 0.01)]),
+            },
+            {
+                "osmid": "ward-1",
+                "boundary": "administrative",
+                "geometry": LineString([(0.03, -0.01), (0.03, 0.01)]),
+            },
+            {
+                "osmid": "field-1",
+                "landuse": "farmland",
+                "geometry": Polygon([(0.05, -0.01), (0.06, -0.01), (0.06, 0.01), (0.05, 0.01)]),
+            },
+            {
+                "osmid": "built-1",
+                "landuse": "residential",
+                "geometry": Polygon([(0.06, -0.01), (0.07, -0.01), (0.07, 0.01), (0.06, 0.01)]),
+            },
+            {
+                "osmid": "subway-1",
+                "railway": "subway",
+                "tunnel": "yes",
+                "geometry": LineString([(0.08, -0.01), (0.08, 0.01)]),
+            },
+            {
+                "osmid": "short-river",
+                "waterway": "river",
+                "geometry": LineString([(0.09, 0), (0.0905, 0)]),
+            },
+        ],
+        crs=4326,
+    )
+
+    context = derive_context_layers(network, circulation_boundaries=boundary_features)
+    boundaries = context[context["feature_type"] == "circulation-boundary"]
+
+    assert set(boundaries["category"]) == {
+        "built-up-edge",
+        "river",
+        "canal",
+        "railway",
+    }
+    assert set(boundaries["source_id"]) == {
+        "built-1",
+        "river-1",
+        "canal-1",
+        "rail-1",
+    }
+
+
+def test_built_up_edge_id_ignores_unrelated_built_up_polygons() -> None:
+    network = gpd.GeoDataFrame(
+        [{"osmid": "street", "geometry": LineString([(0, 0), (0.02, 0)])}],
+        crs=4326,
+    )
+    shared = [
+        {
+            "osmid": "open-land",
+            "landuse": "farmland",
+            "geometry": Polygon(
+                [(0, -0.01), (0.01, -0.01), (0.01, 0.01), (0, 0.01)]
+            ),
+        },
+        {
+            "osmid": "built-local",
+            "landuse": "residential",
+            "geometry": Polygon(
+                [(0.01, -0.01), (0.02, -0.01), (0.02, 0.01), (0.01, 0.01)]
+            ),
+        },
+    ]
+    unrelated = {
+        "osmid": "built-unrelated",
+        "landuse": "residential",
+        "geometry": Polygon(
+            [(0.1, -0.01), (0.11, -0.01), (0.11, 0.01), (0.1, 0.01)]
+        ),
+    }
+
+    before = derive_context_layers(
+        network,
+        circulation_boundaries=gpd.GeoDataFrame(shared, crs=4326),
+    )
+    after = derive_context_layers(
+        network,
+        circulation_boundaries=gpd.GeoDataFrame([*shared, unrelated], crs=4326),
+    )
+
+    before_edges = before[before["category"] == "built-up-edge"]
+    after_edges = after[after["category"] == "built-up-edge"]
+    assert list(before_edges["evidence_id"]) == list(after_edges["evidence_id"])
+    assert set(after_edges["source_id"]) == {"built-local"}
 
 
 def test_ncn_evidence_informs_alignment_without_overriding_an_a_road_spine() -> None:

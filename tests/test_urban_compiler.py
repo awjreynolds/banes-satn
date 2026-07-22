@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -51,22 +50,22 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
             {
                 "osmid": "minor-west",
                 "highway": "residential",
-                "geometry": LineString([(-0.015, 0), (0, 0)]),
+                "geometry": LineString([(-0.015, 0), (-0.005, 0)]),
             },
             {
                 "osmid": "minor-west-2",
                 "highway": "residential",
-                "geometry": LineString([(-0.015, 0), (-0.015, 0.01)]),
+                "geometry": LineString([(-0.005, 0), (-0.005, 0.005)]),
             },
             {
                 "osmid": "minor-east",
                 "highway": "unclassified",
-                "geometry": LineString([(0, 0), (0.015, 0)]),
+                "geometry": LineString([(0.005, 0), (0.015, 0)]),
             },
             {
                 "osmid": "minor-east-2",
                 "highway": "residential",
-                "geometry": LineString([(0.015, 0), (0.015, 0.01)]),
+                "geometry": LineString([(0.005, 0), (0.005, 0.005)]),
             },
         ],
         crs=4326,
@@ -74,21 +73,35 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     official = gpd.GeoDataFrame(
         [
             {
-                "official_feature_id": "official-a",
+                "official_feature_id": f"official-a-{index}",
                 "official_classification": "a-road",
                 "source_id": "council-highways",
                 "effective_date": "2026-01-01",
                 "licence": "Open Government Licence v3.0",
                 "content_fingerprint": "abc123",
-                "geometry": LineString([(0, -0.02), (0, 0.02)]),
+                "geometry": geometry,
             }
+            for index, geometry in enumerate(
+                (
+                    LineString([(0, -0.02), (0, -0.01), (0, 0), (0, 0.01), (0, 0.02)]),
+                    LineString([(-0.01, -0.01), (-0.01, 0.01)]),
+                    LineString([(0.01, -0.01), (0.01, 0.01)]),
+                    LineString([(-0.01, -0.01), (0, -0.01), (0.01, -0.01)]),
+                    LineString([(-0.01, 0.01), (0, 0.01), (0.01, 0.01)]),
+                ),
+                start=1,
+            )
         ],
         crs=4326,
     )
 
-    spines, unknowns, areas = derive_urban_structure(places, network, official)
+    urban = derive_urban_structure(places, network, official)
+    spines = urban.spines
+    unknowns = urban.classification_unknowns
+    areas = urban.low_traffic_areas
+    portals = urban.low_traffic_area_portals
 
-    assert len(spines) == 1
+    assert len(spines) == 5
     assert set(spines["role"]) == {"urban-main-road-spine"}
     assert set(spines["intervention"]) == {"protected-cycle-infrastructure"}
     assert set(spines["official_classification"]) == {"a-road"}
@@ -99,9 +112,11 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     assert set(areas["role"]) == {"candidate-low-traffic-area"}
     assert areas.iloc[0].geometry.geom_type in {"Polygon", "MultiPolygon"}
     projected_spine = spines.to_crs(27700).iloc[0].geometry
-    assert all(
-        not geometry.intersects(projected_spine) for geometry in areas.to_crs(27700).geometry
-    )
+    assert all(not geometry.crosses(projected_spine) for geometry in areas.to_crs(27700).geometry)
+    assert len(portals) == 2
+    assert portals["portal_id"].is_unique
+    assert set(portals["area_id"]) == set(areas["structure_id"])
+    assert all("A road" in name for name in portals["name"])
 
 
 def test_osm_tags_do_not_override_missing_or_unclassified_official_evidence() -> None:
@@ -142,19 +157,17 @@ def test_osm_tags_do_not_override_missing_or_unclassified_official_evidence() ->
         crs=4326,
     )
 
-    missing_spines, missing_unknowns, _ = derive_urban_structure(places, network)
-    unclassified_spines, unclassified_unknowns, _ = derive_urban_structure(
-        places, network, unclassified
-    )
+    missing = derive_urban_structure(places, network)
+    unclassified_result = derive_urban_structure(places, network, unclassified)
 
-    assert missing_spines.empty
-    assert missing_unknowns.empty
-    assert unclassified_spines.empty
-    assert unclassified_unknowns.empty
+    assert missing.spines.empty
+    assert missing.classification_unknowns.empty
+    assert unclassified_result.spines.empty
+    assert unclassified_result.classification_unknowns.empty
 
     unknown = unclassified.copy()
     unknown["official_classification"] = "unknown"
-    _, unknowns, _ = derive_urban_structure(places, network, unknown)
+    unknowns = derive_urban_structure(places, network, unknown).classification_unknowns
     assert len(unknowns) == 1
     assert unknowns.iloc[0]["classification_status"] == "explicit-unknown"
     assert unknowns.iloc[0]["role"] == "urban-road-classification-unknown"
@@ -203,18 +216,114 @@ def test_official_a_b_and_classified_unnumbered_are_stable_urban_spines() -> Non
         crs=4326,
     )
 
-    first, first_unknowns, _ = derive_urban_structure(places, network, official)
-    second, second_unknowns, _ = derive_urban_structure(places, network, official)
+    first = derive_urban_structure(places, network, official)
+    second = derive_urban_structure(places, network, official)
 
-    assert set(first["official_classification"]) == {
+    assert set(first.spines["official_classification"]) == {
         "a-road",
         "b-road",
         "classified-unnumbered",
     }
-    assert list(first["structure_id"]) == list(second["structure_id"])
-    assert set(first["source_id"]) == {"council-highways"}
-    assert first_unknowns.empty
-    assert second_unknowns.empty
+    assert list(first.spines["structure_id"]) == list(second.spines["structure_id"])
+    assert set(first.spines["source_id"]) == {"council-highways"}
+    assert first.classification_unknowns.empty
+    assert second.classification_unknowns.empty
+    assert list(first.low_traffic_area_portals["portal_id"]) == list(
+        second.low_traffic_area_portals["portal_id"]
+    )
+
+
+def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=4326,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "residential-1",
+                "highway": "residential",
+                "observed_through_traffic": True,
+                "geometry": LineString([(-0.012, 0), (0, 0)]),
+            },
+            {
+                "osmid": "residential-2",
+                "highway": "unclassified",
+                "observed_through_traffic": False,
+                "geometry": LineString([(0, 0), (0.012, 0.005)]),
+            },
+            {
+                "osmid": "residential-3",
+                "highway": "residential",
+                "observed_through_traffic": False,
+                "geometry": LineString([(0, 0), (0, 0.005)]),
+            },
+            {
+                "osmid": "disconnected-1",
+                "highway": "residential",
+                "observed_through_traffic": False,
+                "geometry": LineString([(-0.012, 0.008), (-0.005, 0.008)]),
+            },
+            {
+                "osmid": "disconnected-2",
+                "highway": "residential",
+                "observed_through_traffic": False,
+                "geometry": LineString([(-0.005, 0.008), (-0.005, 0.009)]),
+            },
+        ],
+        crs=4326,
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "built-edge",
+                "feature_type": "circulation-boundary",
+                "name": "Open-land edge",
+                "category": "built-up-edge",
+                "source_id": "built-edge-source",
+                "geometry": LineString(
+                    [
+                        (-0.01, -0.01),
+                        (0.01, -0.01),
+                        (0.01, 0.01),
+                        (-0.01, 0.01),
+                        (-0.01, -0.01),
+                    ]
+                ),
+            },
+            {
+                "evidence_id": "ward-line",
+                "feature_type": "circulation-boundary",
+                "name": "Ward boundary",
+                "category": "administrative-boundary",
+                "source_id": "ward-source",
+                "geometry": LineString([(-0.01, -0.01), (-0.01, 0.01)]),
+            },
+        ],
+        crs=4326,
+    )
+
+    urban = derive_urban_structure(places, network, context=context)
+    areas = urban.low_traffic_areas
+    portals = urban.low_traffic_area_portals
+
+    assert len(areas) == 1
+    area = areas.iloc[0]
+    assert area["status"] == "candidate"
+    assert area["intervention_need"] == "observed-through-traffic"
+    assert area["permeability_representation"] == "area-no-internal-centreline"
+    assert "built-edge" in area["boundary_ids"]
+    assert "ward-line" not in area["boundary_ids"]
+    assert list(portals["boundary_id"]) == ["built-edge", "built-edge", "built-edge"]
+    assert portals["portal_id"].is_unique
 
 
 def test_multi_portal_communities_use_the_nearest_connected_portals() -> None:

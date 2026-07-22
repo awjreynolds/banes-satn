@@ -8,7 +8,11 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import LineString, Point, Polygon
 
-from satn.models import CouncilConfig, OfficialRoadClassificationConfig
+from satn.models import (
+    CouncilConfig,
+    ObservedThroughTrafficConfig,
+    OfficialRoadClassificationConfig,
+)
 from satn.sources import OSMData, _load_ncn_features, derive_network_places, snapshot
 
 PROJECT = Path(__file__).parents[1]
@@ -62,7 +66,24 @@ def source_frames() -> OSMData:
         ],
         crs=4326,
     )
-    return OSMData(boundary, place_features, stations, network)
+    circulation_boundaries = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "river-test",
+                "waterway": "river",
+                "name": "River Test",
+                "geometry": LineString([(-2.475, 51.4), (-2.475, 51.45)]),
+            }
+        ],
+        crs=4326,
+    )
+    return OSMData(
+        boundary,
+        place_features,
+        stations,
+        network,
+        circulation_boundaries=circulation_boundaries,
+    )
 
 
 def test_derives_places_and_excludes_hamlets() -> None:
@@ -207,6 +228,9 @@ def test_osm_snapshot_is_attributable_and_reloadable(tmp_path: Path) -> None:
     assert set(reloaded["kind"]) >= {"community", "station_access", "cross_boundary_gateway"}
     context = gpd.read_file(path / "context.geojson")
     assert "rural" in set(context["network_scope"])
+    assert set(context.loc[context["feature_type"] == "circulation-boundary", "category"]) == {
+        "river"
+    }
     assert snapshot(config, osm_adapter=FakeOSMAdapter()) == path
 
 
@@ -258,9 +282,44 @@ def test_osm_snapshot_governs_official_road_classification(tmp_path: Path) -> No
         "unclassified",
     }
     assert set(snapshotted["source_id"]) == {"banes-highways-list"}
-    assert set(snapshotted["content_fingerprint"]) == {
-        governed["content_fingerprint"]
-    }
+    assert set(snapshotted["content_fingerprint"]) == {governed["content_fingerprint"]}
+
+
+def test_osm_snapshot_governs_observed_through_traffic(tmp_path: Path) -> None:
+    evidence_path = tmp_path / "observed-through-traffic.geojson"
+    gpd.GeoDataFrame(
+        [
+            {
+                "id": "traffic-study-1",
+                "geometry": LineString([(-2.5, 51.4), (-2.48, 51.42)]),
+            }
+        ],
+        crs=4326,
+    ).to_file(evidence_path, driver="GeoJSON")
+    config = base_config()
+    config.source.snapshot_dir = tmp_path / "snapshots"
+    config.source.snapshot_id = "observed-traffic-osm"
+    config.source.observed_through_traffic = ObservedThroughTrafficConfig(
+        path=evidence_path,
+        source_id="banes-traffic-study",
+        effective_date="2026-03-01",
+        licence="Open Government Licence v3.0",
+    )
+
+    path = snapshot(config, osm_adapter=FakeOSMAdapter())
+
+    manifest = json.loads((path / "snapshot.json").read_text())
+    governed = manifest["evidence_sources"]["observed_through_traffic"]
+    assert governed["source_id"] == "banes-traffic-study"
+    assert governed["effective_date"] == "2026-03-01"
+    assert governed["licence"] == "Open Government Licence v3.0"
+    assert len(governed["content_fingerprint"]) == 64
+    assert governed["snapshot_file"] == "observed-through-traffic.geojson"
+    assert "observed-through-traffic.geojson" in manifest["files"]
+    snapshotted = gpd.read_file(path / "observed-through-traffic.geojson")
+    assert set(snapshotted["evidence_id"]) == {"traffic-study-1"}
+    assert set(snapshotted["source_id"]) == {"banes-traffic-study"}
+    assert set(snapshotted["content_fingerprint"]) == {governed["content_fingerprint"]}
 
 
 @pytest.mark.live_osm

@@ -21,12 +21,17 @@ from shapely.ops import unary_union
 
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
 from satn.evidence import derive_context_layers, empty_context, govern_network_scope
-from satn.models import CouncilConfig, OfficialRoadClassification
+from satn.models import (
+    CouncilConfig,
+    GovernedSpatialSourceConfig,
+    OfficialRoadClassification,
+)
 
 CORE_SOURCE_FILES = ("boundary.geojson", "places.geojson", "network.geojson")
 OSM_ATTRIBUTION = "© OpenStreetMap contributors; data available under the ODbL"
 NCN_ATTRIBUTION = "Walk Wheel Cycle Trust National Cycle Network; Open Government Licence v3.0"
 ROAD_CLASSIFICATION_FILENAME = "official-road-classification.geojson"
+OBSERVED_THROUGH_TRAFFIC_FILENAME = "observed-through-traffic.geojson"
 ROAD_CLASSIFICATION_COLUMNS = [
     "official_feature_id",
     "official_classification",
@@ -47,6 +52,7 @@ class OSMData:
     graph: object | None = None
     ncn_routes: gpd.GeoDataFrame | None = None
     facilities: gpd.GeoDataFrame | None = None
+    circulation_boundaries: gpd.GeoDataFrame | None = None
 
 
 class OSMAdapter(Protocol):
@@ -103,6 +109,25 @@ class OSMnxAdapter:
                 "barrier": ["gate", "lift_gate", "swing_gate"],
             },
         ).reset_index()
+        circulation_boundaries = ox.features_from_polygon(
+            governed_polygon,
+            tags={
+                "waterway": ["river", "canal"],
+                "railway": ["rail", "light_rail", "subway"],
+                "landuse": [
+                    "residential",
+                    "commercial",
+                    "industrial",
+                    "retail",
+                    "farmland",
+                    "meadow",
+                    "grass",
+                    "forest",
+                    "recreation_ground",
+                ],
+                "natural": ["wood", "heath", "scrub", "grassland"],
+            },
+        ).reset_index()
         graph = ox.graph_from_polygon(
             governed_polygon,
             network_type=config.source.network_type,
@@ -119,6 +144,7 @@ class OSMnxAdapter:
             graph=graph,
             ncn_routes=ncn_routes,
             facilities=facilities,
+            circulation_boundaries=circulation_boundaries,
         )
 
 
@@ -162,9 +188,8 @@ def snapshot(
             "evidence_sources": {
                 "osm": config.source.osm_place_query,
                 "ncn": config.source.ncn_feature_service_url,
-                "official_road_classification": _road_classification_manifest(
-                    config, temporary
-                ),
+                "official_road_classification": _road_classification_manifest(config, temporary),
+                "observed_through_traffic": _observed_through_traffic_manifest(config, temporary),
             },
             "files": files,
             "file_sha256": {
@@ -200,6 +225,8 @@ def _write_fixture_snapshot(config: CouncilConfig, temporary: Path) -> tuple[str
     files = [*CORE_SOURCE_FILES, "context.geojson"]
     if _snapshot_official_road_classification(config, temporary):
         files.append(ROAD_CLASSIFICATION_FILENAME)
+    if _snapshot_observed_through_traffic(config, temporary):
+        files.append(OBSERVED_THROUGH_TRAFFIC_FILENAME)
     return str(config.source.fixture_dir), files
 
 
@@ -228,7 +255,12 @@ def _write_osm_snapshot(
             crs=places.crs,
         ).sort_values("place_id")
     context = govern_network_scope(
-        derive_context_layers(data.network, data.ncn_routes, data.facilities),
+        derive_context_layers(
+            data.network,
+            data.ncn_routes,
+            data.facilities,
+            data.circulation_boundaries,
+        ),
         data.place_features,
         urban_place_types=config.source.urban_place_types,
         urban_scope_buffer_km=config.source.urban_scope_buffer_km,
@@ -247,6 +279,10 @@ def _write_osm_snapshot(
         frames[ROAD_CLASSIFICATION_FILENAME] = gpd.read_file(
             temporary / ROAD_CLASSIFICATION_FILENAME
         )
+    if _snapshot_observed_through_traffic(config, temporary):
+        frames[OBSERVED_THROUGH_TRAFFIC_FILENAME] = gpd.read_file(
+            temporary / OBSERVED_THROUGH_TRAFFIC_FILENAME
+        )
     if data.graph is not None:
         import osmnx as ox
 
@@ -261,13 +297,9 @@ def _snapshot_official_road_classification(
     governed = config.source.official_road_classification
     if governed is None:
         return False
-    if not governed.path.exists():
-        raise ValueError(f"official road classification source is missing: {governed.path}")
-    source_bytes = governed.path.read_bytes()
-    fingerprint = hashlib.sha256(source_bytes).hexdigest()
-    source = gpd.read_file(governed.path)
-    if source.crs is None:
-        raise ValueError("official road classification source has no CRS")
+    source, fingerprint = _load_governed_line_source(
+        governed, "official road classification"
+    )
     classification_column = next(
         (
             column
@@ -277,16 +309,12 @@ def _snapshot_official_road_classification(
         None,
     )
     if classification_column is None:
-        raise ValueError(
-            "official road classification requires an official_classification column"
-        )
+        raise ValueError("official road classification requires an official_classification column")
     rows: list[dict[str, object]] = []
     for _, feature in source.iterrows():
         if not isinstance(feature.geometry, (LineString, MultiLineString)):
             continue
-        classification = _normalise_official_classification(
-            feature.get(classification_column)
-        )
+        classification = _normalise_official_classification(feature.get(classification_column))
         feature_id = _official_road_identifier(feature, classification)
         rows.append(
             {
@@ -307,10 +335,54 @@ def _snapshot_official_road_classification(
         geometry="geometry",
         crs=source.crs,
     )
-    frame.to_crs(4326).to_file(
-        temporary / ROAD_CLASSIFICATION_FILENAME, driver="GeoJSON"
+    frame.to_crs(4326).to_file(temporary / ROAD_CLASSIFICATION_FILENAME, driver="GeoJSON")
+    return True
+
+
+def _snapshot_observed_through_traffic(
+    config: CouncilConfig,
+    temporary: Path,
+) -> bool:
+    governed = config.source.observed_through_traffic
+    if governed is None:
+        return False
+    source, fingerprint = _load_governed_line_source(
+        governed, "observed through-traffic"
+    )
+    rows: list[dict[str, object]] = []
+    for index, feature in source.iterrows():
+        if not isinstance(feature.geometry, (LineString, MultiLineString)):
+            continue
+        rows.append(
+            {
+                "evidence_id": _source_identifier(feature, index),
+                "source_id": governed.source_id,
+                "effective_date": governed.effective_date.isoformat(),
+                "licence": governed.licence,
+                "content_fingerprint": fingerprint,
+                "geometry": feature.geometry,
+            }
+        )
+    if not rows:
+        raise ValueError("observed through-traffic source has no line features")
+    gpd.GeoDataFrame(rows, geometry="geometry", crs=source.crs).to_crs(4326).to_file(
+        temporary / OBSERVED_THROUGH_TRAFFIC_FILENAME,
+        driver="GeoJSON",
     )
     return True
+
+
+def _load_governed_line_source(
+    governed: GovernedSpatialSourceConfig,
+    label: str,
+) -> tuple[gpd.GeoDataFrame, str]:
+    if not governed.path.exists():
+        raise ValueError(f"{label} source is missing: {governed.path}")
+    fingerprint = hashlib.sha256(governed.path.read_bytes()).hexdigest()
+    source = gpd.read_file(governed.path)
+    if source.crs is None:
+        raise ValueError(f"{label} source has no CRS")
+    return source, fingerprint
 
 
 def _normalise_official_classification(value: object) -> str:
@@ -350,14 +422,34 @@ def _road_classification_manifest(
     path = snapshot_path / ROAD_CLASSIFICATION_FILENAME
     if governed is None or not path.exists():
         return None
+    return _governed_source_manifest(governed, path, ROAD_CLASSIFICATION_FILENAME)
+
+
+def _observed_through_traffic_manifest(
+    config: CouncilConfig,
+    snapshot_path: Path,
+) -> dict[str, object] | None:
+    governed = config.source.observed_through_traffic
+    path = snapshot_path / OBSERVED_THROUGH_TRAFFIC_FILENAME
+    if governed is None or not path.exists():
+        return None
+    return _governed_source_manifest(
+        governed, path, OBSERVED_THROUGH_TRAFFIC_FILENAME
+    )
+
+
+def _governed_source_manifest(
+    governed: GovernedSpatialSourceConfig,
+    path: Path,
+    filename: str,
+) -> dict[str, object]:
     snapshotted = gpd.read_file(path)
-    fingerprint = str(snapshotted.iloc[0]["content_fingerprint"])
     return {
         "source_id": governed.source_id,
         "effective_date": governed.effective_date.isoformat(),
         "licence": governed.licence,
-        "content_fingerprint": fingerprint,
-        "snapshot_file": ROAD_CLASSIFICATION_FILENAME,
+        "content_fingerprint": str(snapshotted.iloc[0]["content_fingerprint"]),
+        "snapshot_file": filename,
     }
 
 
@@ -699,6 +791,7 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
         context = empty_context(network.crs)
     place_features_path = path / "osm-place-features.geojson"
     classification_path = path / ROAD_CLASSIFICATION_FILENAME
+    observed_traffic_path = path / OBSERVED_THROUGH_TRAFFIC_FILENAME
     return {
         "boundary": gpd.read_file(path / "boundary.geojson"),
         "places": gpd.read_file(path / "places.geojson"),
@@ -714,6 +807,22 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
             if classification_path.exists()
             else gpd.GeoDataFrame(
                 columns=ROAD_CLASSIFICATION_COLUMNS,
+                geometry="geometry",
+                crs=network.crs,
+            )
+        ),
+        "observed_through_traffic": (
+            gpd.read_file(observed_traffic_path)
+            if observed_traffic_path.exists()
+            else gpd.GeoDataFrame(
+                columns=[
+                    "evidence_id",
+                    "source_id",
+                    "effective_date",
+                    "licence",
+                    "content_fingerprint",
+                    "geometry",
+                ],
                 geometry="geometry",
                 crs=network.crs,
             )

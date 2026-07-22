@@ -37,11 +37,19 @@ class UrbanClassificationStatus(StrEnum):
     EXPLICIT_UNKNOWN = "explicit-unknown"
 
 
-class OfficialRoadClassificationConfig(BaseModel):
+class GovernedSpatialSourceConfig(BaseModel):
     path: Path
     source_id: str = Field(min_length=1)
     effective_date: date
     licence: str = Field(min_length=1)
+
+
+class OfficialRoadClassificationConfig(GovernedSpatialSourceConfig):
+    pass
+
+
+class ObservedThroughTrafficConfig(GovernedSpatialSourceConfig):
+    pass
 
 
 class SourceConfig(BaseModel):
@@ -63,6 +71,7 @@ class SourceConfig(BaseModel):
     urban_scope_buffer_km: float = Field(default=2.0, gt=0)
     strategic_destination_source_ids: list[str] = Field(default_factory=list)
     official_road_classification: OfficialRoadClassificationConfig | None = None
+    observed_through_traffic: ObservedThroughTrafficConfig | None = None
 
 
 class AgentConfig(BaseModel):
@@ -118,6 +127,9 @@ class CouncilConfig(BaseModel):
         classification = self.source.official_road_classification
         if classification is not None and not classification.path.is_absolute():
             classification.path = (root / classification.path).resolve()
+        observed_traffic = self.source.observed_through_traffic
+        if observed_traffic is not None and not observed_traffic.path.is_absolute():
+            observed_traffic.path = (root / observed_traffic.path).resolve()
         if not self.publication.output_dir.is_absolute():
             self.publication.output_dir = (root / self.publication.output_dir).resolve()
         if not self.compilation.cache_dir.is_absolute():

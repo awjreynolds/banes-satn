@@ -109,7 +109,16 @@ When no governed classification source is configured, the publication records an
 `explicit-unknown` classification status. Urban NCN Evidence remains a separate
 permeability layer rather than automatically becoming a Circulation Boundary. Connected
 fabrics of minor roads become Candidate Low-Traffic Area polygons, without claiming
-that an LTN already exists or asserting an artificial centreline.
+that an LTN already exists or asserting an artificial centreline. Official Urban
+Main-Road Spines, mapped built-up edges adjoining open land, substantial rivers,
+canals and railways can close those fabrics; administrative wards, property lines and
+individual field parcels cannot. Each candidate records its intervention need and
+stable named portals to the qualifying boundary network. Observed internal through
+traffic strengthens the intervention need but never promotes an unclassified street
+into a through-traffic spine.
+
+For reproducibility, a river, canal or surface railway segment must provide at least
+250 metres of continuous physical boundary evidence before it can close a candidate.
 
 Configure a council-governed classification dataset as follows. The source must be
 line geometry with an `official_classification`, `road_classification` or
@@ -122,6 +131,20 @@ source:
     path: data/local/official-road-classification.geojson
     source_id: council-highways-list
     effective_date: 2026-04-01
+    licence: Open Government Licence v3.0
+```
+
+Observed internal through-traffic can also be supplied as governed line evidence.
+The compiler snapshots its source, effective date, licence and content fingerprint,
+then marks intersecting Candidate Low-Traffic Areas as needing intervention without
+promoting their internal streets into the through-traffic network.
+
+```yaml
+source:
+  observed_through_traffic:
+    path: data/local/observed-through-traffic.geojson
+    source_id: council-traffic-study
+    effective_date: 2026-03-01
     licence: Open Government Licence v3.0
 ```
 

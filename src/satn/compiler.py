@@ -43,6 +43,7 @@ class CompiledNetwork:
     urban_classification_unknowns: gpd.GeoDataFrame
     urban_classification_status: UrbanClassificationStatus
     low_traffic_areas: gpd.GeoDataFrame
+    low_traffic_area_portals: gpd.GeoDataFrame
     crossing_warnings: gpd.GeoDataFrame
     strategic_spines: gpd.GeoDataFrame
     access_obligations: gpd.GeoDataFrame
@@ -220,13 +221,17 @@ def compile_network(
         accepted, columns=connection_columns, geometry="geometry", crs=crs
     )
     official_road_classification = source.get("official_road_classification")
-    urban_spines, urban_classification_unknowns, low_traffic_areas = (
-        derive_urban_structure(
+    urban = derive_urban_structure(
         places,
         source["network"],
         official_road_classification,
-        )
+        context,
+        source.get("observed_through_traffic"),
     )
+    urban_spines = urban.spines
+    urban_classification_unknowns = urban.classification_unknowns
+    low_traffic_areas = urban.low_traffic_areas
+    low_traffic_area_portals = urban.low_traffic_area_portals
     urban_classification_status = (
         UrbanClassificationStatus.GOVERNED_OFFICIAL
         if official_road_classification is not None
@@ -368,6 +373,26 @@ def compile_network(
                 else TrafficLight.RED
             ),
             "ncn_kept_as_permeability_evidence": TrafficLight.GREEN,
+            "candidate_low_traffic_areas": (
+                TrafficLight.GREEN
+                if not low_traffic_areas.empty
+                else TrafficLight.GREY
+            ),
+            "stable_named_area_portals": (
+                TrafficLight.GREEN
+                if _candidate_area_portals_complete(
+                    low_traffic_areas, low_traffic_area_portals
+                )
+                else TrafficLight.GREY
+                if low_traffic_areas.empty
+                else TrafficLight.RED
+            ),
+            "area_permeability_without_centreline": (
+                TrafficLight.GREEN
+                if set(low_traffic_areas.get("permeability_representation", []))
+                <= {"area-no-internal-centreline"}
+                else TrafficLight.RED
+            ),
         },
         "atm_comparison": {"compared": TrafficLight.GREY},
     }
@@ -382,6 +407,7 @@ def compile_network(
         urban_classification_unknowns=urban_classification_unknowns,
         urban_classification_status=urban_classification_status,
         low_traffic_areas=low_traffic_areas,
+        low_traffic_area_portals=low_traffic_area_portals,
         crossing_warnings=crossing_warnings,
         strategic_spines=strategic_spines,
         access_obligations=access_obligations,
@@ -403,6 +429,17 @@ def compile_network(
         cache_misses=cache_misses,
         superseded_hypotheses=len(superseded),
     )
+
+
+def _candidate_area_portals_complete(
+    areas: gpd.GeoDataFrame,
+    portals: gpd.GeoDataFrame,
+) -> bool:
+    if areas.empty:
+        return False
+    expected = areas.set_index("structure_id")["portal_count"].astype(int).to_dict()
+    actual = portals.groupby("area_id").size().to_dict() if not portals.empty else {}
+    return expected == actual and all(str(name).strip() for name in portals.get("name", []))
 
 
 def _network_place_attachments(

@@ -52,6 +52,10 @@ _Avoid_: single route, Community boundary, guaranteed LTN
 A proposed Low-Traffic Area inferred from a connected unclassified-street fabric enclosed by Urban Main-Road Spines and, where necessary, non-road settlement edges. Existing through traffic creates an intervention need rather than turning an internal street into a spine, and the area does not claim that low-traffic conditions already exist.
 _Avoid_: existing LTN, administrative neighbourhood, quiet-road assumption
 
+**Low-Traffic Area Portal**:
+A stable named point where continuous internal low-traffic street or path fabric actually meets a qualifying Circulation Boundary of a Candidate Low-Traffic Area. It supports area permeability and School access without asserting a preferred internal centreline and is distinct from a Community Portal.
+_Avoid_: Community Portal, approximate nearest point, selected residential route
+
 **Backbone-and-Access Network**:
 A delivery-led network structure in which continuous Strategic Spines provide shared routes, selected Cross-Spine Connectors provide transverse routes, and Communities and Schools reach them through bounded access. It avoids a dense web of repeated point-to-point routes.
 _Avoid_: pairwise network, nearest-neighbour network, spider's web

@@ -13,7 +13,11 @@ from shapely.geometry import LineString
 
 from satn import compile
 from satn.constants import DISCLAIMER
-from satn.models import CouncilConfig, OfficialRoadClassificationConfig
+from satn.models import (
+    CouncilConfig,
+    ObservedThroughTrafficConfig,
+    OfficialRoadClassificationConfig,
+)
 from satn.sources import snapshot
 
 PROJECT = Path(__file__).parents[1]
@@ -52,7 +56,7 @@ def prepared_governed_urban_config(tmp_path: Path) -> CouncilConfig:
             {
                 "road_id": f"official-{classification}",
                 "classification": classification,
-                "geometry": LineString([(longitude, 51.395), (longitude, 51.43)]),
+                "geometry": LineString([(longitude, 51.4), (longitude, 51.412)]),
             }
             for classification, longitude in (
                 ("A road", -2.49),
@@ -61,14 +65,38 @@ def prepared_governed_urban_config(tmp_path: Path) -> CouncilConfig:
                 ("Unclassified", -2.475),
                 ("", -2.465),
             )
+        ]
+        + [
+            {
+                "road_id": f"official-a-boundary-{position}",
+                "classification": "A road",
+                "geometry": LineString([(-2.49, latitude), (-2.48, latitude)]),
+            }
+            for position, latitude in (("south", 51.4), ("north", 51.412))
         ],
         crs=4326,
     ).to_file(classification_path, driver="GeoJSON")
+    observed_traffic_path = fixture / "source" / "observed-through-traffic.geojson"
+    gpd.GeoDataFrame(
+        [
+            {
+                "id": "traffic-study-1",
+                "geometry": LineString([(-2.491, 51.406), (-2.481, 51.412)]),
+            }
+        ],
+        crs=4326,
+    ).to_file(observed_traffic_path, driver="GeoJSON")
     config = CouncilConfig.from_yaml(fixture / "council.yaml")
     config.source.official_road_classification = OfficialRoadClassificationConfig(
         path=classification_path,
         source_id="tiny-council-highways",
         effective_date="2026-04-01",
+        licence="Open Government Licence v3.0",
+    )
+    config.source.observed_through_traffic = ObservedThroughTrafficConfig(
+        path=observed_traffic_path,
+        source_id="tiny-council-traffic-study",
+        effective_date="2026-03-01",
         licence="Open Government Licence v3.0",
     )
     snapshot(config)
@@ -109,9 +137,7 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
 
     review = result.artifacts["review_map"].parent
     expected = {
-        f"review-map/{item.relative_to(review)}"
-        for item in review.rglob("*")
-        if item.is_file()
+        f"review-map/{item.relative_to(review)}" for item in review.rglob("*") if item.is_file()
     }
     with zipfile.ZipFile(result.artifacts["review_zip"]) as archive:
         assert set(archive.namelist()) == expected
@@ -160,20 +186,29 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     classification_unknowns = [
         feature
         for feature in network["features"]
-        if feature["properties"]["feature_type"]
-        == "urban-classification-unknown"
+        if feature["properties"]["feature_type"] == "urban-classification-unknown"
+    ]
+    candidate_areas = [
+        feature
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "low-traffic-area"
+    ]
+    area_portals = [
+        feature
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "low-traffic-area-portal"
     ]
 
     assert network["urban_classification_status"] == "explicit-unknown"
     assert run["urban_classification_status"] == "explicit-unknown"
-    assert run["layer_counts"]["urban_spines"] == 3
+    assert run["layer_counts"]["urban_spines"] == 5
     assert run["layer_counts"]["urban_classification_unknowns"] == 1
     assert {feature["properties"]["official_classification"] for feature in urban_spines} == {
         "a-road",
         "b-road",
         "classified-unnumbered",
     }
-    assert len({feature["id"] for feature in urban_spines}) == 3
+    assert len({feature["id"] for feature in urban_spines}) == 5
     assert all(feature["id"].startswith("urban-spine-") for feature in urban_spines)
     assert all(
         feature["properties"]["source_id"] == "tiny-council-highways"
@@ -182,16 +217,47 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
         for feature in urban_spines
     )
     assert len(classification_unknowns) == 1
-    assert classification_unknowns[0]["properties"]["classification_status"] == (
-        "explicit-unknown"
+    assert classification_unknowns[0]["properties"]["classification_status"] == ("explicit-unknown")
+    assert len(candidate_areas) == 1
+    assert candidate_areas[0]["properties"]["status"] == "candidate"
+    assert candidate_areas[0]["properties"]["intervention_need"] == ("observed-through-traffic")
+    assert json.loads(
+        candidate_areas[0]["properties"]["observed_through_traffic_evidence_ids"]
+    ) == ["traffic-study-1"]
+    assert json.loads(candidate_areas[0]["properties"]["observed_through_traffic_source_ids"]) == [
+        "tiny-council-traffic-study"
+    ]
+    assert candidate_areas[0]["properties"]["permeability_representation"] == (
+        "area-no-internal-centreline"
     )
+    assert len(area_portals) == candidate_areas[0]["properties"]["portal_count"]
+    assert all(
+        portal["id"] == portal["properties"]["portal_id"]
+        and portal["id"].startswith("low-traffic-area-portal-")
+        for portal in area_portals
+    )
+    assert {portal["properties"]["area_id"] for portal in area_portals} == {
+        candidate_areas[0]["id"]
+    }
     assert len(ncn_evidence) == 1
     assert ncn_evidence[0]["id"] == "ncn-fixture"
     assert ncn_evidence[0]["properties"]["network_scope"] == "urban"
     published_layers = set(gpd.list_layers(result.artifacts["geopackage"])["name"])
-    assert {"urban_spines", "urban_classification_unknowns"} <= published_layers
+    assert {
+        "urban_spines",
+        "urban_classification_unknowns",
+        "candidate_low_traffic_areas",
+        "low_traffic_area_portals",
+    } <= published_layers
+    published_portals = gpd.read_file(
+        result.artifacts["geopackage"], layer="low_traffic_area_portals"
+    )
+    assert {portal["id"] for portal in area_portals} == set(published_portals["portal_id"])
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
     assert "Urban Main-Road Spines" in review_html
     assert "not automatically a Circulation Boundary" in review_html
+    assert "not an existing LTN" in review_html
+    assert "no preferred residential cycling centreline" in review_html
     assert '"network_scope"], "urban"' in review_js
+    assert '"low-traffic-area-portal"].includes' in review_js

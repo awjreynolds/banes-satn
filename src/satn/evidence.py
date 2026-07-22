@@ -9,10 +9,12 @@ from collections import Counter
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString, MultiLineString, Point
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 from shapely.ops import linemerge
 
 from satn.models import NetworkScope
+
+SUBSTANTIAL_CIRCULATION_BOUNDARY_M = 250.0
 
 CONTEXT_COLUMNS = [
     "evidence_id",
@@ -39,15 +41,16 @@ def derive_context_layers(
     network: gpd.GeoDataFrame,
     ncn_features: gpd.GeoDataFrame | None = None,
     facilities: gpd.GeoDataFrame | None = None,
+    circulation_boundaries: gpd.GeoDataFrame | None = None,
 ) -> gpd.GeoDataFrame:
     """Build the map hierarchy from OSM road, route and amenity evidence."""
     frames = [derive_a_road_spines(network)]
     if ncn_features is not None and not ncn_features.empty:
         frames.append(derive_ncn_routes(ncn_features, network.crs))
     if facilities is not None and not facilities.empty:
-        frames.append(
-            derive_facilities(facilities, network, network.crs)
-        )
+        frames.append(derive_facilities(facilities, network, network.crs))
+    if circulation_boundaries is not None and not circulation_boundaries.empty:
+        frames.append(derive_circulation_boundaries(circulation_boundaries, network.crs))
     populated = [frame for frame in frames if not frame.empty]
     if not populated:
         return empty_context(network.crs)
@@ -168,6 +171,85 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
     return _frame(rows, target_crs)
 
 
+def derive_circulation_boundaries(
+    features: gpd.GeoDataFrame,
+    target_crs: object,
+) -> gpd.GeoDataFrame:
+    """Admit only stable physical edges that can bound urban circulation areas."""
+    rows: list[dict[str, object]] = []
+    built_up_features: list[tuple[str, object]] = []
+    open_land_geometries: list[object] = []
+    for index, feature in features.to_crs(target_crs).iterrows():
+        waterway = (_text(feature.get("waterway")) or "").lower()
+        railway = (_text(feature.get("railway")) or "").lower()
+        landuse = (_text(feature.get("landuse")) or "").lower()
+        natural = (_text(feature.get("natural")) or "").lower()
+        tunnel = (_text(feature.get("tunnel")) or "").lower()
+        if landuse in {"residential", "commercial", "industrial", "retail"} and isinstance(
+            feature.geometry, (Polygon, MultiPolygon)
+        ):
+            built_up_features.append((_source_id(feature, index), feature.geometry))
+            continue
+        if (
+            landuse in {"farmland", "meadow", "grass", "forest", "recreation_ground"}
+            or natural in {"wood", "heath", "scrub", "grassland"}
+        ) and isinstance(feature.geometry, (Polygon, MultiPolygon)):
+            open_land_geometries.append(feature.geometry)
+            continue
+        category = (
+            waterway
+            if waterway in {"river", "canal"} and tunnel not in {"yes", "culvert"}
+            else "railway"
+            if railway == "rail" and tunnel not in {"yes", "building_passage"}
+            else None
+        )
+        if category is None:
+            continue
+        geometry = feature.geometry
+        if isinstance(geometry, (Polygon, MultiPolygon)):
+            geometry = geometry.boundary
+        for position, line in enumerate(continuous_linework(geometry)):
+            if not _is_substantial_circulation_boundary(line, target_crs):
+                continue
+            source_id = _source_id(feature, index)
+            part_id = source_id if position == 0 else f"{source_id}-{position + 1}"
+            name = _text(feature.get("name")) or f"Unnamed {category} boundary"
+            rows.append(
+                _row(
+                    "circulation-boundary",
+                    part_id,
+                    name,
+                    category,
+                    source_id,
+                    line,
+                )
+            )
+    if built_up_features and open_land_geometries:
+        open_land = gpd.GeoSeries(open_land_geometries, crs=target_crs).union_all()
+        for source_id, geometry in sorted(built_up_features, key=lambda value: value[0]):
+            verified_edge = geometry.boundary.intersection(open_land)
+            for position, line in enumerate(continuous_linework(verified_edge)):
+                identity = hashlib.sha256(
+                    f"{source_id}:{line.wkb_hex}".encode()
+                ).hexdigest()[:12]
+                rows.append(
+                    _row(
+                        "circulation-boundary",
+                        f"built-up-edge-{identity}-{position + 1}",
+                        "Mapped built-up edge adjoining open land",
+                        "built-up-edge",
+                        source_id,
+                        line,
+                    )
+                )
+    return _frame(rows, target_crs)
+
+
+def _is_substantial_circulation_boundary(geometry: LineString, crs: object) -> bool:
+    projected = gpd.GeoSeries([geometry], crs=crs).to_crs(27700)
+    return bool(projected.iloc[0].length >= SUBSTANTIAL_CIRCULATION_BOUNDARY_M)
+
+
 def derive_facilities(
     features: gpd.GeoDataFrame,
     network: gpd.GeoDataFrame,
@@ -192,14 +274,12 @@ def derive_facilities(
         point = feature.geometry.representative_point()
         name = _text(feature.get("name"))
         if amenity in {"school", "college", "university"}:
-            access_point, access_status, access_source_id, access_rationale = (
-                _school_access_point(
-                    projected_source.iloc[position],
-                    access_candidates,
-                    network_linework,
-                    target_crs,
-                    school_source_id=source_id,
-                )
+            access_point, access_status, access_source_id, access_rationale = _school_access_point(
+                projected_source.iloc[position],
+                access_candidates,
+                network_linework,
+                target_crs,
+                school_source_id=source_id,
             )
             rows.append(
                 _row(
@@ -265,9 +345,7 @@ def _school_access_point(
             and school_geometry.buffer(3).covers(point)
             and boundary.distance(point) <= 5
         )
-        adjoining_network = (
-            network_linework is not None and network_linework.distance(point) <= 20
-        )
+        adjoining_network = network_linework is not None and network_linework.distance(point) <= 20
         if not adjoining_network or not (explicitly_associated or on_site_boundary):
             continue
         distance_m = float(boundary.distance(point))
