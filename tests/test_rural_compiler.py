@@ -151,7 +151,7 @@ def test_bidirectionality_records_reverse_edges_on_the_selected_corridor() -> No
     assert option.reverse_corridor_share == 1
 
 
-def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> None:
+def test_peer_to_peer_nominations_are_not_generated_without_spine_evidence() -> None:
     places = gpd.GeoDataFrame(
         [
             {
@@ -196,14 +196,10 @@ def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> Non
         FakeAgentRuntime(),
     )
 
-    pairs = {
-        tuple(sorted((row.from_place, row.to_place))) for _, row in compiled.connections.iterrows()
-    }
-    assert pairs == {("a", "b"), ("b", "c"), ("a", "c")}
-    assert len(compiled.connections) == len(pairs)
-    assert "amber" in set(compiled.connections["criterion_distance"])
-    assert set(compiled.connections["criterion_continuity"]) == {"green"}
-    assert compiled.criteria["network"]["internal_termini"] == "green"
+    assert compiled.connections.empty
+    assert compiled.spine_access_connections.empty
+    assert len(compiled.gaps) == len(places)
+    assert set(compiled.access_obligations["service_status"]) == {"network-gap"}
 
 
 def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:
@@ -248,12 +244,11 @@ def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:
     )
 
     assert compiled.connections.empty
-    assert len(compiled.gaps) == 1
-    gap = compiled.gaps.iloc[0]
-    assert gap.geometry.geom_type == "MultiPoint"
-    assert gap.criterion_continuity == "red"
-    assert gap.classification == "network-gap"
-    assert json.loads(gap.alignment_options) == []
+    assert len(compiled.gaps) == 2
+    assert set(compiled.gaps.geometry.geom_type) == {"MultiPoint"}
+    assert set(compiled.gaps["criterion_continuity"]) == {"red"}
+    assert set(compiled.gaps["classification"]) == {"network-gap"}
+    assert all(json.loads(value) == [] for value in compiled.gaps["alignment_options"])
 
 
 def test_disconnected_spine_evidence_cannot_become_a_validated_access() -> None:

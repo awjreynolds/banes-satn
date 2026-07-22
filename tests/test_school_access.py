@@ -40,7 +40,7 @@ def test_school_evidence_prefers_mapped_entrances_and_records_fallback_state() -
                 "osmid": "secondary-road",
                 "highway": "unclassified",
                 "geometry": LineString([(0.019, 0), (0.023, 0)]),
-            }
+            },
         ]
     )
     facilities = frame(
@@ -127,9 +127,7 @@ def test_school_evidence_prefers_mapped_entrances_and_records_fallback_state() -
 
     ordinary_schools = schools[schools["category"] == "school"]
     assert set(
-        ordinary_schools.loc[
-            ordinary_schools["school_obligation_eligible"], "school_kind"
-        ]
+        ordinary_schools.loc[ordinary_schools["school_obligation_eligible"], "school_kind"]
     ) == {
         "all-through",
         "primary",
@@ -174,9 +172,11 @@ def test_school_entrance_proximity_without_boundary_and_path_evidence_is_not_map
         ]
     )
 
-    school = derive_context_layers(network, facilities=facilities).query(
-        "feature_type == 'school'"
-    ).iloc[0]
+    school = (
+        derive_context_layers(network, facilities=facilities)
+        .query("feature_type == 'school'")
+        .iloc[0]
+    )
 
     assert school["access_point_status"] == "inferred"
     assert school["access_point_source_id"] is None
@@ -304,13 +304,7 @@ def school_source() -> dict[str, gpd.GeoDataFrame]:
             ]
         ),
         "boundary": frame(
-            [
-                {
-                    "geometry": Polygon(
-                        [(-0.01, -0.01), (0.07, -0.01), (0.07, 0.02), (-0.01, 0.02)]
-                    )
-                }
-            ]
+            [{"geometry": Polygon([(-0.01, -0.01), (0.07, -0.01), (0.07, 0.02), (-0.01, 0.02)])}]
         ),
     }
 
@@ -388,9 +382,7 @@ def test_school_attachment_uses_at_most_one_aggregate_graph_search(
 
 def test_school_access_point_beyond_tight_graph_bound_is_a_gap() -> None:
     source = school_source()
-    school_index = source["context"].index[
-        source["context"]["evidence_id"] == "mapped-school"
-    ][0]
+    school_index = source["context"].index[source["context"]["evidence_id"] == "mapped-school"][0]
     source["context"].loc[school_index, "geometry"] = Point(0.02, 0.0003)
     source["context"] = source["context"][
         source["context"]["evidence_id"] != "unresolved-school"
@@ -407,9 +399,7 @@ def test_school_access_point_beyond_tight_graph_bound_is_a_gap() -> None:
 
 def test_school_access_point_on_long_edge_routes_from_the_edge_interior() -> None:
     source = school_source()
-    school_index = source["context"].index[
-        source["context"]["evidence_id"] == "mapped-school"
-    ][0]
+    school_index = source["context"].index[source["context"]["evidence_id"] == "mapped-school"][0]
     source["context"].loc[school_index, "geometry"] = Point(0.03, 0)
     source["context"] = source["context"][
         source["context"]["evidence_id"] != "unresolved-school"
@@ -422,12 +412,8 @@ def test_school_access_point_on_long_edge_routes_from_the_edge_interior() -> Non
     ].iloc[0]
     assert connection["distance_km"] == 0
     assert connection["community_attachment_distance_m"] < 1
-    assert load_wkt(connection["community_attachment_point"]).x == pytest.approx(
-        0.03, abs=1e-6
-    )
-    assert load_wkt(connection["target_attachment_point"]).x == pytest.approx(
-        0.03, abs=1e-6
-    )
+    assert load_wkt(connection["community_attachment_point"]).x == pytest.approx(0.03, abs=1e-6)
+    assert load_wkt(connection["target_attachment_point"]).x == pytest.approx(0.03, abs=1e-6)
     assert connection["parent_role"] == "spine-access-connection"
 
 
@@ -486,9 +472,7 @@ def test_rejected_direct_frontier_falls_through_to_next_direct_frontier() -> Non
             }
         ]
     )
-    empty = gpd.GeoDataFrame(
-        columns=["place_id", "geometry"], geometry="geometry", crs=4326
-    )
+    empty = gpd.GeoDataFrame(columns=["place_id", "geometry"], geometry="geometry", crs=4326)
     runtime = FakeAgentRuntime(
         {
             AgentRole.SYNTHESISER: [
@@ -545,19 +529,13 @@ def test_configured_strategic_destination_participates_in_the_network() -> None:
     compiled = compile_network(config(), source, FakeAgentRuntime())
 
     assert "strategic-college" in set(compiled.places["place_id"])
-    assert any(
-        "strategic-college" in pair
-        for pair in compiled.connections[["from_place", "to_place"]].itertuples(
-            index=False, name=None
-        )
-    )
+    assert compiled.connections.empty
+    assert "strategic-college" not in set(compiled.access_obligations["place_id"])
 
 
 def test_inferred_school_access_is_served_provisionally_and_never_green_or_red() -> None:
     source = school_source()
-    school_index = source["context"].index[
-        source["context"]["evidence_id"] == "mapped-school"
-    ][0]
+    school_index = source["context"].index[source["context"]["evidence_id"] == "mapped-school"][0]
     source["context"].loc[school_index, "access_point_status"] = "inferred"
     source["context"].loc[school_index, "access_point_source_id"] = None
     source["context"].loc[school_index, "access_point_rationale"] = (
@@ -577,9 +555,7 @@ def test_inferred_school_access_is_served_provisionally_and_never_green_or_red()
 
 def test_mapped_but_unreachable_school_is_a_red_network_gap() -> None:
     source = school_source()
-    school_index = source["context"].index[
-        source["context"]["evidence_id"] == "mapped-school"
-    ][0]
+    school_index = source["context"].index[source["context"]["evidence_id"] == "mapped-school"][0]
     source["context"].loc[school_index, "geometry"] = Point(1, 1)
 
     compiled = compile_network(config(), source, FakeAgentRuntime())
@@ -634,9 +610,7 @@ def test_school_state_and_rationale_publish_to_spatial_and_accessible_map_artifa
     assert len(school_features) == 2
     by_id = {feature["properties"]["school_id"]: feature for feature in school_features}
     assert by_id["mapped-school"]["properties"]["access_point_status"] == "mapped"
-    assert "Mapped main entrance" in by_id["mapped-school"]["properties"][
-        "access_point_rationale"
-    ]
+    assert "Mapped main entrance" in by_id["mapped-school"]["properties"]["access_point_rationale"]
     assert by_id["unresolved-school"]["properties"]["service_status"] == "network-gap"
 
     access_layer = gpd.read_file(artifacts["geopackage"], layer="access_obligations")

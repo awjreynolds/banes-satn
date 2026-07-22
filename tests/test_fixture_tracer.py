@@ -39,7 +39,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     result = compile(config)
 
     assert result.status == "complete"
-    assert result.connections == 1
+    assert result.connections == 3
     assert result.gaps == 0
     assert result.criteria["connections"]["mandatory_checks"] == "green"
     assert result.agent_records[0].decision == "accept"
@@ -49,14 +49,14 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
         "run",
         "agents",
         "divergences",
+        "human_intervention_requests",
+        "backbone_comparison",
         "review_map",
         "review_zip",
         "pdf",
     }
     assert all(path.exists() for path in result.artifacts.values())
-    connections = gpd.read_file(result.artifacts["geopackage"], layer="connections")
-    assert list(connections["status"]) == ["validated"]
-    assert list(connections["classification"]) == ["low-traffic"]
+    assert "connections" not in set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
     assert {
         "strategic_spines",
         "access_obligations",
@@ -144,7 +144,8 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert DISCLAIMER in html
     assert 'id="feature-details"' in html
     assert 'id="layer-a-road-spines"' in html
-    assert 'id="layer-community-connections"' in html
+    assert 'id="layer-community-connections"' not in html
+    assert 'id="layer-spine-access-connections"' in html
     assert 'id="layer-ncn-routes"' in html
     assert 'id="layer-strategic-spines"' in html
     assert 'id="layer-spine-access-connections"' in html
@@ -157,13 +158,13 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert 'id="layer-retail-centres"' in html
     assert 'id="layer-healthcare"' in html
     data = (result.artifacts["review_map"].parent / "data.js").read_text()
-    assert '"id": "connection-' in data
+    assert '"id": "spine-access-' in data
     app = (result.artifacts["review_map"].parent / "assets" / "review-map.js").read_text()
     assert "button.dataset.featureId = feature.id" in app
     assert "Typed agent records" in html
     assert (result.artifacts["review_map"].parent / "agent-records.json").exists()
-    assert '"from_place_name": "Eastfield"' in data
-    assert '"to_place_name": "Westfield"' in data
+    assert '"place_name": "Eastfield"' in data
+    assert '"place_name": "Westfield"' in data
 
 
 def test_external_cli_snapshot_and_compile(tmp_path: Path) -> None:
@@ -184,7 +185,7 @@ def test_external_cli_snapshot_and_compile(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
     )
-    assert "complete: 1 connections, 0 gaps" in compile_run.stdout
+    assert "complete: 3 connections, 0 gaps" in compile_run.stdout
     assert (config_path.parent / "work" / "output" / "review-map.zip").exists()
 
 

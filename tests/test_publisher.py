@@ -112,27 +112,29 @@ def checksum(path: Path) -> str:
 
 def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     result = compile(prepared_config(tmp_path))
-    connections = gpd.read_file(result.artifacts["geopackage"], layer="connections")
+    connections = gpd.read_file(result.artifacts["geopackage"], layer="spine_access_connections")
     network = json.loads(result.artifacts["geojson"].read_text())
     run = json.loads(result.artifacts["run"].read_text())
     agents = json.loads(result.artifacts["agents"].read_text())
-    geojson_ids = {
-        feature["id"]
-        for feature in network["features"]
-        if feature["properties"]["feature_type"] == "connection"
-    }
+    assert "connections" not in set(gpd.list_layers(result.artifacts["geopackage"])["name"])
     gated_access_ids = {
         feature["id"]
         for feature in network["features"]
         if feature["properties"]["feature_type"]
         in {"spine-access-connection", "school-access-connection"}
     }
+    meeting_ids = {
+        feature["id"]
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "branch-meeting-connection"
+    }
 
-    assert geojson_ids == set(connections["connection_id"])
-    assert geojson_ids | gated_access_ids == {
+    assert gated_access_ids == set(connections["access_connection_id"])
+    assert gated_access_ids | meeting_ids == {
         record["connection_id"] for record in agents["records"]
     }
-    assert run["connection_count"] == len(geojson_ids)
+    assert run["connection_count"] == len(gated_access_ids | meeting_ids)
+    assert run["network_model"] == "backbone-outward"
     profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
     profile_features = [
         feature
@@ -141,30 +143,25 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     ]
     assert {feature["id"] for feature in profile_features} == set(profiles["profile_id"])
     assert set(profiles["evidence_status"]) == {"available", "evidence-unavailable"}
-    unavailable_count = int(
-        (profiles["evidence_status"] == "evidence-unavailable").sum()
-    )
+    unavailable_count = int((profiles["evidence_status"] == "evidence-unavailable").sum())
     assert run["topography"] == {
         "profile_count": len(profiles),
         "gradient_section_count": run["layer_counts"]["gradient_sections"],
         "evidence_unavailable_count": unavailable_count,
         "corroboration_count": 0,
-        "alternative_trigger_count": int(
-            connections["topography_alternative_trigger"].sum()
-        ),
+        "alternative_trigger_count": int(connections["topography_alternative_trigger"].sum()),
         "easier_alternative_selected_count": int(
-            (
-                connections["topography_comparison_status"]
-                == "easier-alternative-selected"
-            ).sum()
+            (connections["topography_comparison_status"] == "easier-alternative-selected").sum()
         ),
         "original_retained_count": int(
-            connections["topography_comparison_status"].isin(
+            connections["topography_comparison_status"]
+            .isin(
                 [
                     "original-retained-no-easier-option",
                     "strategic-spine-retained",
                 ]
-            ).sum()
+            )
+            .sum()
         ),
     }
     assert run["criteria"] == {
@@ -173,6 +170,12 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     }
 
     review = result.artifacts["review_map"].parent
+    assert (review / "backbone-comparison.json").read_bytes() == result.artifacts[
+        "backbone_comparison"
+    ].read_bytes()
+    review_script = (review / "assets" / "review-map.js").read_text(encoding="utf-8")
+    assert '"school-access-topography-warnings"' in review_script
+    assert '["connections", "topography-retained-warnings"' not in review_script
     expected = {
         f"review-map/{item.relative_to(review)}" for item in review.rglob("*") if item.is_file()
     }
@@ -294,14 +297,10 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert len(school_obligations) == 1
     urban_school = school_obligations[0]
     assert urban_school["geometry"]["type"] == "Point"
-    assert urban_school["properties"]["network_role"] == (
-        "urban-school-access-obligation"
-    )
+    assert urban_school["properties"]["network_role"] == ("urban-school-access-obligation")
     assert urban_school["properties"]["service_status"] == "served"
     assert urban_school["properties"]["low_traffic_area_id"] == candidate_areas[0]["id"]
-    assert urban_school["properties"]["portal_id"] in {
-        portal["id"] for portal in area_portals
-    }
+    assert urban_school["properties"]["portal_id"] in {portal["id"] for portal in area_portals}
     assert urban_school["properties"]["geometry_semantics"] == (
         "area-permeability-no-internal-centreline"
     )
@@ -312,9 +311,10 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert school_street["id"].startswith("school-street-assessment-")
     assert school_street["properties"]["assessment_status"] == "red"
     assert school_street["properties"]["assessment_label"] == "Unlikely"
-    assert "not scheme feasibility or calibrated probability" in school_street[
-        "properties"
-    ]["qualification"]
+    assert (
+        "not scheme feasibility or calibrated probability"
+        in school_street["properties"]["qualification"]
+    )
     assert all(
         "school-fixture"
         not in {
@@ -354,9 +354,7 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
         result.artifacts["geopackage"], layer="school_street_assessments"
     )
     assert list(published_school_streets["assessment_id"]) == [school_street["id"]]
-    assert list(published_school_streets["rationale"]) == [
-        school_street["properties"]["rationale"]
-    ]
+    assert list(published_school_streets["rationale"]) == [school_street["properties"]["rationale"]]
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
     assert "Urban Main-Road Spines" in review_html

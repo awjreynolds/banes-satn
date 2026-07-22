@@ -20,7 +20,7 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A2, A3, A4, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
-from shapely.geometry import MultiLineString, mapping
+from shapely.geometry import MultiLineString, mapping, shape
 
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
@@ -40,6 +40,7 @@ def publish(
         _write_geopackage(temporary / "network.gpkg", compiled)
         _write_geojson(temporary / "network.geojson", compiled)
         _write_json_records(temporary, config, compiled, run_id)
+        _write_backbone_comparison(temporary / "backbone-comparison.json", compiled, output)
         review = temporary / "review-map"
         review.mkdir()
         _write_review_map(review, config, compiled)
@@ -63,6 +64,8 @@ def publish(
         "run": output / "run.json",
         "agents": output / "agent-records.json",
         "divergences": output / "divergence-records.json",
+        "human_intervention_requests": output / "human-intervention-requests.json",
+        "backbone_comparison": output / "backbone-comparison.json",
         "review_map": output / "review-map" / "index.html",
         "review_zip": output / "review-map.zip",
         "pdf": output / "network-map.pdf",
@@ -78,7 +81,6 @@ def _metadata_frame(crs: object) -> gpd.GeoDataFrame:
 
 
 def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
-    compiled.connections.to_file(path, layer="connections", driver="GPKG")
     compiled.places.to_file(path, layer="places", driver="GPKG")
     if not compiled.strategic_spines.empty:
         compiled.strategic_spines.to_file(path, layer="strategic_spines", driver="GPKG")
@@ -89,13 +91,9 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
             path, layer="school_street_assessments", driver="GPKG"
         )
     if not compiled.topography_profiles.empty:
-        compiled.topography_profiles.to_file(
-            path, layer="topography_profiles", driver="GPKG"
-        )
+        compiled.topography_profiles.to_file(path, layer="topography_profiles", driver="GPKG")
     if not compiled.gradient_sections.empty:
-        compiled.gradient_sections.to_file(
-            path, layer="gradient_sections", driver="GPKG"
-        )
+        compiled.gradient_sections.to_file(path, layer="gradient_sections", driver="GPKG")
     if not compiled.elevation_corroboration.empty:
         compiled.elevation_corroboration.to_file(
             path, layer="elevation_corroboration", driver="GPKG"
@@ -111,9 +109,7 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
             path, layer="branch_meeting_connections", driver="GPKG"
         )
     if not compiled.cross_spine_connectors.empty:
-        compiled.cross_spine_connectors.to_file(
-            path, layer="cross_spine_connectors", driver="GPKG"
-        )
+        compiled.cross_spine_connectors.to_file(path, layer="cross_spine_connectors", driver="GPKG")
     if not compiled.gaps.empty:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
     if not compiled.urban_spines.empty:
@@ -271,8 +267,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "urban_classification_status": compiled.urban_classification_status,
         "elevation_evidence_status": compiled.elevation_evidence_status,
         "features": (
-            _features(compiled.connections, "connection")
-            + _features(compiled.strategic_spines, "strategic-spine")
+            _features(compiled.strategic_spines, "strategic-spine")
             + _features(community_obligations, "access-obligation")
             + _features(school_obligations, "school-access-obligation")
             + _features(other_access_connections, "spine-access-connection")
@@ -352,6 +347,11 @@ def _write_json_records(
     compiled: CompiledNetwork,
     run_id: str,
 ) -> None:
+    topography_comparisons = pd.concat(
+        [compiled.spine_access_connections, compiled.branch_meeting_connections],
+        ignore_index=True,
+        sort=False,
+    )
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
@@ -361,7 +361,8 @@ def _write_json_records(
             section: {criterion: status.value for criterion, status in values.items()}
             for section, values in compiled.criteria.items()
         },
-        "connection_count": len(compiled.connections),
+        "network_model": "backbone-outward",
+        "connection_count": compiled.connection_count,
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
         "urban_classification_status": compiled.urban_classification_status,
@@ -374,30 +375,32 @@ def _write_json_records(
             ),
             "corroboration_count": len(compiled.elevation_corroboration),
             "alternative_trigger_count": int(
-                compiled.connections.get(
+                topography_comparisons.get(
                     "topography_alternative_trigger",
-                    pd.Series(False, index=compiled.connections.index),
+                    pd.Series(False, index=topography_comparisons.index),
                 ).sum()
             ),
             "easier_alternative_selected_count": int(
                 (
-                    compiled.connections.get(
+                    topography_comparisons.get(
                         "topography_comparison_status",
-                        pd.Series("", index=compiled.connections.index),
+                        pd.Series("", index=topography_comparisons.index),
                     )
                     == "easier-alternative-selected"
                 ).sum()
             ),
             "original_retained_count": int(
-                compiled.connections.get(
+                topography_comparisons.get(
                     "topography_comparison_status",
-                    pd.Series("", index=compiled.connections.index),
-                ).isin(
+                    pd.Series("", index=topography_comparisons.index),
+                )
+                .isin(
                     [
                         "original-retained-no-easier-option",
                         "strategic-spine-retained",
                     ]
-                ).sum()
+                )
+                .sum()
             ),
         },
         "layer_counts": _layer_counts(compiled),
@@ -423,6 +426,129 @@ def _write_json_records(
     (output / "divergence-records.json").write_text(
         json.dumps(divergences, indent=2), encoding="utf-8"
     )
+    intervention_requests = {
+        "schema_version": SCHEMA_VERSION,
+        "disclaimer": DISCLAIMER,
+        "records": [
+            request.model_dump(mode="json") for request in compiled.human_intervention_requests
+        ],
+    }
+    (output / "human-intervention-requests.json").write_text(
+        json.dumps(intervention_requests, indent=2), encoding="utf-8"
+    )
+
+
+def _write_backbone_comparison(
+    path: Path,
+    compiled: CompiledNetwork,
+    previous_output: Path,
+) -> None:
+    """Compare the current model with any superseded publication, never as truth."""
+    current_lines = [
+        *compiled.spine_access_connections.geometry,
+        *compiled.branch_meeting_connections.geometry,
+    ]
+    current_length_m = _linework_length_m(current_lines, compiled.places.crs)
+    previous_path = previous_output / "network.geojson"
+    previous_features: list[dict[str, object]] = []
+    previous_model = "unavailable"
+    if previous_path.exists():
+        previous = json.loads(previous_path.read_text(encoding="utf-8"))
+        previous_types = {
+            feature.get("properties", {}).get("feature_type")
+            for feature in previous.get("features", [])
+        }
+        previous_model = (
+            "legacy-pairwise"
+            if "connection" in previous_types
+            else "backbone-outward"
+            if previous_types
+            & {
+                "spine-access-connection",
+                "school-access-connection",
+                "branch-meeting-connection",
+            }
+            else "unknown"
+        )
+        previous_features = [
+            feature
+            for feature in previous.get("features", [])
+            if feature.get("properties", {}).get("feature_type")
+            in {
+                "connection",
+                "spine-access-connection",
+                "school-access-connection",
+                "branch-meeting-connection",
+            }
+        ]
+    previous_lines = [
+        shape(feature["geometry"])
+        for feature in previous_features
+        if feature.get("geometry") is not None
+    ]
+    previous_length_m = _linework_length_m(previous_lines, 4326)
+    rationale_complete = sum(
+        bool(str(row.get("selection_reason", "")).strip())
+        for frame in (
+            compiled.spine_access_connections,
+            compiled.branch_meeting_connections,
+        )
+        for _, row in frame.iterrows()
+    )
+    typed_role_complete = sum(
+        bool(str(row.get("network_role", "")).strip())
+        for frame in (
+            compiled.spine_access_connections,
+            compiled.branch_meeting_connections,
+        )
+        for _, row in frame.iterrows()
+    )
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "disclaimer": DISCLAIMER,
+        "comparison_role": "superseded-reference-not-ground-truth",
+        "previous_publication_available": previous_path.exists(),
+        "current_backbone": {
+            "network_model": "backbone-outward",
+            "connection_count": compiled.connection_count,
+            "spine_access_connection_count": len(compiled.spine_access_connections),
+            "branch_meeting_connection_count": len(compiled.branch_meeting_connections),
+            "cross_spine_connector_count": len(compiled.cross_spine_connectors),
+            "served_obligation_count": int(
+                compiled.access_obligations["service_status"]
+                .isin(["served", "served-provisional"])
+                .sum()
+            ),
+            "network_gap_count": len(compiled.gaps),
+            "linework_length_m": round(current_length_m, 1),
+            "typed_role_count": typed_role_complete,
+            "selection_rationale_count": rationale_complete,
+        },
+        "superseded_pairwise_reference": {
+            "network_model": previous_model,
+            "connection_count": len(previous_features),
+            "linework_length_m": round(previous_length_m, 1),
+        },
+        "visual_noise": {
+            "connection_count_delta": compiled.connection_count - len(previous_features),
+            "linework_length_m_delta": round(current_length_m - previous_length_m, 1),
+        },
+        "explainability": {
+            "all_current_connections_have_typed_roles": (
+                typed_role_complete == compiled.connection_count
+            ),
+            "all_current_connections_have_selection_rationale": (
+                rationale_complete == compiled.connection_count
+            ),
+        },
+    }
+    path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def _linework_length_m(geometries: list[object], crs: object) -> float:
+    if not geometries:
+        return 0.0
+    return float(gpd.GeoSeries(geometries, crs=crs).to_crs(27700).length.sum())
 
 
 def _write_review_map(
@@ -515,6 +641,24 @@ def _write_review_map(
         ),
         encoding="utf-8",
     )
+    (review / "human-intervention-requests.json").write_text(
+        json.dumps(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "disclaimer": DISCLAIMER,
+                "records": [
+                    request.model_dump(mode="json")
+                    for request in compiled.human_intervention_requests
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    shutil.copy2(
+        review.parent / "backbone-comparison.json",
+        review / "backbone-comparison.json",
+    )
     (review / "README.txt").write_text(
         f"{DISCLAIMER}\n{OSM_ATTRIBUTION}\n{NCN_ATTRIBUTION}\n", encoding="utf-8"
     )
@@ -542,7 +686,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
     canvas.drawString(
         42,
         height - 50,
-        f"Experimental network review | {len(compiled.connections)} connections | "
+        f"Experimental backbone review | {compiled.connection_count} connections | "
         f"Compiled {datetime.now(UTC).date().isoformat()}",
     )
     _draw_legend(canvas, width, height, compiled.atm_reference is not None)
@@ -620,12 +764,10 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             )
             canvas.setDash()
 
-        connection_geometries: list[object] = []
-        for _, connection in compiled.connections.to_crs(3857).iterrows():
-            geometry = connection.geometry.intersection(clip_shape)
-            if connection["classification"] == "strategic-spine":
-                geometry = _offset_linework(geometry, 3.2 / scale)
-            connection_geometries.append(geometry)
+        connection_geometries = [
+            *_clipped_linework(compiled.spine_access_connections, clip_shape),
+            *_clipped_linework(compiled.branch_meeting_connections, clip_shape),
+        ]
         canvas.setStrokeColor(HexColor("#ffffff"))
         canvas.setLineWidth(3.4)
         _draw_line_collection(
@@ -683,7 +825,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
 def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool) -> None:
     entries = [
         ("#c56a1a", "A-road corridor"),
-        ("#08783f", "Community connection"),
+        ("#08783f", "Backbone access connection"),
         ("#187aa5", "National Cycle Network"),
         ("#f4b942", "Crossing warning"),
     ]
@@ -975,54 +1117,41 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "run.json",
         "agent-records.json",
         "divergence-records.json",
+        "human-intervention-requests.json",
+        "backbone-comparison.json",
         "review-map/index.html",
         "review-map/data.js",
         "review-map/assets/maplibre-gl.js",
         "review-map/assets/maplibre-gl.css",
         "review-map/assets/review-map.js",
         "review-map/assets/review-map.css",
+        "review-map/backbone-comparison.json",
         "review-map.zip",
         "network-map.pdf",
     )
     missing = [name for name in required if not (output / name).exists()]
     if missing:
         raise ValueError(f"publication incomplete: {', '.join(missing)}")
-    connections = gpd.read_file(output / "network.gpkg", layer="connections")
     metadata = gpd.read_file(output / "network.gpkg", layer="metadata")
     if set(metadata["disclaimer"]) != {DISCLAIMER}:
         raise ValueError("GeoPackage metadata disclaimer mismatch")
     geojson = json.loads((output / "network.geojson").read_text(encoding="utf-8"))
     if geojson.get("disclaimer") != DISCLAIMER:
         raise ValueError("GeoJSON disclaimer mismatch")
-    geojson_connection_ids = {
-        feature["id"]
-        for feature in geojson["features"]
-        if feature["properties"].get("feature_type") == "connection"
-    }
-    if geojson_connection_ids != set(connections["connection_id"]):
-        raise ValueError("connection identifiers differ between GeoPackage and GeoJSON")
-    connection_features = {
-        feature["id"]: feature["properties"]
-        for feature in geojson["features"]
-        if feature["properties"].get("feature_type") == "connection"
-    }
-    for _, connection in connections.iterrows():
-        properties = connection_features[str(connection["connection_id"])]
-        for field in (
-            "topography_alternative_trigger",
-            "topography_comparison_status",
-            "topography_comparison_rationale",
-            "topography_original_role",
-            "topography_selected_role",
-            "alignment_options",
-        ):
-            if not _artifact_values_equal(properties.get(field), connection[field]):
-                raise ValueError(
-                    f"connection {connection['connection_id']} differs for {field}"
-                )
     run = json.loads((output / "run.json").read_text(encoding="utf-8"))
-    if run.get("disclaimer") != DISCLAIMER or run.get("connection_count") != len(connections):
+    if run.get("disclaimer") != DISCLAIMER or run.get("network_model") != "backbone-outward":
         raise ValueError("run manifest does not describe the current publication")
+    authoritative_count = sum(
+        feature["properties"].get("feature_type")
+        in {
+            "spine-access-connection",
+            "school-access-connection",
+            "branch-meeting-connection",
+        }
+        for feature in geojson["features"]
+    )
+    if run.get("connection_count") != authoritative_count:
+        raise ValueError("authoritative connection count differs between artifacts")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
     layer_types = {
         "strategic_spines": ("strategic-spine",),
@@ -1089,11 +1218,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
                 "elevation_source_ids",
             ):
                 if not _artifact_values_equal(properties.get(field), row[field]):
-                    raise ValueError(
-                        f"Topography Profile {profile_id} differs for {field}"
-                    )
+                    raise ValueError(f"Topography Profile {profile_id} differs for {field}")
         generated_edge_types = {
-            "connection",
             "strategic-spine",
             "spine-access-connection",
             "school-access-connection",
@@ -1150,10 +1276,20 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             ):
                 if not _artifact_values_equal(feature["properties"].get(field), row[field]):
                     raise ValueError(f"Gradient Section {section_id} differs for {field}")
-    for filename in ("agent-records.json", "divergence-records.json"):
+    for filename in (
+        "agent-records.json",
+        "divergence-records.json",
+        "human-intervention-requests.json",
+    ):
         record_file = json.loads((output / filename).read_text(encoding="utf-8"))
         if record_file.get("disclaimer") != DISCLAIMER:
             raise ValueError(f"{filename} disclaimer mismatch")
+    comparison = json.loads((output / "backbone-comparison.json").read_text(encoding="utf-8"))
+    if (
+        comparison.get("disclaimer") != DISCLAIMER
+        or comparison.get("comparison_role") != "superseded-reference-not-ground-truth"
+    ):
+        raise ValueError("backbone comparison governance metadata mismatch")
     html = (output / "review-map" / "index.html").read_text(encoding="utf-8")
     if DISCLAIMER not in html:
         raise ValueError("review map disclaimer missing")
@@ -1162,7 +1298,6 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "layer-spine-access-connections",
         "layer-cross-spine-connectors",
         "layer-a-road-spines",
-        "layer-community-connections",
         "layer-ncn-routes",
         "layer-urban-spines",
         "layer-low-traffic-areas",

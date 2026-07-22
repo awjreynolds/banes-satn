@@ -32,14 +32,12 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         page.route("https://tile.openstreetmap.org/**", lambda route: route.abort())
         page.goto(result.artifacts["review_map"].as_uri())
         card = page.locator("#connection-list .connection").first
-        assert card.get_attribute("data-feature-id").startswith("connection-")
+        assert card.get_attribute("data-feature-id").startswith("spine-access-")
         card.hover()
         assert "Route role" in page.locator("#feature-details").inner_text()
         assert "Source identifiers" in page.locator("#feature-details").inner_text()
         assert "Topography comparison" in page.locator("#feature-details").inner_text()
-        assert "Topography comparison rationale" in page.locator(
-            "#feature-details"
-        ).inner_text()
+        assert "Topography comparison rationale" in page.locator("#feature-details").inner_text()
         card.click()
         assert card.get_attribute("aria-pressed") == "true"
         page.locator("h1").hover()
@@ -55,9 +53,11 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
 
         page.locator("#criteria-network").check()
         assert page.locator("#criteria-heading").inner_text() == "network criteria"
-        assert "connected graph" in page.locator("#criteria-list").inner_text()
-        page.locator("#layer-community-connections").uncheck()
-        assert not page.locator("#layer-community-connections").is_checked()
+        assert "authoritative model" in page.locator("#criteria-list").inner_text()
+        for checkbox in page.locator('input[type="checkbox"]').all():
+            described_by = checkbox.get_attribute("aria-describedby")
+            assert described_by
+            assert page.locator(f"#{described_by}").count() == 1
         assert not page.locator("#layer-schools").is_checked()
         school_legend = page.locator("#legend-schools")
         assert school_legend.is_hidden()
@@ -107,9 +107,7 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert "Amber — Needs Investigation" in school_street_legend.inner_text()
         assert "Red — Unlikely" in school_street_legend.inner_text()
         assert "Grey — Not Evaluated" in school_street_legend.inner_text()
-        school_street_card = page.locator(
-            '[data-feature-id^="school-street-assessment-"]'
-        )
+        school_street_card = page.locator('[data-feature-id^="school-street-assessment-"]')
         school_street_card.click()
         assessment_details = page.locator("#feature-details")
         assert "Assessment" in assessment_details.inner_text()
@@ -142,9 +140,7 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert "Topography Profile" in topography_details
         assert "Elevation Evidence" in topography_details
         assert "evidence-unavailable" in topography_details
-        gradient_card = page.locator(
-            '[data-feature-id^="gradient-section-"]'
-        ).first
+        gradient_card = page.locator('[data-feature-id^="gradient-section-"]').first
         gradient_card.press("Enter")
         gradient_details = page.locator("#feature-details").inner_text()
         assert "Gradient band" in gradient_details

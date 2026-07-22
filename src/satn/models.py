@@ -203,7 +203,6 @@ class CompilationConfig(BaseModel):
     max_connection_km: float = 15.0
     full: bool = False
     criteria_version: str = "1"
-    cache_dir: Path = Path(".satn-cache")
     agent: AgentConfig = Field(default_factory=AgentConfig)
     topography: TopographyConfig = Field(default_factory=TopographyConfig)
 
@@ -249,8 +248,6 @@ class CouncilConfig(BaseModel):
             national_elevation.path = (root / national_elevation.path).resolve()
         if not self.publication.output_dir.is_absolute():
             self.publication.output_dir = (root / self.publication.output_dir).resolve()
-        if not self.compilation.cache_dir.is_absolute():
-            self.compilation.cache_dir = (root / self.compilation.cache_dir).resolve()
         if self.atm.path is not None and not self.atm.path.is_absolute():
             self.atm.path = (root / self.atm.path).resolve()
         return self
@@ -285,6 +282,17 @@ class DivergenceRecord(BaseModel):
     explanation: str
     resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
     resolved: bool = False
+
+
+class HumanInterventionRequest(BaseModel):
+    request_id: str
+    connection_id: str
+    reason: str
+    attempted_revisions: list[dict[str, Any]] = Field(default_factory=list)
+    unresolved_findings: list[dict[str, Any]] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+    choices: list[str] = Field(default_factory=list)
+    smallest_human_input: str
 
 
 class CompilationResult(BaseModel):

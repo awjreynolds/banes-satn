@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import geopandas as gpd
+import pandas as pd
 
 from satn.agents import (
     AgentRole,
@@ -72,11 +73,9 @@ def compare_atm(
     runtime: AgentRuntime,
     config: CouncilConfig,
 ) -> list[DivergenceRecord]:
-    connections = compiled.connections.to_crs(27700)
+    connections = _authoritative_connections(compiled).to_crs(27700)
     reference = atm.to_crs(27700).copy().reset_index(drop=False)
-    reference["_atm_id"] = [
-        _feature_id(row, index) for index, row in reference.iterrows()
-    ]
+    reference["_atm_id"] = [_feature_id(row, index) for index, row in reference.iterrows()]
     reference_buffer = reference.geometry.buffer(config.atm.match_buffer_m).union_all()
     records: list[DivergenceRecord] = []
     matched_atm_ids: set[str] = set()
@@ -110,6 +109,20 @@ def compare_atm(
             continue
         records.append(_assess(runtime, f"atm:{atm_id}", "omission", [atm_id], 0.0))
     return records
+
+
+def _authoritative_connections(compiled: CompiledNetwork) -> gpd.GeoDataFrame:
+    access = compiled.spine_access_connections[["access_connection_id", "geometry"]].rename(
+        columns={"access_connection_id": "connection_id"}
+    )
+    meetings = compiled.branch_meeting_connections[["meeting_connection_id", "geometry"]].rename(
+        columns={"meeting_connection_id": "connection_id"}
+    )
+    return gpd.GeoDataFrame(
+        pd.concat([access, meetings], ignore_index=True),
+        geometry="geometry",
+        crs=compiled.places.crs,
+    )
 
 
 def _assess(

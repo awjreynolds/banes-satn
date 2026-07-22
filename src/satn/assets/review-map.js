@@ -79,7 +79,7 @@
     panel.replaceChildren();
     const heading = document.createElement("h2");
     heading.id = "details-heading";
-    const isConnection = ["connection", "gap", "spine-access-connection", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector"].includes(properties.feature_type);
+    const isConnection = ["gap", "spine-access-connection", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector"].includes(properties.feature_type);
     heading.textContent = isConnection
       ? `${value(properties.from_place_name, properties.school_name || properties.place_name || properties.community_name || properties.from_root_spine_name || properties.from_place)} → ${value(properties.to_place_name, properties.parent_target_name || properties.spine_name || properties.to_root_spine_name || properties.to_place)}`
       : value(properties.name, properties.school_name || properties.feature_type.replaceAll("-", " "));
@@ -223,7 +223,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal", "topography-profile", "gradient-section"].includes(feature.properties.feature_type))
+      .filter((feature) => ["gap", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal", "topography-profile", "gradient-section"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -294,15 +294,14 @@
     });
     const groups = {
       "layer-strategic-spines": ["strategic-spines"],
-      "layer-spine-access-connections": ["spine-access-connections", "access-obligations"],
-      "layer-cross-spine-connectors": ["cross-spine-connectors", "branch-meeting-connections"],
+      "layer-spine-access-connections": ["spine-access-connections", "access-obligations", "spine-access-topography-warnings"],
+      "layer-cross-spine-connectors": ["cross-spine-connectors", "branch-meeting-connections", "branch-meeting-topography-warnings"],
       "layer-a-road-spines": ["a-road-spines"],
-      "layer-community-connections": ["connections", "topography-retained-warnings"],
       "layer-ncn-routes": ["urban-ncn-evidence"],
       "layer-urban-spines": ["urban-spines", "urban-classification-unknowns"],
       "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-portals"],
       "layer-places": ["places"],
-      "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-gaps"],
+      "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-topography-warnings", "school-access-gaps"],
       "layer-school-streets": ["school-street-assessments"],
       "layer-gradient-sections": ["gradient-sections", "topography-unavailable"],
       "layer-retail-centres": ["retail-centres"],
@@ -362,6 +361,9 @@
     map.addLayer({ id: "school-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "school-access-connection"], layout: { visibility: "none" }, paint: { "line-color": "#7d3c98", "line-width": 6, "line-dasharray": [1, 1] } });
     map.addLayer({ id: "cross-spine-connectors", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "cross-spine-connector"], paint: { "line-color": "#8e44ad", "line-width": 8, "line-opacity": .72 } });
     map.addLayer({ id: "branch-meeting-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "branch-meeting-connection"], paint: { "line-color": "#f39c12", "line-width": 7, "line-dasharray": [2, 1] } });
+    map.addLayer({ id: "spine-access-topography-warnings", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "spine-access-connection"], ["in", ["get", "topography_comparison_status"], ["literal", ["original-retained-no-easier-option", "strategic-spine-retained"]]]], paint: { "line-color": "#f39c12", "line-width": 9, "line-dasharray": [1, 1], "line-opacity": .95 } });
+    map.addLayer({ id: "school-access-topography-warnings", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "school-access-connection"], ["in", ["get", "topography_comparison_status"], ["literal", ["original-retained-no-easier-option", "strategic-spine-retained"]]]], layout: { visibility: "none" }, paint: { "line-color": "#f39c12", "line-width": 9, "line-dasharray": [1, 1], "line-opacity": .95 } });
+    map.addLayer({ id: "branch-meeting-topography-warnings", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "branch-meeting-connection"], ["in", ["get", "topography_comparison_status"], ["literal", ["original-retained-no-easier-option", "strategic-spine-retained"]]]], paint: { "line-color": "#f39c12", "line-width": 9, "line-dasharray": [1, 1], "line-opacity": .95 } });
     map.addLayer({ id: "access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "access-obligation"], paint: { "circle-color": "#16a085", "circle-radius": 8, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "service_status"], "served", "#1e8449", "served-provisional", "#f39c12", "network-gap", ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "#c0392b"], "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
@@ -373,8 +375,6 @@
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
     map.addLayer({ id: "urban-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-spine"], paint: { "line-color": ["match", ["get", "official_classification"], "a-road", "#a04000", "b-road", "#8e44ad", "classified-unnumbered", "#5b2c6f", "#7f8c8d"], "line-width": 6 } });
     map.addLayer({ id: "urban-classification-unknowns", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-classification-unknown"], paint: { "line-color": "#7f8c8d", "line-width": 5, "line-dasharray": [1, 1] } });
-    map.addLayer({ id: "connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "connection"], paint: { "line-color": "#196f3d", "line-width": 5, "line-offset": ["case", ["==", ["get", "classification"], "strategic-spine"], 5, 0] } });
-    map.addLayer({ id: "topography-retained-warnings", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "connection"], ["in", ["get", "topography_comparison_status"], ["literal", ["original-retained-no-easier-option", "strategic-spine-retained"]]]], paint: { "line-color": "#f39c12", "line-width": 9, "line-dasharray": [1, 1], "line-opacity": .95 } });
     map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["all", ["==", ["get", "feature_type"], "school"], ["!=", ["get", "school_obligation_eligible"], true]], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "retail-centres", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "retail-centre"], layout: { visibility: "none" }, paint: { "circle-color": "#d35400", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "healthcare", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "healthcare"], layout: { visibility: "none" }, paint: { "circle-color": "#c0392b", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
@@ -388,7 +388,7 @@
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
     });
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
-    ["connections", "topography-retained-warnings", "spine-access-connections", "school-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
+    ["spine-access-connections", "school-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
       map.on("mousemove", layer, (event) => { if (!state.pinned) showDetails(event.features[0].id); });
       map.on("mouseleave", layer, clearTransient);
       map.on("click", layer, (event) => togglePin(event.features[0].id));

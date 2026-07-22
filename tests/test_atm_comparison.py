@@ -1,5 +1,3 @@
-# ruff: noqa: E501
-
 from __future__ import annotations
 
 import json
@@ -31,8 +29,14 @@ def prepared(tmp_path: Path) -> tuple[CouncilConfig, Path]:
     atm_path = fixture / "atm.geojson"
     gpd.GeoDataFrame(
         [
-            {"portal_feature_id": "atm-match", "geometry": LineString([(-2.5, 51.4), (-2.482, 51.412), (-2.46, 51.42)])},
-            {"portal_feature_id": "atm-omission", "geometry": LineString([(-2.6, 51.3), (-2.59, 51.31)])},
+            {
+                "portal_feature_id": "atm-match",
+                "geometry": LineString([(-2.5, 51.4), (-2.482, 51.412), (-2.46, 51.42)]),
+            },
+            {
+                "portal_feature_id": "atm-omission",
+                "geometry": LineString([(-2.6, 51.3), (-2.59, 51.31)]),
+            },
         ],
         crs=4326,
     ).to_file(atm_path, driver="GeoJSON")
@@ -52,27 +56,41 @@ def test_blind_comparison_is_independent_and_publication_is_lawful(tmp_path: Pat
 
     assert result.metadata["atm_mode"] == "blind"
     assert result.metadata["atm_geometry_included"] is False
-    assert result.metadata["divergence_counts"] == {"match": 1, "omission": 1}
+    assert result.metadata["divergence_counts"] == {
+        "addition": 1,
+        "match": 2,
+        "omission": 1,
+    }
     network = json.loads(result.artifacts["geojson"].read_text())
     assert "atm-reference" not in {f["properties"]["feature_type"] for f in network["features"]}
     assert "atm_reference" not in set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
     divergence = json.loads(result.artifacts["divergences"].read_text())
-    assert {record["status"] for record in divergence["records"]} == {"match", "omission"}
-    connection = gpd.read_file(result.artifacts["geopackage"], layer="connections").iloc[0]
-    assert not connection.selection_reason.startswith("ATM-seeded")
+    assert {record["status"] for record in divergence["records"]} == {
+        "addition",
+        "match",
+        "omission",
+    }
+    assert "connections" not in set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
 
 
-def test_seeded_mode_isolated_from_blind_cache_and_records_its_hypothesis(tmp_path: Path) -> None:
+def test_seeded_reference_cannot_replace_the_authoritative_backbone(tmp_path: Path) -> None:
     config, _ = prepared(tmp_path)
     blind = compile(config)
     config.atm.mode = "seeded"
 
     seeded = compile(config)
 
-    assert blind.metadata["cache"] == {"hits": 0, "misses": 1}
-    assert seeded.metadata["cache"] == {"hits": 0, "misses": 1}
-    connection = gpd.read_file(seeded.artifacts["geopackage"], layer="connections").iloc[0]
-    assert connection.selection_reason.startswith("ATM-seeded")
+    assert (
+        blind.metadata["cache"]
+        == seeded.metadata["cache"]
+        == {
+            "hits": 0,
+            "misses": 0,
+        }
+    )
+    assert blind.run_id != seeded.run_id
+    access = gpd.read_file(seeded.artifacts["geopackage"], layer="spine_access_connections")
+    assert not access["selection_reason"].str.startswith("ATM-seeded").any()
 
 
 def test_local_or_permitted_output_can_include_the_atm_overlay(tmp_path: Path) -> None:
@@ -92,9 +110,7 @@ def test_local_or_permitted_output_can_include_the_atm_overlay(tmp_path: Path) -
 
     assert local.metadata["atm_geometry_included"] is True
     assert "atm_reference" in set(pyogrio.list_layers(local.artifacts["geopackage"])[:, 0])
-    published_atm = gpd.read_file(
-        local.artifacts["geopackage"], layer="atm_reference"
-    )
+    published_atm = gpd.read_file(local.artifacts["geopackage"], layer="atm_reference")
     assert list(published_atm["source_fid"]) == [101, 102, 103]
     network = json.loads(local.artifacts["geojson"].read_text())
     assert "atm-reference" in {f["properties"]["feature_type"] for f in network["features"]}
@@ -104,7 +120,8 @@ def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> Non
     config, _ = prepared(tmp_path)
     source = load_snapshot(config)
     compiled = compile_network(config, source, FakeAgentRuntime())
-    route = compiled.connections.to_crs(27700).iloc[0].geometry
+    route = compiled.spine_access_connections.to_crs(27700)
+    route = route[route.length > 0].iloc[0].geometry
     midpoint = route.interpolate(0.5, normalized=True)
     partial = LineString([route.coords[0], (midpoint.x, midpoint.y)])
     partial_atm = gpd.GeoDataFrame(
@@ -113,7 +130,12 @@ def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> Non
 
     deviation = compare_atm(compiled, partial_atm, FakeAgentRuntime(), config)
     far_atm = gpd.GeoDataFrame(
-        [{"portal_feature_id": "far", "geometry": LineString([(500000, 100000), (501000, 100000)])}],
+        [
+            {
+                "portal_feature_id": "far",
+                "geometry": LineString([(500000, 100000), (501000, 100000)]),
+            }
+        ],
         crs=27700,
     )
     addition = compare_atm(compiled, far_atm, FakeAgentRuntime(), config)

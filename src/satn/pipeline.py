@@ -8,9 +8,9 @@ from collections import Counter
 from pathlib import Path
 
 from satn.agents import runtime_for
-from satn.atm import compare_atm, load_atm, source_fingerprint
-from satn.cache import ConnectionCache
+from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
+from satn.constants import SCHEMA_VERSION
 from satn.models import CompilationResult, CouncilConfig, TrafficLight
 from satn.publisher import publish
 from satn.sources import load_snapshot
@@ -22,20 +22,9 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     source = load_snapshot(council)
     runtime = runtime_for(council.compilation.agent)
     atm_reference = None
-    atm_seed = None
-    atm_hash = None
     if council.atm.enabled and council.atm.mode == "seeded":
         atm_reference = load_atm(council).to_crs(source["network"].crs)
-        atm_seed = atm_reference
-        atm_hash = source_fingerprint(council.atm.path)
-    cache = ConnectionCache(council, atm_fingerprint=atm_hash)
-    compiled = compile_network(
-        council,
-        source,
-        runtime,
-        cache=cache,
-        atm_seed=atm_seed,
-    )
+    compiled = compile_network(council, source, runtime)
     if council.atm.enabled:
         if council.atm.mode == "blind":
             atm_reference = load_atm(council).to_crs(source["network"].crs)
@@ -51,22 +40,13 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         {
             "council": council.council_id,
             "snapshot": council.source.snapshot_id,
+            "schema_version": SCHEMA_VERSION,
+            "criteria_version": council.compilation.criteria_version,
             "snapshot_manifest": hashlib.sha256(
                 (
                     council.source.snapshot_dir / council.source.snapshot_id / "snapshot.json"
                 ).read_bytes()
             ).hexdigest(),
-            "connections": sorted(
-                (
-                    row.connection_id,
-                    row.classification,
-                    row.topography_comparison_status,
-                    row.topography_comparison_rationale,
-                    row.alignment_options,
-                    row.geometry.wkb_hex,
-                )
-                for row in compiled.connections.itertuples()
-            ),
             "context": sorted(
                 evidence_id
                 for frame in (
@@ -243,19 +223,21 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         run_id=run_id,
         status=compiled.status,
         output_dir=council.publication.output_dir,
-        connections=len(compiled.connections),
+        connections=compiled.connection_count,
         gaps=len(compiled.gaps),
         artifacts=artifacts,
         criteria=compiled.criteria,
         agent_records=compiled.agent_records,
         metadata={
+            "network_model": "backbone-outward",
+            "human_intervention_requests": [
+                request.model_dump(mode="json") for request in compiled.human_intervention_requests
+            ],
             "network_units": compiled.network_units,
             "urban_classification_status": compiled.urban_classification_status,
             "elevation_evidence_status": compiled.elevation_evidence_status,
             "urban_spines": len(compiled.urban_spines),
-            "urban_classification_unknowns": len(
-                compiled.urban_classification_unknowns
-            ),
+            "urban_classification_unknowns": len(compiled.urban_classification_unknowns),
             "urban_spine_records": [
                 {
                     "structure_id": row.structure_id,
@@ -317,9 +299,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "school_access_obligations": int(
                 (compiled.access_obligations["obligation_kind"] == "school").sum()
             ),
-            "school_street_assessments": len(
-                compiled.school_street_assessments
-            ),
+            "school_street_assessments": len(compiled.school_street_assessments),
             "school_street_assessment_records": [
                 {
                     "assessment_id": row.assessment_id,
@@ -330,9 +310,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "rationale": row.rationale,
                     "qualification": row.qualification,
                     "access_point_status": row.access_point_status,
-                    "adjoining_road_classification": (
-                        row.adjoining_road_classification
-                    ),
+                    "adjoining_road_classification": (row.adjoining_road_classification),
                     "bus_access": row.bus_access,
                     "essential_access": row.essential_access,
                     "alternative_through_route": row.alternative_through_route,
@@ -347,19 +325,30 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "gradient_sections": len(compiled.gradient_sections),
             "topography_alternative_comparisons": [
                 {
-                    "connection_id": row.connection_id,
-                    "triggered": row.topography_alternative_trigger,
-                    "status": row.topography_comparison_status,
-                    "rationale": row.topography_comparison_rationale,
-                    "original_role": row.topography_original_role,
-                    "selected_role": row.topography_selected_role,
-                    "alignment_options": row.alignment_options,
+                    "connection_id": row[id_column],
+                    "connection_type": connection_type,
+                    "triggered": row["topography_alternative_trigger"],
+                    "status": row["topography_comparison_status"],
+                    "rationale": row["topography_comparison_rationale"],
+                    "original_role": row["topography_original_role"],
+                    "selected_role": row["topography_selected_role"],
+                    "alignment_options": row["alignment_options"],
                 }
-                for row in compiled.connections.itertuples()
+                for frame, id_column, connection_type in (
+                    (
+                        compiled.spine_access_connections,
+                        "access_connection_id",
+                        "spine-access-connection",
+                    ),
+                    (
+                        compiled.branch_meeting_connections,
+                        "meeting_connection_id",
+                        "branch-meeting-connection",
+                    ),
+                )
+                for _, row in frame.iterrows()
             ],
-            "elevation_corroboration_count": len(
-                compiled.elevation_corroboration
-            ),
+            "elevation_corroboration_count": len(compiled.elevation_corroboration),
             "topography_profile_records": [
                 {
                     "profile_id": row.profile_id,
@@ -372,9 +361,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "forward_descent_m": row.forward_descent_m,
                     "reverse_ascent_m": row.reverse_ascent_m,
                     "reverse_descent_m": row.reverse_descent_m,
-                    "steepest_sustained_gradient_pct": (
-                        row.steepest_sustained_gradient_pct
-                    ),
+                    "steepest_sustained_gradient_pct": (row.steepest_sustained_gradient_pct),
                     "steepest_sustained_gradient_rationale": (
                         row.steepest_sustained_gradient_rationale
                     ),

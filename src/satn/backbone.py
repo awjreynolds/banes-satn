@@ -19,9 +19,17 @@ from satn.models import (
     AccessPointStatus,
     AccessServiceStatus,
     AgentRecord,
+    TopographyConfig,
     TrafficLight,
 )
-from satn.routing import RoadGraph, RouteOption, stationary_route_option
+from satn.routing import (
+    RoadGraph,
+    RouteOption,
+    choose_alignment,
+    serialise_options,
+    stationary_route_option,
+)
+from satn.topography_alternatives import TopographyComparison, compare_alignment_topography
 
 MAX_OBLIGATION_ATTACHMENT_M = 2000.0
 MAX_SPINE_ATTACHMENT_M = 20.0
@@ -76,6 +84,12 @@ ACCESS_COLUMNS = [
     "provenance",
     "criterion_continuity",
     "criterion_bidirectional",
+    "topography_alternative_trigger",
+    "topography_comparison_status",
+    "topography_comparison_rationale",
+    "topography_original_role",
+    "topography_selected_role",
+    "alignment_options",
     "geometry",
 ]
 
@@ -117,6 +131,12 @@ MEETING_COLUMNS = [
     "criterion_continuity",
     "criterion_bidirectional",
     "criterion_distance",
+    "topography_alternative_trigger",
+    "topography_comparison_status",
+    "topography_comparison_rationale",
+    "topography_original_role",
+    "topography_selected_role",
+    "alignment_options",
     "geometry",
 ]
 
@@ -168,6 +188,11 @@ GAP_COLUMNS = [
     "criterion_continuity",
     "criterion_bidirectional",
     "criterion_distance",
+    "topography_alternative_trigger",
+    "topography_comparison_status",
+    "topography_comparison_rationale",
+    "topography_original_role",
+    "topography_selected_role",
     "geometry",
 ]
 
@@ -210,6 +235,8 @@ class _Candidate:
     place: pd.Series
     frontier: _Frontier
     option: RouteOption
+    options: tuple[RouteOption, ...]
+    topography: TopographyComparison | None
     start_node: str
     start_snap_m: float
     end_node: str
@@ -228,6 +255,8 @@ class _MeetingCandidate:
     option: RouteOption
     start_node: str
     end_node: str
+    options: tuple[RouteOption, ...] = ()
+    topography: TopographyComparison | None = None
 
 
 def assemble_backbone_outward(
@@ -238,6 +267,8 @@ def assemble_backbone_outward(
     graph: RoadGraph,
     gate: CompilationGate,
     max_connection_km: float,
+    elevation_evidence: gpd.GeoDataFrame | None = None,
+    topography_config: TopographyConfig | None = None,
 ) -> BackboneAssembly:
     """Grow one deterministic served frontier from every Strategic Spine concurrently."""
     crs = communities.crs or schools.crs or strategic_spines.crs or graph.crs
@@ -256,7 +287,12 @@ def assemble_backbone_outward(
         nonlocal sequence
         for place_id in sorted(unserved):
             candidate = _candidate(
-                unserved[place_id], frontier, graph, obligation_kind="community"
+                unserved[place_id],
+                frontier,
+                graph,
+                obligation_kind="community",
+                elevation_evidence=elevation_evidence,
+                topography_config=topography_config,
             )
             if candidate is not None:
                 heapq.heappush(candidate_heap, (candidate.rank, sequence, candidate))
@@ -307,6 +343,8 @@ def assemble_backbone_outward(
         graph,
         gate,
         max_connection_km=max_connection_km,
+        elevation_evidence=elevation_evidence,
+        topography_config=topography_config,
     )
     agent_records.extend(meeting_records)
 
@@ -327,6 +365,8 @@ def assemble_backbone_outward(
             school_frontiers,
             graph,
             excluded_pairs=excluded_pairs,
+            elevation_evidence=elevation_evidence,
+            topography_config=topography_config,
         ):
             row = _connection_row(selected, graph, obligation_kind="school")
             record = _evaluate(row, gate)
@@ -372,6 +412,8 @@ def assemble_backbone_outward(
                     graph,
                     obligation_kind="gateway",
                     allow_stationary=False,
+                    elevation_evidence=elevation_evidence,
+                    topography_config=topography_config,
                 )
             )
             is not None
@@ -466,9 +508,7 @@ def _served_frontier(row: dict[str, object], graph: RoadGraph) -> _Frontier:
         depth=int(row["attachment_depth"]),
         attachments=((str(row["community_attachment_node"]), 0.0),),
         geometry=row["geometry"],
-        projected_geometry=gpd.GeoSeries([row["geometry"]], crs=graph.crs)
-        .to_crs(27700)
-        .iloc[0],
+        projected_geometry=gpd.GeoSeries([row["geometry"]], crs=graph.crs).to_crs(27700).iloc[0],
     )
 
 
@@ -511,9 +551,7 @@ def _school_attachment_frontiers(
             )
         )
     spine_by_id = strategic_spines.set_index("spine_id", drop=False)
-    for _, connector in cross_spine_connectors.sort_values(
-        "cross_spine_connector_id"
-    ).iterrows():
+    for _, connector in cross_spine_connectors.sort_values("cross_spine_connector_id").iterrows():
         root_id = str(connector["from_root_spine_id"])
         spine = spine_by_id.loc[root_id]
         attachments = tuple(graph.nodes_on_geometry(connector.geometry))
@@ -561,21 +599,40 @@ def _candidate(
     *,
     obligation_kind: str,
     allow_stationary: bool = True,
+    elevation_evidence: gpd.GeoDataFrame | None = None,
+    topography_config: TopographyConfig | None = None,
 ) -> _Candidate | None:
     starts = graph.nodes_near(place.geometry, MAX_OBLIGATION_ATTACHMENT_M)
     if not starts:
         return None
-    choice = graph.best_attachment(
-        starts,
-        [
-            attachment
-            for attachment in frontier.attachments
-            if attachment[1] <= MAX_SPINE_ATTACHMENT_M
-        ],
-        allow_stationary=allow_stationary,
-    )
-    if choice is None:
+    ends = [
+        attachment for attachment in frontier.attachments if attachment[1] <= MAX_SPINE_ATTACHMENT_M
+    ]
+    choices = [
+        choice
+        for start in starts
+        if (choice := graph.best_attachment([start], ends, allow_stationary=allow_stationary))
+        is not None
+    ]
+    if not choices:
         return None
+    choice = min(
+        choices,
+        key=lambda candidate: (
+            round(candidate.total_distance_km, 9),
+            round(candidate.start_snap_m, 9),
+            candidate.start_node,
+            candidate.end_node,
+        ),
+    )
+    option, options, comparison = _topography_choice(
+        graph,
+        choice.start_node,
+        choice.end_node,
+        choice.option,
+        elevation_evidence,
+        topography_config,
+    )
     rank = (
         round(choice.total_distance_km, 9),
         str(place["place_id"]),
@@ -590,7 +647,9 @@ def _candidate(
         rank=rank,
         place=place,
         frontier=frontier,
-        option=choice.option,
+        option=option,
+        options=tuple(options),
+        topography=comparison,
         start_node=choice.start_node,
         start_snap_m=choice.start_snap_m,
         end_node=choice.end_node,
@@ -602,12 +661,43 @@ def _candidate(
     )
 
 
+def _topography_choice(
+    graph: RoadGraph,
+    start_node: str,
+    end_node: str,
+    fallback: RouteOption,
+    elevation_evidence: gpd.GeoDataFrame | None,
+    topography_config: TopographyConfig | None,
+) -> tuple[RouteOption, list[RouteOption], TopographyComparison | None]:
+    if start_node == end_node:
+        return fallback, [fallback], None
+    selected, options, _ = choose_alignment(graph, start_node, end_node)
+    selected = selected or fallback
+    options = options or [fallback]
+    if elevation_evidence is None or topography_config is None:
+        return selected, options, None
+    comparison = compare_alignment_topography(
+        selected,
+        options,
+        elevation_evidence,
+        topography_config,
+        graph.crs,
+    )
+    return (
+        comparison.selected if comparison is not None else selected,
+        options,
+        comparison,
+    )
+
+
 def _school_candidate(
     school: pd.Series,
     frontiers: list[_Frontier],
     graph: RoadGraph,
     *,
     excluded_pairs: set[tuple[str, str]],
+    elevation_evidence: gpd.GeoDataFrame | None = None,
+    topography_config: TopographyConfig | None = None,
 ) -> _Candidate | None:
     """Route once from a School to all labelled fixed-backbone attachments."""
     direct = _direct_school_candidate(school, frontiers, graph, excluded_pairs)
@@ -627,6 +717,14 @@ def _school_candidate(
     )
     if choice is None:
         return None
+    option, options, comparison = _topography_choice(
+        graph,
+        choice.start_node,
+        choice.end_node,
+        choice.option,
+        elevation_evidence,
+        topography_config,
+    )
     matching_frontiers = [
         (snap_m, frontier)
         for frontier in frontiers
@@ -653,7 +751,9 @@ def _school_candidate(
         rank=rank,
         place=school,
         frontier=frontier,
-        option=choice.option,
+        option=option,
+        options=tuple(options),
+        topography=comparison,
         start_node=choice.start_node,
         start_snap_m=choice.start_snap_m,
         end_node=choice.end_node,
@@ -677,12 +777,8 @@ def _direct_school_candidate(
         distance_m = float(projected_school.distance(frontier.projected_geometry))
         if distance_m > MAX_SCHOOL_ATTACHMENT_M:
             continue
-        _, projected_attachment = nearest_points(
-            projected_school, frontier.projected_geometry
-        )
-        attachment = (
-            gpd.GeoSeries([projected_attachment], crs=27700).to_crs(graph.crs).iloc[0]
-        )
+        _, projected_attachment = nearest_points(projected_school, frontier.projected_geometry)
+        attachment = gpd.GeoSeries([projected_attachment], crs=27700).to_crs(graph.crs).iloc[0]
         virtual_node = _stable_id(
             "school-frontier-attachment", frontier.target_id, attachment.wkb_hex
         )
@@ -709,6 +805,8 @@ def _direct_school_candidate(
         place=school,
         frontier=frontier,
         option=option,
+        options=(option,),
+        topography=None,
         start_node=virtual_node,
         start_snap_m=association_m,
         end_node=virtual_node,
@@ -852,6 +950,20 @@ def _connection_row(
             }
         )
     direct_to_spine = frontier.target_role == "strategic-spine"
+    topography = candidate.topography
+    default_selection_reason = (
+        (
+            "Selected from the governed School Access Point by minimum plausible "
+            "cycling-network cost to fixed Strategic Spine, Cross-Spine Connector "
+            f"or established branch geometry; attached to {frontier.target_role} "
+            "without creating a School peer journey objective."
+        )
+        if obligation_kind == "school"
+        else (
+            "Selected by minimum plausible cycling-network cost from all concurrent "
+            f"Strategic Spine and served-branch frontiers; extended {frontier.target_role}."
+        )
+    )
     return {
         "access_connection_id": connection_id,
         "obligation_id": (
@@ -875,14 +987,10 @@ def _connection_row(
             candidate.place.get("access_point_status") if obligation_kind == "school" else None
         ),
         "access_point_source_id": (
-            candidate.place.get("access_point_source_id")
-            if obligation_kind == "school"
-            else None
+            candidate.place.get("access_point_source_id") if obligation_kind == "school" else None
         ),
         "access_point_rationale": (
-            candidate.place.get("access_point_rationale")
-            if obligation_kind == "school"
-            else None
+            candidate.place.get("access_point_rationale") if obligation_kind == "school" else None
         ),
         "spine_id": frontier.root_spine_id,
         "spine_name": frontier.root_spine_name,
@@ -907,17 +1015,9 @@ def _connection_row(
         "agent_findings": "[]",
         "intervention_archetype": "access link to a high-quality Strategic Spine branch",
         "selection_reason": (
-            (
-                "Selected from the governed School Access Point by minimum plausible "
-                "cycling-network cost to fixed Strategic Spine, Cross-Spine Connector "
-                f"or established branch geometry; attached to {frontier.target_role} "
-                "without creating a School peer journey objective."
-            )
-            if obligation_kind == "school"
-            else (
-                "Selected by minimum plausible cycling-network cost from all concurrent "
-                f"Strategic Spine and served-branch frontiers; extended {frontier.target_role}."
-            )
+            topography.rationale
+            if topography is not None and topography.triggered
+            else default_selection_reason
         ),
         "geometry_semantics": (
             "routed OSM network alignment between canonical graph attachment points; "
@@ -933,13 +1033,29 @@ def _connection_row(
         "spine_attachment_distance_m": (
             round(candidate.end_snap_m, 3) if direct_to_spine else None
         ),
-        "spine_attachment_point": (
-            candidate.end_point.wkt if direct_to_spine else None
-        ),
+        "spine_attachment_point": (candidate.end_point.wkt if direct_to_spine else None),
         "source_ids": json.dumps(source_ids),
         "provenance": json.dumps(provenance, sort_keys=True),
         "criterion_continuity": "green",
         "criterion_bidirectional": "green",
+        "topography_alternative_trigger": (
+            topography.triggered if topography is not None else False
+        ),
+        "topography_comparison_status": (
+            topography.status.value if topography is not None else "not-evaluated"
+        ),
+        "topography_comparison_rationale": (
+            topography.rationale if topography is not None else "Not evaluated."
+        ),
+        "topography_original_role": (topography.original.role if topography is not None else None),
+        "topography_selected_role": candidate.option.role,
+        "alignment_options": (
+            topography.serialise_options(
+                list(candidate.options or (candidate.option,)), candidate.option.role
+            )
+            if topography is not None
+            else serialise_options(list(candidate.options or (candidate.option,)))
+        ),
         "geometry": candidate.option.geometry,
     }
 
@@ -953,13 +1069,10 @@ def _gap_row(
 ) -> dict[str, object]:
     place_id = str(place["place_id"])
     unresolved_school_access = (
-        obligation_kind == "school"
-        and str(place.get("access_point_status")) == "unresolved"
+        obligation_kind == "school" and str(place.get("access_point_status")) == "unresolved"
     )
     snap_distance_m = (
-        float("inf")
-        if unresolved_school_access
-        else graph.nearest_node(place.geometry)[1]
+        float("inf") if unresolved_school_access else graph.nearest_node(place.geometry)[1]
     )
     attachment_bound_m = (
         MAX_SCHOOL_ATTACHMENT_M if obligation_kind == "school" else MAX_OBLIGATION_ATTACHMENT_M
@@ -1022,6 +1135,18 @@ def _gap_row(
         "criterion_continuity": "red",
         "criterion_bidirectional": "red",
         "criterion_distance": "grey",
+        "topography_alternative_trigger": False,
+        "topography_comparison_status": (
+            "gate-rejected-selection" if gate_reason else "not-evaluated"
+        ),
+        "topography_comparison_rationale": (
+            "Compilation Gate rejected every candidate after bounded review; no "
+            "authoritative topography selection is published."
+            if gate_reason
+            else "No routed alignment was available for topography comparison."
+        ),
+        "topography_original_role": None,
+        "topography_selected_role": None,
         "geometry": MultiPoint([place.geometry]),
     }
 
@@ -1099,9 +1224,7 @@ def _obligations(
     for _, school in schools.sort_values("place_id").iterrows():
         school_id = str(school["place_id"])
         access = served_schools.get(school_id)
-        access_status = AccessPointStatus(
-            str(school.get("access_point_status"))
-        ).value
+        access_status = AccessPointStatus(str(school.get("access_point_status"))).value
         service_status = (
             AccessServiceStatus.SERVED.value
             if access is not None and access_status == AccessPointStatus.MAPPED.value
@@ -1142,8 +1265,7 @@ def _obligations(
                     else (
                         "Inferred School Access Point reaches fixed backbone geometry but "
                         "remains subject to verification."
-                        if service_status
-                        == AccessServiceStatus.SERVED_PROVISIONAL.value
+                        if service_status == AccessServiceStatus.SERVED_PROVISIONAL.value
                         else "School access is unresolved and remains visible as a Network Gap."
                     )
                 ),
@@ -1179,13 +1301,13 @@ def _cross_spine_meetings(
     gate: CompilationGate,
     *,
     max_connection_km: float,
+    elevation_evidence: gpd.GeoDataFrame | None = None,
+    topography_config: TopographyConfig | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, list[AgentRecord]]:
     crs = connections.crs or strategic_spines.crs or graph.crs
     root_ids = sorted(
         str(root_id)
-        for root_id in connections.get(
-            "root_spine_id", pd.Series(dtype=object)
-        ).dropna().unique()
+        for root_id in connections.get("root_spine_id", pd.Series(dtype=object)).dropna().unique()
     )
     root_groups = {
         str(root_id): connections[connections["root_spine_id"] == root_id].sort_values("place_id")
@@ -1214,6 +1336,8 @@ def _cross_spine_meetings(
             root_groups[right_root],
             graph,
             excluded_pairs=set(excluded_pairs),
+            elevation_evidence=elevation_evidence,
+            topography_config=topography_config,
         )
         if candidate is None:
             return
@@ -1240,9 +1364,7 @@ def _cross_spine_meetings(
     records: list[AgentRecord] = []
     rejected_by_roots: dict[tuple[str, str], list[AgentRecord]] = {}
     while candidate_heap:
-        _, _, left_root, right_root, excluded_pairs, candidate = heapq.heappop(
-            candidate_heap
-        )
+        _, _, left_root, right_root, excluded_pairs, candidate = heapq.heappop(candidate_heap)
         if nx.has_path(root_graph, left_root, right_root):
             _supersede_rejected_meetings(
                 rejected_by_roots.pop((left_root, right_root), []),
@@ -1302,27 +1424,27 @@ def _meeting_candidate(
     graph: RoadGraph,
     *,
     excluded_pairs: set[tuple[str, str]],
+    elevation_evidence: gpd.GeoDataFrame | None = None,
+    topography_config: TopographyConfig | None = None,
 ) -> _MeetingCandidate | None:
     choice = graph.best_attachment(
-        [
-            (str(row["community_attachment_node"]), 0.0)
-            for _, row in left_group.iterrows()
-        ],
-        [
-            (str(row["community_attachment_node"]), 0.0)
-            for _, row in right_group.iterrows()
-        ],
+        [(str(row["community_attachment_node"]), 0.0) for _, row in left_group.iterrows()],
+        [(str(row["community_attachment_node"]), 0.0) for _, row in right_group.iterrows()],
         allow_stationary=False,
         excluded_pairs=excluded_pairs,
     )
     if choice is None:
         return None
-    left = left_group[
-        left_group["community_attachment_node"] == choice.start_node
-    ].iloc[0]
-    right = right_group[
-        right_group["community_attachment_node"] == choice.end_node
-    ].iloc[0]
+    option, options, comparison = _topography_choice(
+        graph,
+        choice.start_node,
+        choice.end_node,
+        choice.option,
+        elevation_evidence,
+        topography_config,
+    )
+    left = left_group[left_group["community_attachment_node"] == choice.start_node].iloc[0]
+    right = right_group[right_group["community_attachment_node"] == choice.end_node].iloc[0]
     return _MeetingCandidate(
         rank=(
             round(choice.total_distance_km, 9),
@@ -1333,7 +1455,9 @@ def _meeting_candidate(
         ),
         left=left,
         right=right,
-        option=choice.option,
+        option=option,
+        options=tuple(options),
+        topography=comparison,
         start_node=choice.start_node,
         end_node=choice.end_node,
     )
@@ -1350,12 +1474,8 @@ def _meeting_row(
     right_root = str(right["root_spine_id"])
     left_place = str(left["place_id"])
     right_place = str(right["place_id"])
-    meeting_id = _stable_id(
-        "branch-meeting", left_root, right_root, left_place, right_place
-    )
-    source_ids = sorted(
-        {*candidate.option.edge_ids, *candidate.option.reverse_edge_ids}
-    )
+    meeting_id = _stable_id("branch-meeting", left_root, right_root, left_place, right_place)
+    source_ids = sorted({*candidate.option.edge_ids, *candidate.option.reverse_edge_ids})
     route_length_km = candidate.option.length_km
     distance_km = round(route_length_km, 3)
     provenance = {
@@ -1368,6 +1488,7 @@ def _meeting_row(
         "to_root_spine_id": right_root,
         "source_ids": source_ids,
     }
+    topography = candidate.topography
     return {
         "meeting_connection_id": meeting_id,
         "network_role": "branch-meeting-connection",
@@ -1386,8 +1507,12 @@ def _meeting_row(
         "agent_findings": "[]",
         "intervention_archetype": "transverse link between Strategic Spine branches",
         "selection_reason": (
-            "Selected as the first justified cycling-network adjacency between differently "
-            "rooted served fronts; later parallel or cyclic meetings are suppressed."
+            topography.rationale
+            if topography is not None and topography.triggered
+            else (
+                "Selected as the first justified cycling-network adjacency between differently "
+                "rooted served fronts; later parallel or cyclic meetings are suppressed."
+            )
         ),
         "geometry_semantics": (
             "routed OSM network alignment joining two served Community attachment nodes; "
@@ -1399,8 +1524,24 @@ def _meeting_row(
         "provenance": json.dumps(provenance, sort_keys=True),
         "criterion_continuity": "green",
         "criterion_bidirectional": "green",
-        "criterion_distance": (
-            "amber" if route_length_km > max_connection_km else "green"
+        "criterion_distance": ("amber" if route_length_km > max_connection_km else "green"),
+        "topography_alternative_trigger": (
+            topography.triggered if topography is not None else False
+        ),
+        "topography_comparison_status": (
+            topography.status.value if topography is not None else "not-evaluated"
+        ),
+        "topography_comparison_rationale": (
+            topography.rationale if topography is not None else "Not evaluated."
+        ),
+        "topography_original_role": (topography.original.role if topography is not None else None),
+        "topography_selected_role": candidate.option.role,
+        "alignment_options": (
+            topography.serialise_options(
+                list(candidate.options or (candidate.option,)), candidate.option.role
+            )
+            if topography is not None
+            else serialise_options(list(candidate.options or (candidate.option,)))
         ),
         "geometry": candidate.option.geometry,
     }
@@ -1454,12 +1595,8 @@ def _cross_spine_connectors(
     for _, meeting in meetings.iterrows():
         member_rows = _lineage(connection_by_id, str(meeting["from_place_id"]))
         member_rows.extend(_lineage(connection_by_id, str(meeting["to_place_id"])))
-        members = {
-            str(member["access_connection_id"]): member for member in member_rows
-        }
-        connection_ids = sorted(
-            [*members, str(meeting["meeting_connection_id"])]
-        )
+        members = {str(member["access_connection_id"]): member for member in member_rows}
+        connection_ids = sorted([*members, str(meeting["meeting_connection_id"])])
         community_ids = sorted(str(member["place_id"]) for member in members.values())
         branch_ids = sorted({str(member["branch_id"]) for member in members.values()})
         source_ids = sorted(
@@ -1544,9 +1681,7 @@ def _branches(
 ) -> gpd.GeoDataFrame:
     rows: list[dict[str, object]] = []
     spine_names = strategic_spines.set_index("spine_id").get("name", pd.Series(dtype=object))
-    branch_connections = connections[
-        connections["obligation_kind"].isin(["community", "school"])
-    ]
+    branch_connections = connections[connections["obligation_kind"].isin(["community", "school"])]
     for branch_id, members in branch_connections.groupby("branch_id", sort=True):
         root_spine_id = str(members.iloc[0]["root_spine_id"])
         connection_ids = sorted(members["access_connection_id"].astype(str))

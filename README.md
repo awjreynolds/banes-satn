@@ -5,9 +5,11 @@ Network (SATN), with Bath and North East Somerset as the reference implementatio
 
 > Experimental SATN POC — not an adopted B&NES plan.
 
-The compiler connects communities to nearby communities, then assembles and repairs
-those connections into an end-to-end network. It keeps route choice separate from
-later demand or delivery prioritisation.
+The compiler grows a rural Backbone-and-Access Network outward from governed A-road
+and established NCN Strategic Spines. Communities and Schools attach to that shared
+backbone or remain visible Network Gaps; it does not generate a nearest-neighbour
+spider's web. Route choice remains separate from later demand or delivery
+prioritisation.
 
 ## Install
 
@@ -75,9 +77,11 @@ uv run pytest --live-osm -m live_osm tests/test_osm_sources.py
 
 ## How routes are compiled
 
-Each Community nominates its nearest reachable Community using cycling-network
-distance. Reciprocal nominations become one unordered Community Connection. The
-compiler compares only continuous OSM alignments:
+Schema 2.0 uses Backbone-Outward Assembly as the only authoritative rural network
+model. All governed Strategic Spines seed one concurrent frontier. Each iteration
+serves the nearest reachable rural Community, extending an existing branch where that
+is cheaper than creating another direct spine attachment. The compiler compares only
+continuous, bidirectional OSM alignments.
 
 Where one strongly connected cycling component contains at least 90% of graph nodes,
 Community attachment prefers that dominant routable component instead of snapping to
@@ -204,8 +208,8 @@ source:
 
 Remote sources receive the governed bounding box and must return a GeoJSON
 FeatureCollection of Point samples. Compilation performs no live lookup: it reads the
-snapshotted `elevation-evidence.geojson`. Changing that evidence changes the snapshot,
-cache and run fingerprints. Sparse OSM `ele` and `incline` tags are published only as
+snapshotted `elevation-evidence.geojson`. Changing that evidence changes the snapshot
+and run fingerprints. Sparse OSM `ele` and `incline` tags are published only as
 `corroborating-only` evidence and never substitute for missing national coverage. Run
 the optional live-source smoke test explicitly with `--live-terrain` and
 `SATN_TEST_TERRAIN_GEOJSON_URL`.
@@ -247,6 +251,12 @@ criterion. Repeated output, request/token limits or exhausted revisions terminat
 an explicit Network Gap. The full Pydantic records are published as JSON; the review
 map shows their concise rationale.
 
+Routine unresolved refinements remain typed findings and visible gaps. A
+`human-intervention-requests.json` record is emitted only when a material blocking
+ambiguity survives every bounded revision attempt. It records attempted revisions,
+unresolved findings, missing evidence, available choices and the smallest human input
+needed. Ordinary no-path or missing-spine gaps do not create intervention requests.
+
 `fake` is the deterministic default. Any Pydantic AI model identifier can be supplied
 in Council Configuration as `compilation.agent.model`, with provider credentials read
 from its normal environment variables. Codex is not required. A live adapter check is
@@ -259,8 +269,7 @@ SATN_TEST_AGENT_MODEL=openai:gpt-5-mini \
 
 ## Network assembly
 
-The expand phase now compiles a complete rural Backbone-Outward Assembly alongside
-the legacy Community Connection output. Every governed Strategic Spine is available
+The compiler produces one authoritative rural Backbone-Outward Assembly. Every governed Strategic Spine is available
 as a seed before growth begins. The compiler repeatedly selects the globally nearest
 reachable unserved Community by bidirectional cycling-network cost, then adds that
 Community's canonical graph attachment to the served frontier. A hinterland Community
@@ -291,23 +300,25 @@ School or generating school-to-school or school-to-Community journey pairs. Coll
 universities remain contextual evidence unless their OSM source IDs are explicitly listed in
 `source.strategic_destination_source_ids`.
 
-The previous pairwise network remains temporarily available as the migration's
-comparison contract. It will cease to be authoritative only at the final expand–contract
-step, after cross-spine, School, urban and topography behavior is present and validated.
+The previous pairwise network is absent from compilation, GeoPackage, GeoJSON, PDF and
+review-map layers. If an earlier publication exists, `backbone-comparison.json`
+summarises topology, gaps, linework/noise and explainability differences under the
+explicit role `superseded-reference-not-ground-truth`; agreement with it is not a
+correctness criterion.
 
-## Incremental and full compilation
+## Deterministic recompilation
 
-Validated Connections are cached outside the replaceable publication directory. A
-cache key covers the council, immutable snapshot, Criteria Set version, compilation
-and agent configuration, ATM mode and — for seeded runs — the ATM file fingerprint.
-The same governed inputs reuse the validated result without invoking its agent gate.
-Gaps are never cached.
+Schema 2.0 does not read or write the legacy pairwise Connection cache. Every run
+reassembles the authoritative backbone from the immutable snapshot and governed
+configuration. Stable identifiers and ordering make unchanged runs topologically and
+fingerprint stable. Changing the snapshot, Elevation Evidence, schema or
+`compilation.criteria_version` changes the run fingerprint.
 
 ```shell
-# reuse unchanged Validated Connections
+# compile the authoritative backbone
 uv run satn compile config/banes.yaml
 
-# ignore every reusable connection and rebuild the network units
+# compatibility directive: still performs a complete deterministic rebuild
 uv run satn compile config/banes.yaml --full
 ```
 
@@ -320,8 +331,8 @@ authoritative answer. Put the locally governed file at
 `data/local/banes-atm-full.geojson`, set `atm.enabled: true`, and choose one mode:
 
 - `blind` compiles routes before the ATM file is loaded, then compares them;
-- `seeded` uses ATM proximity to choose the starting hypothesis among available OSM
-  alignments and records any later deviation.
+- `seeded` records that the reference was available before comparison, but schema 2.0
+  does not permit it to replace or steer the authoritative Backbone-Outward result.
 
 The typed divergence output distinguishes matches, deviations, additions and
 omissions. Each receives a bounded agent review, but there is no aggregate agreement
@@ -342,16 +353,18 @@ Every successful compile replaces the configured output directory only after all
 artifacts validate against each other:
 
 - `network.gpkg` is the authoritative multi-layer spatial output;
-- `network.geojson`, `run.json`, `agent-records.json` and
-  `divergence-records.json` expose the same stable identifiers;
+- `network.geojson`, `run.json`, `agent-records.json`,
+  `human-intervention-requests.json`, `divergence-records.json` and
+  `backbone-comparison.json` expose the same governed run;
 - `review-map/` is a backend-free static site with a vendored, pinned MapLibre build;
 - `review-map.zip` contains that complete directory unchanged; and
 - `network-map.pdf` is A3 landscape by default, with configurable A2/A3/A4 size,
   title, date, legend, scale and disclaimer.
 
 Open `review-map/index.html` directly or serve the directory from any static host.
-The map presents A-road corridors as its core spine, Community Connections above
-them, and NCN evidence as a distinct overlay. Schools, derived high-street/retail
+The map presents Strategic Spines, Spine Access Connections and Cross-Spine
+Connectors as the core rural network, with NCN evidence as a distinct overlay.
+Schools, derived high-street/retail
 centres and healthcare facilities default off to avoid noise; each has its own
 control. Places, urban structure, gaps/warnings and ATM comparison are independently
 toggleable. Gradient Sections use a separately selectable sequential blue terrain
@@ -375,11 +388,11 @@ uv run pytest --browser -m browser tests/test_review_map_browser.py
 The current full B&NES result is published at
 [awjreynolds.github.io/banes-satn](https://awjreynolds.github.io/banes-satn/).
 The [A3 PDF network map](https://awjreynolds.github.io/banes-satn/network-map.pdf)
-is published beside it for download and printing.
-It contains 163 unique Community Connections in one end-to-end network, with no Red
-Network Gaps and five non-blocking route-crossing warnings. The public map excludes
-the governed ATM geometry. After a validated public compile, refresh the tracked
-GitHub Pages bundle with:
+is published beside it for download and printing. Until the next governed B&NES
+snapshot run is promoted, that tracked site remains the superseded schema-1 reference;
+it is comparison evidence, not ground truth for schema 2.0. The public map excludes
+the governed ATM geometry. After a validated public compile, refresh the tracked GitHub
+Pages bundle with:
 
 ```shell
 uv run python scripts/publish_site.py
@@ -394,13 +407,11 @@ uv run pytest
 
 ## Status
 
-The POC compiler and its full B&NES reference publication are complete. The current
-snapshot contains 127 Network Places and 41,158 OSM road edges. The same governed
-snapshot also contains 2,373 A-road segments, 195 NCN segments, 104 education sites,
-55 derived retail centres and 78 healthcare sites. The resulting 163 Connections
-form one network unit; an unchanged incremental run reuses all 163
-validated Connections. This is an experimental generated network, not an adopted
-plan, and its alignments still require scheme-level feasibility and design work.
+The POC compiler now treats the schema-2 Backbone-and-Access Network as authoritative.
+A full B&NES publication must be generated from its governed immutable snapshot; no
+legacy pairwise output or cache is accepted as a replacement when that evidence is
+unavailable. This is an experimental generated network, not an adopted plan, and its
+alignments still require scheme-level feasibility and design work.
 
 Released under the MIT licence. OpenStreetMap-derived outputs must retain
 OpenStreetMap attribution and comply with the ODbL. NCN-derived outputs must retain

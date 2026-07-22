@@ -26,17 +26,24 @@ def prepared_config(tmp_path: Path) -> CouncilConfig:
     return config
 
 
-def test_validated_connection_is_reused_when_governed_inputs_match(tmp_path: Path) -> None:
+def test_backbone_recompilation_is_deterministic_without_legacy_pairwise_cache(
+    tmp_path: Path,
+) -> None:
     config = prepared_config(tmp_path)
 
     first = compile(config)
     second = compile(config)
 
-    assert first.metadata["cache"] == {"hits": 0, "misses": 1}
-    assert second.metadata["cache"] == {"hits": 1, "misses": 0}
-    frame = gpd.read_file(second.artifacts["geopackage"], layer="connections")
-    assert set(frame["cache_status"]) == {"reused"}
-    assert first.agent_records[0].created_at == second.agent_records[0].created_at
+    assert (
+        first.metadata["cache"]
+        == second.metadata["cache"]
+        == {
+            "hits": 0,
+            "misses": 0,
+        }
+    )
+    assert first.run_id == second.run_id
+    assert "connections" not in set(gpd.list_layers(second.artifacts["geopackage"])["name"])
 
 
 def test_full_directive_ignores_reusable_connections(tmp_path: Path) -> None:
@@ -46,19 +53,19 @@ def test_full_directive_ignores_reusable_connections(tmp_path: Path) -> None:
 
     forced = compile(config)
 
-    assert forced.metadata["cache"] == {"hits": 0, "misses": 1}
-    frame = gpd.read_file(forced.artifacts["geopackage"], layer="connections")
-    assert set(frame["cache_status"]) == {"compiled"}
+    assert forced.metadata["cache"] == {"hits": 0, "misses": 0}
+    assert forced.metadata["network_model"] == "backbone-outward"
 
 
 def test_criteria_change_invalidates_all_reuse(tmp_path: Path) -> None:
     config = prepared_config(tmp_path)
-    compile(config)
+    original = compile(config)
     config.compilation.criteria_version = "2-new-criterion"
 
     changed = compile(config)
 
-    assert changed.metadata["cache"] == {"hits": 0, "misses": 1}
+    assert changed.metadata["cache"] == {"hits": 0, "misses": 0}
+    assert changed.run_id != original.run_id
 
 
 def test_changed_elevation_evidence_invalidates_cache_and_run_fingerprint(
@@ -75,7 +82,7 @@ def test_changed_elevation_evidence_invalidates_cache_and_run_fingerprint(
 
     changed = compile(config)
 
-    assert changed.metadata["cache"] == {"hits": 0, "misses": 1}
+    assert changed.metadata["cache"] == {"hits": 0, "misses": 0}
     assert changed.run_id != first.run_id
 
 
@@ -97,4 +104,5 @@ def test_cli_full_directive_forces_recompilation(tmp_path: Path) -> None:
     )
 
     run = json.loads((config.publication.output_dir / "run.json").read_text())
-    assert run["cache"] == {"hits": 0, "misses": 1}
+    assert run["cache"] == {"hits": 0, "misses": 0}
+    assert run["network_model"] == "backbone-outward"
