@@ -20,7 +20,11 @@ PROJECT = Path(__file__).parents[1]
 
 def prepared_config(tmp_path: Path) -> CouncilConfig:
     fixture = tmp_path / "fixture"
-    shutil.copytree(PROJECT / "examples" / "fixture", fixture)
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
     config = CouncilConfig.from_yaml(fixture / "council.yaml")
     snapshot(config)
     return config
@@ -84,4 +88,3 @@ def test_failed_publication_preserves_the_previous_complete_output(
 
     after = {name: checksum(path) for name, path in first.artifacts.items() if path.is_file()}
     assert after == before
-

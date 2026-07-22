@@ -15,6 +15,13 @@ source:
     - suburb
     - quarter
     - neighbourhood
+  urban_place_types:
+    - city
+    - town
+    - suburb
+    - quarter
+    - neighbourhood
+  urban_scope_buffer_km: 2
 compilation:
   max_connection_km: 15
   criteria_version: "1"

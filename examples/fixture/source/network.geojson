@@ -5,9 +5,18 @@
   "features": [
     {
       "type": "Feature",
-      "properties": {"source_id": "way-1", "highway": "unclassified", "name": "Community Road"},
-      "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.4], [-2.482, 51.412], [-2.46, 51.42]]}
+      "properties": {"source_id": "way-west", "highway": "unclassified", "name": "Westfield Road"},
+      "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.4], [-2.482, 51.412]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"source_id": "way-east", "highway": "unclassified", "name": "Eastfield Road"},
+      "geometry": {"type": "LineString", "coordinates": [[-2.482, 51.412], [-2.46, 51.42]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"source_id": "a1", "highway": "primary", "ref": "A1", "name": "A1"},
+      "geometry": {"type": "LineString", "coordinates": [[-2.482, 51.412], [-2.482, 51.43]]}
     }
   ]
 }
-

@@ -1,11 +1,11 @@
-
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
 import geopandas as gpd
-from shapely.geometry import LineString, Point
+import pytest
+from shapely.geometry import LineString, MultiLineString, Point
 
 from satn.agents import FakeAgentRuntime
 from satn.compiler import compile_network
@@ -254,3 +254,366 @@ def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:
     assert gap.criterion_continuity == "red"
     assert gap.classification == "network-gap"
     assert json.loads(gap.alignment_options) == []
+
+
+def test_disconnected_spine_evidence_cannot_become_a_validated_access() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges(
+        [
+            {
+                "osmid": "ab",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "far-ncn",
+                "feature_type": "ncn-route",
+                "name": "NCN 1",
+                "category": "National Cycle Network",
+                "source_id": "far-ncn",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": LineString([(1, 1), (1.1, 1)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert len(compiled.strategic_spines) == 1
+    assert compiled.spine_access_connections.empty
+    assert compiled.access_obligations.empty
+    assert compiled.criteria["spine_network"]["first_reachable_access"] == "red"
+
+
+def test_distant_community_snap_cannot_become_a_served_access_obligation() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0.03),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0.03),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges(
+        [
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A1",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "rural-a1",
+                "feature_type": "a-road-spine",
+                "name": "A1",
+                "category": "A-road strategic spine",
+                "source_id": "a1",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert len(compiled.strategic_spines) == 1
+    assert compiled.spine_access_connections.empty
+    assert compiled.access_obligations.empty
+
+
+def test_bounded_off_network_community_uses_a_canonical_attachment_without_inventing_a_path() -> (
+    None
+):
+    community_point = Point(0, 0.005)
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": community_point,
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0.03),
+            },
+        ],
+        crs=4326,
+    )
+    spine_geometry = LineString([(0, 0), (0.1, 0)])
+    network = edges(
+        [
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A1",
+                "geometry": spine_geometry,
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "rural-a1",
+                "feature_type": "a-road-spine",
+                "name": "A1",
+                "category": "A-road strategic spine",
+                "source_id": "a1",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": spine_geometry,
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    access = compiled.spine_access_connections.iloc[0]
+    assert not access.geometry.intersects(community_point)
+    assert access.geometry.intersects(spine_geometry)
+    assert 0 < access["community_attachment_distance_m"] < 2000
+    assert access["community_attachment_point"].startswith("POINT")
+    assert access["spine_attachment_distance_m"] == 0
+    assert "canonical graph attachment points" in access["geometry_semantics"]
+    assert "not claimed paths" in access["geometry_semantics"]
+
+
+def test_invalid_network_scope_is_rejected_at_the_compiler_boundary() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges([{"osmid": "a1", "geometry": LineString([(0, 0), (0.1, 0)])}])
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "a1",
+                "feature_type": "a-road-spine",
+                "source_id": "a1",
+                "network_scope": "rurla",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    with pytest.raises(ValueError, match="invalid governed network_scope"):
+        compile_network(
+            config(),
+            {
+                "places": places,
+                "network": network,
+                "context": context,
+                "boundary": gpd.GeoDataFrame(),
+            },
+            FakeAgentRuntime(),
+        )
+
+
+def test_urban_a_road_evidence_is_not_promoted_to_a_rural_strategic_spine() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "west",
+                "name": "West",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "east",
+                "name": "East",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0.01, 0),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges(
+        [
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A1",
+                "geometry": LineString([(0, 0), (0.01, 0)]),
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "urban-a1",
+                "feature_type": "a-road-spine",
+                "name": "A1",
+                "category": "A-road strategic spine",
+                "source_id": "a1",
+                "feature_count": 1,
+                "network_scope": "urban",
+                "geometry": LineString([(0, 0), (0.01, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert compiled.strategic_spines.empty
+
+
+def test_disconnected_rural_evidence_becomes_separately_identified_continuous_spines() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.3, 0),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges(
+        [
+            {
+                "osmid": "whole-route",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.3, 0)]),
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "split-ncn",
+                "feature_type": "ncn-route",
+                "name": "NCN 1",
+                "category": "National Cycle Network",
+                "source_id": "split-ncn",
+                "feature_count": 2,
+                "network_scope": "rural",
+                "geometry": MultiLineString([[(0, 0), (0.1, 0)], [(0.2, 0), (0.3, 0)]]),
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert len(compiled.strategic_spines) == 2
+    assert len(set(compiled.strategic_spines["spine_id"])) == 2
+    assert set(compiled.strategic_spines.geometry.geom_type) == {"LineString"}

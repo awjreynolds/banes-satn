@@ -19,12 +19,8 @@ def base_config() -> CouncilConfig:
 
 
 def source_frames() -> OSMData:
-    boundary_shape = Polygon(
-        [(-2.6, 51.3), (-2.4, 51.3), (-2.4, 51.5), (-2.6, 51.5), (-2.6, 51.3)]
-    )
-    boundary = gpd.GeoDataFrame(
-        [{"name": "Test Council", "geometry": boundary_shape}], crs=4326
-    )
+    boundary_shape = Polygon([(-2.6, 51.3), (-2.4, 51.3), (-2.4, 51.5), (-2.6, 51.5), (-2.6, 51.3)])
+    boundary = gpd.GeoDataFrame([{"name": "Test Council", "geometry": boundary_shape}], crs=4326)
     large_village = Polygon(
         [(-2.54, 51.38), (-2.51, 51.38), (-2.51, 51.41), (-2.54, 51.41), (-2.54, 51.38)]
     )
@@ -56,7 +52,12 @@ def source_frames() -> OSMData:
     )
     network = gpd.GeoDataFrame(
         [
-            {"osmid": 10, "geometry": LineString([(-2.56, 51.395), (-2.49, 51.395)])},
+            {
+                "osmid": 10,
+                "ref": "A1",
+                "highway": "primary",
+                "geometry": LineString([(-2.56, 51.395), (-2.49, 51.395)]),
+            },
             {"osmid": 11, "geometry": LineString([(-2.5, 51.4), (-2.3, 51.4)])},
         ],
         crs=4326,
@@ -204,6 +205,8 @@ def test_osm_snapshot_is_attributable_and_reloadable(tmp_path: Path) -> None:
     assert set(manifest["file_sha256"]) == set(manifest["files"])
     reloaded = gpd.read_file(path / "places.geojson")
     assert set(reloaded["kind"]) >= {"community", "station_access", "cross_boundary_gateway"}
+    context = gpd.read_file(path / "context.geojson")
+    assert "rural" in set(context["network_scope"])
     assert snapshot(config, osm_adapter=FakeOSMAdapter()) == path
 
 

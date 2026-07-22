@@ -17,7 +17,11 @@ PROJECT = Path(__file__).parents[1]
 @pytest.mark.browser
 def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
     fixture = tmp_path / "fixture"
-    shutil.copytree(PROJECT / "examples" / "fixture", fixture)
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
     config = CouncilConfig.from_yaml(fixture / "council.yaml")
     snapshot(config)
     result = compile(config)
@@ -39,12 +43,22 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         card.click()
         assert card.get_attribute("aria-pressed") == "false"
 
+        access_card = page.locator('[data-feature-id^="spine-access-"]')
+        access_card.press("Enter")
+        assert access_card.get_attribute("aria-pressed") == "true"
+        access_card.press("Enter")
+        assert access_card.get_attribute("aria-pressed") == "false"
+
         page.locator("#criteria-network").check()
         assert page.locator("#criteria-heading").inner_text() == "network criteria"
         assert "connected graph" in page.locator("#criteria-list").inner_text()
         page.locator("#layer-community-connections").uncheck()
         assert not page.locator("#layer-community-connections").is_checked()
         assert not page.locator("#layer-schools").is_checked()
+        access_legend = page.locator("#legend-spine-access-connections")
+        assert access_legend.is_visible()
+        page.locator("#layer-spine-access-connections").uncheck()
+        assert access_legend.is_hidden()
         page.locator("#layer-schools").check()
         assert page.locator("#layer-schools").is_checked()
         assert "education sites" in page.locator("#layer-summary").inner_text()

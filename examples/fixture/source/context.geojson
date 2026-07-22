@@ -4,13 +4,18 @@
   "features": [
     {
       "type": "Feature",
-      "properties": {"evidence_id": "a-road-fixture", "feature_type": "a-road-spine", "name": "A1", "category": "A-road strategic spine", "source_id": "a1", "feature_count": 1},
-      "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.405], [-2.46, 51.425]]}
+      "properties": {"evidence_id": "a-road-fixture", "feature_type": "a-road-spine", "name": "A1", "category": "A-road strategic spine", "source_id": "a1", "feature_count": 1, "network_scope": "rural"},
+      "geometry": {"type": "LineString", "coordinates": [[-2.482, 51.412], [-2.482, 51.43]]}
     },
     {
       "type": "Feature",
-      "properties": {"evidence_id": "ncn-fixture", "feature_type": "ncn-route", "name": "NCN 1", "category": "National Cycle Network", "source_id": "ncn1", "feature_count": 1},
+      "properties": {"evidence_id": "ncn-fixture", "feature_type": "ncn-route", "name": "NCN 1", "category": "National Cycle Network", "source_id": "ncn1", "feature_count": 1, "network_scope": "rural"},
       "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.407], [-2.46, 51.427]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"evidence_id": "b-road-fixture", "feature_type": "b-road", "name": "B2", "category": "B-road evidence only", "source_id": "b2", "feature_count": 1, "network_scope": "rural"},
+      "geometry": {"type": "LineString", "coordinates": [[-2.5, 51.402], [-2.46, 51.422]]}
     },
     {
       "type": "Feature",

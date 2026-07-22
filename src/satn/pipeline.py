@@ -75,6 +75,21 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for evidence_id in frame.get("evidence_id", [])
             ),
+            "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
+            "access_obligations": sorted(compiled.access_obligations["obligation_id"]),
+            "spine_access_connections": sorted(
+                (
+                    row.access_connection_id,
+                    row.community_id,
+                    row.spine_id,
+                    row.community_attachment_node,
+                    row.community_attachment_distance_m,
+                    row.spine_attachment_node,
+                    row.spine_attachment_distance_m,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.spine_access_connections.itertuples()
+            ),
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
         },
         sort_keys=True,
@@ -92,6 +107,42 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         agent_records=compiled.agent_records,
         metadata={
             "network_units": compiled.network_units,
+            "strategic_spines": len(compiled.strategic_spines),
+            "access_obligations": len(compiled.access_obligations),
+            "spine_access_connections": len(compiled.spine_access_connections),
+            "strategic_spine_records": [
+                {
+                    "spine_id": row.spine_id,
+                    "evidence_id": row.evidence_id,
+                    "source_id": row.source_id,
+                    "provenance": row.provenance,
+                }
+                for row in compiled.strategic_spines.itertuples()
+            ],
+            "access_obligation_records": [
+                {
+                    "obligation_id": row.obligation_id,
+                    "community_id": row.community_id,
+                    "access_connection_id": row.access_connection_id,
+                    "provenance": row.provenance,
+                }
+                for row in compiled.access_obligations.itertuples()
+            ],
+            "spine_access_connection_records": [
+                {
+                    "access_connection_id": row.access_connection_id,
+                    "community_id": row.community_id,
+                    "spine_id": row.spine_id,
+                    "community_attachment_node": row.community_attachment_node,
+                    "community_attachment_distance_m": row.community_attachment_distance_m,
+                    "community_attachment_point": row.community_attachment_point,
+                    "spine_attachment_node": row.spine_attachment_node,
+                    "spine_attachment_distance_m": row.spine_attachment_distance_m,
+                    "spine_attachment_point": row.spine_attachment_point,
+                    "source_ids": row.source_ids,
+                }
+                for row in compiled.spine_access_connections.itertuples()
+            ],
             "superseded_hypotheses": compiled.superseded_hypotheses,
             "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",

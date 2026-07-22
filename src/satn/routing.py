@@ -100,6 +100,7 @@ class RoadGraph:
         self._projected_nodes = gpd.GeoSeries(
             [self.node_points[node] for node in self._node_ids], crs=self.crs
         ).to_crs(27700)
+        self._projected_node_index = self._projected_nodes.sindex
 
     def _add_best_edge(self, u: str, v: str, attrs: dict[str, object]) -> None:
         existing = self.graph.get_edge_data(u, v)
@@ -113,6 +114,31 @@ class RoadGraph:
         distances = self._projected_nodes.distance(target)
         position = int(distances.argmin())
         return self._node_ids[position], float(distances.iloc[position])
+
+    def nodes_on_geometry(
+        self,
+        geometry: object,
+        *,
+        tolerance_m: float = 20,
+    ) -> list[tuple[str, float]]:
+        """Return routable graph nodes evidenced on a corridor, never an unbounded snap."""
+        if geometry is None or geometry.is_empty or not self._node_ids:
+            return []
+        target = gpd.GeoSeries([geometry], crs=self.crs).to_crs(27700).iloc[0]
+        positions = self._projected_node_index.query(
+            target.buffer(tolerance_m), predicate="intersects"
+        )
+        matches = [
+            (
+                self._node_ids[int(position)],
+                float(self._projected_nodes.iloc[int(position)].distance(target)),
+            )
+            for position in positions
+        ]
+        return sorted(
+            (match for match in matches if match[1] <= tolerance_m),
+            key=lambda match: (match[1], match[0]),
+        )
 
     def network_distance(
         self,
@@ -148,9 +174,7 @@ class RoadGraph:
         ncn_length = sum(float(edge["length_m"]) for edge in edge_data if edge["ncn"])
         try:
             reverse_nodes = nx.shortest_path(self.graph, end, start, weight=weight)
-            reverse_edges = [
-                self.graph[left][right] for left, right in pairwise(reverse_nodes)
-            ]
+            reverse_edges = [self.graph[left][right] for left, right in pairwise(reverse_nodes)]
             reverse_geometry = _merge_route([edge["geometry"] for edge in reverse_edges])
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             reverse_edges = []

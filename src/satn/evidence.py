@@ -10,6 +10,9 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString, MultiLineString
+from shapely.ops import linemerge
+
+from satn.models import NetworkScope
 
 CONTEXT_COLUMNS = [
     "evidence_id",
@@ -18,6 +21,7 @@ CONTEXT_COLUMNS = [
     "category",
     "source_id",
     "feature_count",
+    "network_scope",
     "geometry",
 ]
 
@@ -45,6 +49,62 @@ def derive_context_layers(
         columns=CONTEXT_COLUMNS,
         geometry="geometry",
         crs=network.crs,
+    ).sort_values("evidence_id")
+
+
+def govern_network_scope(
+    context: gpd.GeoDataFrame,
+    place_features: gpd.GeoDataFrame,
+    *,
+    urban_place_types: list[str],
+    urban_scope_buffer_km: float,
+) -> gpd.GeoDataFrame:
+    """Split strategic line evidence at the configured urban extent and type each part."""
+    strategic_types = {"a-road-spine", "ncn-route"}
+    strategic = context[context["feature_type"].isin(strategic_types)]
+    other = context[~context["feature_type"].isin(strategic_types)].copy()
+    if strategic.empty:
+        return context.copy()
+
+    urban = place_features[
+        place_features.get("place", pd.Series("", index=place_features.index, dtype=object)).isin(
+            urban_place_types
+        )
+    ]
+    urban_extent = None
+    if not urban.empty:
+        urban_extent = urban.to_crs(27700).geometry.buffer(urban_scope_buffer_km * 1000).union_all()
+
+    rows: list[dict[str, object]] = []
+    for _, evidence in strategic.to_crs(27700).iterrows():
+        scoped_parts = (
+            [(NetworkScope.RURAL, evidence.geometry)]
+            if urban_extent is None
+            else [
+                (NetworkScope.RURAL, evidence.geometry.difference(urban_extent)),
+                (NetworkScope.URBAN, evidence.geometry.intersection(urban_extent)),
+            ]
+        )
+        for scope, scoped_geometry in scoped_parts:
+            for geometry in continuous_linework(scoped_geometry):
+                row = evidence.to_dict()
+                identity = hashlib.sha256(geometry.wkb).hexdigest()[:12]
+                row["evidence_id"] = f"{evidence['evidence_id']}-{scope.value}-{identity}"
+                row["network_scope"] = scope.value
+                row["geometry"] = geometry
+                rows.append(row)
+
+    scoped = gpd.GeoDataFrame(rows, columns=CONTEXT_COLUMNS, geometry="geometry", crs=27700)
+    if not scoped.empty:
+        scoped = scoped.to_crs(context.crs)
+    populated = [frame for frame in (other, scoped) if not frame.empty]
+    if not populated:
+        return empty_context(context.crs)
+    return gpd.GeoDataFrame(
+        pd.concat(populated, ignore_index=True),
+        columns=CONTEXT_COLUMNS,
+        geometry="geometry",
+        crs=context.crs,
     ).sort_values("evidence_id")
 
 
@@ -76,9 +136,8 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
         if not isinstance(geometry, (LineString, MultiLineString)):
             continue
         network_tags = {value.lower() for value in _tag_values(feature.get("network"))}
-        route_tags = {value.lower() for value in _tag_values(feature.get("route"))}
         route_type = (_text(feature.get("RouteType")) or "").lower()
-        if "ncn" not in network_tags and "bicycle" not in route_tags and route_type != "ncn":
+        if "ncn" not in network_tags and route_type != "ncn":
             continue
         source_id = _source_id(feature, index)
         ref = " / ".join(_tag_values(feature.get("ref")) or _tag_values(feature.get("RouteNo")))
@@ -204,6 +263,7 @@ def _row(
     geometry: object,
     *,
     feature_count: int = 1,
+    network_scope: NetworkScope = NetworkScope.UNRESOLVED,
 ) -> dict[str, object]:
     digest = hashlib.sha256(f"{feature_type}:{identity}".encode()).hexdigest()[:12]
     return {
@@ -213,12 +273,32 @@ def _row(
         "category": category,
         "source_id": source_id,
         "feature_count": feature_count,
+        "network_scope": network_scope.value,
         "geometry": geometry,
     }
 
 
 def _frame(rows: list[dict[str, object]], crs: object) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, columns=CONTEXT_COLUMNS, geometry="geometry", crs=crs)
+
+
+def continuous_linework(geometry: object) -> list[LineString]:
+    """Return deterministic, separately continuous LineStrings from line-like geometry."""
+    if geometry is None or geometry.is_empty:
+        return []
+    if isinstance(geometry, LineString):
+        return [geometry]
+    if isinstance(geometry, MultiLineString):
+        merged = linemerge(geometry)
+        if isinstance(merged, LineString):
+            return [merged]
+        return sorted(list(merged.geoms), key=lambda line: line.wkb_hex)
+    if hasattr(geometry, "geoms"):
+        return sorted(
+            [line for part in geometry.geoms for line in continuous_linework(part)],
+            key=lambda line: line.wkb_hex,
+        )
+    return []
 
 
 def _source_id(row: pd.Series, fallback: object) -> str:

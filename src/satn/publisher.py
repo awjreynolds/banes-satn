@@ -79,6 +79,14 @@ def _metadata_frame(crs: object) -> gpd.GeoDataFrame:
 def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
     compiled.connections.to_file(path, layer="connections", driver="GPKG")
     compiled.places.to_file(path, layer="places", driver="GPKG")
+    if not compiled.strategic_spines.empty:
+        compiled.strategic_spines.to_file(path, layer="strategic_spines", driver="GPKG")
+    if not compiled.access_obligations.empty:
+        compiled.access_obligations.to_file(path, layer="access_obligations", driver="GPKG")
+    if not compiled.spine_access_connections.empty:
+        compiled.spine_access_connections.to_file(
+            path, layer="spine_access_connections", driver="GPKG"
+        )
     if not compiled.gaps.empty:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
     if not compiled.urban_spines.empty:
@@ -144,6 +152,9 @@ def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, obje
 def _feature_id(row: pd.Series) -> str:
     for key in (
         "connection_id",
+        "obligation_id",
+        "access_connection_id",
+        "spine_id",
         "place_id",
         "structure_id",
         "warning_id",
@@ -178,6 +189,9 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "disclaimer": DISCLAIMER,
         "features": (
             _features(compiled.connections, "connection")
+            + _features(compiled.strategic_spines, "strategic-spine")
+            + _features(compiled.access_obligations, "access-obligation")
+            + _features(compiled.spine_access_connections, "spine-access-connection")
             + _features(compiled.gaps, "gap")
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
@@ -219,6 +233,9 @@ def _write_json_records(
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
         "layer_counts": {
+            "strategic_spines": len(compiled.strategic_spines),
+            "access_obligations": len(compiled.access_obligations),
+            "spine_access_connections": len(compiled.spine_access_connections),
             "a_road_spines": len(compiled.a_road_spines),
             "ncn_routes": len(compiled.ncn_routes),
             "schools": len(compiled.schools),
@@ -295,6 +312,9 @@ def _write_review_map(
         },
         "disclaimer": DISCLAIMER,
         "layer_counts": {
+            "strategic_spines": len(compiled.strategic_spines),
+            "access_obligations": len(compiled.access_obligations),
+            "spine_access_connections": len(compiled.spine_access_connections),
             "a_road_spines": len(compiled.a_road_spines),
             "ncn_routes": len(compiled.ncn_routes),
             "schools": len(compiled.schools),
@@ -837,6 +857,9 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         raise ValueError("run manifest does not describe the current publication")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
     layer_types = {
+        "strategic_spines": "strategic-spine",
+        "access_obligations": "access-obligation",
+        "spine_access_connections": "spine-access-connection",
         "a_road_spines": "a-road-spine",
         "ncn_routes": "ncn-route",
         "schools": "school",
@@ -861,6 +884,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     if DISCLAIMER not in html:
         raise ValueError("review map disclaimer missing")
     for control in (
+        "layer-strategic-spines",
+        "layer-spine-access-connections",
         "layer-a-road-spines",
         "layer-community-connections",
         "layer-ncn-routes",

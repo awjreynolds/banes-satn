@@ -18,6 +18,12 @@ class TrafficLight(StrEnum):
     GREY = "grey"
 
 
+class NetworkScope(StrEnum):
+    RURAL = "rural"
+    URBAN = "urban"
+    UNRESOLVED = "unresolved"
+
+
 class SourceConfig(BaseModel):
     kind: Literal["fixture", "osm"] = "fixture"
     fixture_dir: Path | None = None
@@ -32,8 +38,9 @@ class SourceConfig(BaseModel):
         default_factory=lambda: ["town", "village", "suburb", "quarter", "neighbourhood"]
     )
     urban_place_types: list[str] = Field(
-        default_factory=lambda: ["suburb", "quarter", "neighbourhood"]
+        default_factory=lambda: ["city", "town", "suburb", "quarter", "neighbourhood"]
     )
+    urban_scope_buffer_km: float = Field(default=2.0, gt=0)
 
 
 class AgentConfig(BaseModel):

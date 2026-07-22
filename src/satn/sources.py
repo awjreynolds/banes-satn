@@ -20,7 +20,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPoint, Point
 from shapely.ops import unary_union
 
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
-from satn.evidence import derive_context_layers, empty_context
+from satn.evidence import derive_context_layers, empty_context, govern_network_scope
 from satn.models import CouncilConfig
 
 CORE_SOURCE_FILES = ("boundary.geojson", "places.geojson", "network.geojson")
@@ -198,7 +198,12 @@ def _write_osm_snapshot(
         data.network,
         config,
     )
-    context = derive_context_layers(data.network, data.ncn_routes, data.facilities)
+    context = govern_network_scope(
+        derive_context_layers(data.network, data.ncn_routes, data.facilities),
+        data.place_features,
+        urban_place_types=config.source.urban_place_types,
+        urban_scope_buffer_km=config.source.urban_scope_buffer_km,
+    )
     frames = {
         "boundary.geojson": data.boundary.to_crs(4326),
         "places.geojson": places.to_crs(4326),
@@ -378,9 +383,7 @@ def _derive_gateways(
             continue
         destination = min(
             external_centres,
-            key=lambda item: _gateway_destination_score(
-                crossing, outward, item["geometry"]
-            ),
+            key=lambda item: _gateway_destination_score(crossing, outward, item["geometry"]),
         )
         distance = _gateway_destination_score(crossing, outward, destination["geometry"])
         name = str(destination["name"])
