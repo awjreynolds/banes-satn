@@ -442,6 +442,10 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
     assert "Urban Main-Road Spines" in review_html
+    assert 'aria-label="Map legend"' in review_html
+    assert "Cross-spine connector" in review_html
+    assert "Candidate low-traffic area" in review_html
+    assert "Network gap" in review_html
     assert 'id="layer-urban-classification-unknowns" type="checkbox"' in review_html
     assert 'id="layer-urban-classification-unknowns" type="checkbox" checked' not in review_html
     assert 'id="layer-low-traffic-area-portals" type="checkbox"' in review_html

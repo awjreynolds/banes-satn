@@ -8,7 +8,46 @@
 html, body { height: 100%; margin: 0; }
 main { display: grid; grid-template-columns: minmax(20rem, 30rem) 1fr; height: 100%; }
 aside { overflow: auto; padding: 1rem; border-right: 1px solid #ccd1d1; }
-#map { min-height: 30rem; }
+.map-shell { position: relative; min-width: 0; min-height: 30rem; }
+#map { width: 100%; height: 100%; min-height: 30rem; }
+#map-legend {
+  position: absolute;
+  z-index: 2;
+  left: 1rem;
+  bottom: 1.75rem;
+  width: min(18rem, calc(100% - 2rem));
+  padding: .55rem .65rem;
+  background: rgb(255 255 255 / 94%);
+  border: 1px solid #85929e;
+  border-radius: .35rem;
+  box-shadow: 0 1px 5px rgb(23 32 42 / 25%);
+  font-size: .78rem;
+}
+#map-legend summary { cursor: pointer; font-size: .9rem; font-weight: 800; }
+#map-legend ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .35rem .65rem;
+  margin: .55rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+#map-legend li { display: flex; align-items: center; gap: .4rem; line-height: 1.2; }
+.map-key { display: inline-block; flex: 0 0 1.7rem; }
+.map-key.line { height: 0; border-top: 5px solid; }
+.map-key.a-road { border-color: #a04000; }
+.map-key.ncn { border-color: #2471a3; }
+.map-key.access { border-color: #16a085; border-top-style: dashed; }
+.map-key.cross-spine { border-color: #8e44ad; }
+.map-key.branch { border-color: #f39c12; border-top-style: dashed; }
+.map-key.urban { border-color: #5b2c6f; }
+.map-key.area { height: .9rem; border: 2px solid #1b4f72; }
+.map-key.lta { background: rgb(93 173 226 / 45%); }
+.map-key.dot { flex-basis: .85rem; width: .85rem; height: .85rem; border-radius: 50%; }
+.map-key.served { background: #1e8449; border: 2px solid white; box-shadow: 0 0 0 1px #85929e; }
+.map-key.place { background: #17202a; border: 2px solid white; box-shadow: 0 0 0 1px #85929e; }
+.map-key.gap { background: #c0392b; }
+.map-key.warning { background: #f39c12; border: 2px solid #17202a; }
 .notice { padding: .75rem; background: #fff4cc; border-left: 5px solid #f1c40f; }
 .project-link a {
   display: block;
@@ -50,4 +89,7 @@ dd { margin: 0 0 .65rem; overflow-wrap: anywhere; }
 @media (max-width: 760px) {
   main { grid-template-columns: 1fr; grid-template-rows: auto 55vh; }
   aside { border: 0; }
+  .map-shell { min-height: 55vh; }
+  #map { min-height: 55vh; }
+  #map-legend { left: .6rem; bottom: 1.6rem; width: min(18rem, calc(100% - 1.2rem)); }
 }

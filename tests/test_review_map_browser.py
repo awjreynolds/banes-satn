@@ -15,6 +15,56 @@ PROJECT = Path(__file__).parents[1]
 
 
 @pytest.mark.browser
+def test_mobile_map_has_a_visible_compact_legend(tmp_path: Path) -> None:
+    fixture = tmp_path / "fixture"
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
+    config = CouncilConfig.from_yaml(fixture / "council.yaml")
+    snapshot(config)
+    result = compile(config)
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        page.route("https://tile.openstreetmap.org/**", lambda route: route.abort())
+        page.goto(result.artifacts["review_map"].as_uri())
+        page.wait_for_function("document.documentElement.dataset.mapReady === 'true'")
+        page.locator("#map").scroll_into_view_if_needed()
+
+        legend = page.get_by_role("region", name="Map legend")
+        assert legend.is_visible()
+        legend_text = legend.inner_text()
+        assert all(
+            label in legend_text
+            for label in (
+                "A-road spine",
+                "NCN spine",
+                "Access connection",
+                "Cross-spine connector",
+                "Branch meeting",
+                "Urban through-road",
+                "Candidate low-traffic area",
+                "Served community",
+                "Place reference",
+                "Network gap",
+                "Crossing warning",
+            )
+        )
+        map_box = page.locator("#map").bounding_box()
+        legend_box = legend.bounding_box()
+        assert map_box is not None
+        assert legend_box is not None
+        assert legend_box["x"] >= map_box["x"]
+        assert legend_box["y"] >= map_box["y"]
+        assert legend_box["x"] + legend_box["width"] <= map_box["x"] + map_box["width"]
+        assert legend_box["width"] <= 300
+        browser.close()
+
+
+@pytest.mark.browser
 def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
     fixture = tmp_path / "fixture"
     shutil.copytree(
