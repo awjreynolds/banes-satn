@@ -203,6 +203,7 @@ class RoadGraph:
         ends: list[tuple[str, float]],
         *,
         allow_stationary: bool = True,
+        excluded_pairs: set[tuple[str, str]] | None = None,
     ) -> RoutedAttachment | None:
         """Select one attachment with a bounded multi-source/multi-target search."""
         end_components = {
@@ -265,7 +266,11 @@ class RoadGraph:
                 )
             else:
                 option = self._option_from_nodes(nodes, "direct")
-            if option is not None and option.bidirectional:
+            if (
+                option is not None
+                and option.bidirectional
+                and (excluded_pairs is None or (start, end) not in excluded_pairs)
+            ):
                 return RoutedAttachment(
                     option=option,
                     start_node=start,

@@ -99,6 +99,26 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for row in compiled.spine_access_branches.itertuples()
             ),
+            "branch_meeting_connections": sorted(
+                (
+                    row.meeting_connection_id,
+                    row.from_place_id,
+                    row.to_place_id,
+                    row.from_root_spine_id,
+                    row.to_root_spine_id,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.branch_meeting_connections.itertuples()
+            ),
+            "cross_spine_connectors": sorted(
+                (
+                    row.cross_spine_connector_id,
+                    row.meeting_connection_id,
+                    row.connection_ids,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.cross_spine_connectors.itertuples()
+            ),
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
         },
         sort_keys=True,
@@ -120,6 +140,8 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "access_obligations": len(compiled.access_obligations),
             "spine_access_connections": len(compiled.spine_access_connections),
             "spine_access_branches": len(compiled.spine_access_branches),
+            "branch_meeting_connections": len(compiled.branch_meeting_connections),
+            "cross_spine_connectors": len(compiled.cross_spine_connectors),
             "strategic_spine_records": [
                 {
                     "spine_id": row.spine_id,
@@ -175,6 +197,29 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "provenance": row.provenance,
                 }
                 for row in compiled.spine_access_branches.itertuples()
+            ],
+            "branch_meeting_connection_records": [
+                {
+                    "meeting_connection_id": row.meeting_connection_id,
+                    "from_place_id": row.from_place_id,
+                    "to_place_id": row.to_place_id,
+                    "from_root_spine_id": row.from_root_spine_id,
+                    "to_root_spine_id": row.to_root_spine_id,
+                    "source_ids": row.source_ids,
+                    "provenance": row.provenance,
+                }
+                for row in compiled.branch_meeting_connections.itertuples()
+            ],
+            "cross_spine_connector_records": [
+                {
+                    "cross_spine_connector_id": row.cross_spine_connector_id,
+                    "meeting_connection_id": row.meeting_connection_id,
+                    "branch_ids": row.branch_ids,
+                    "connection_ids": row.connection_ids,
+                    "source_ids": row.source_ids,
+                    "provenance": row.provenance,
+                }
+                for row in compiled.cross_spine_connectors.itertuples()
             ],
             "superseded_hypotheses": compiled.superseded_hypotheses,
             "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},

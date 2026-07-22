@@ -89,6 +89,14 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         )
     if not compiled.spine_access_branches.empty:
         compiled.spine_access_branches.to_file(path, layer="spine_access_branches", driver="GPKG")
+    if not compiled.branch_meeting_connections.empty:
+        compiled.branch_meeting_connections.to_file(
+            path, layer="branch_meeting_connections", driver="GPKG"
+        )
+    if not compiled.cross_spine_connectors.empty:
+        compiled.cross_spine_connectors.to_file(
+            path, layer="cross_spine_connectors", driver="GPKG"
+        )
     if not compiled.gaps.empty:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
     if not compiled.urban_spines.empty:
@@ -150,6 +158,8 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "access-obligation": "obligation_id",
         "spine-access-connection": "access_connection_id",
         "spine-access-branch": "branch_id",
+        "branch-meeting-connection": "meeting_connection_id",
+        "cross-spine-connector": "cross_spine_connector_id",
         "strategic-spine": "spine_id",
         "connection": "connection_id",
         "gap": "connection_id",
@@ -163,6 +173,8 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "obligation_id",
         "access_connection_id",
         "branch_id",
+        "meeting_connection_id",
+        "cross_spine_connector_id",
         "spine_id",
         "place_id",
         "structure_id",
@@ -202,6 +214,8 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.access_obligations, "access-obligation")
             + _features(compiled.spine_access_connections, "spine-access-connection")
             + _features(compiled.spine_access_branches, "spine-access-branch")
+            + _features(compiled.branch_meeting_connections, "branch-meeting-connection")
+            + _features(compiled.cross_spine_connectors, "cross-spine-connector")
             + _features(compiled.gaps, "gap")
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
@@ -230,6 +244,8 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
         "access_obligations": len(compiled.access_obligations),
         "spine_access_connections": len(compiled.spine_access_connections),
         "spine_access_branches": len(compiled.spine_access_branches),
+        "branch_meeting_connections": len(compiled.branch_meeting_connections),
+        "cross_spine_connectors": len(compiled.cross_spine_connectors),
         "a_road_spines": len(compiled.a_road_spines),
         "ncn_routes": len(compiled.ncn_routes),
         "schools": len(compiled.schools),
@@ -850,6 +866,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "access_obligations": "access-obligation",
         "spine_access_connections": "spine-access-connection",
         "spine_access_branches": "spine-access-branch",
+        "branch_meeting_connections": "branch-meeting-connection",
+        "cross_spine_connectors": "cross-spine-connector",
         "a_road_spines": "a-road-spine",
         "ncn_routes": "ncn-route",
         "schools": "school",
@@ -876,6 +894,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     for control in (
         "layer-strategic-spines",
         "layer-spine-access-connections",
+        "layer-cross-spine-connectors",
         "layer-a-road-spines",
         "layer-community-connections",
         "layer-ncn-routes",

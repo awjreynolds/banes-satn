@@ -4,13 +4,16 @@ import json
 from pathlib import Path
 
 import geopandas as gpd
+import networkx as nx
 import pytest
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 
 import satn.backbone as backbone_module
 from satn.agents import AgentRole, FakeAgentRuntime
 from satn.compiler import compile_network
 from satn.models import CouncilConfig
+from satn.publisher import publish
+from satn.routing import RouteOption
 
 PROJECT = Path(__file__).parents[1]
 
@@ -115,6 +118,59 @@ def parallel_spine_source(*, reverse: bool = False) -> dict[str, gpd.GeoDataFram
     }
 
 
+def three_spine_source() -> dict[str, gpd.GeoDataFrame]:
+    source = parallel_spine_source()
+    source["places"] = frame(
+        [
+            *source["places"].to_dict("records"),
+            {
+                "place_id": "third-near",
+                "name": "Third Near",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.18, 0),
+            },
+        ]
+    )
+    source["network"] = frame(
+        [
+            *source["network"].to_dict("records"),
+            {
+                "osmid": "right-to-third",
+                "highway": "unclassified",
+                "geometry": LineString([(0.1, 0), (0.18, 0)]),
+            },
+            {
+                "osmid": "third-feed",
+                "highway": "unclassified",
+                "geometry": LineString([(0.18, 0), (0.2, 0)]),
+            },
+            {
+                "osmid": "third-spine-edge",
+                "highway": "primary",
+                "ref": "A3",
+                "geometry": LineString([(0.2, 0), (0.2, 0.01)]),
+            },
+        ]
+    )
+    source["context"] = frame(
+        [
+            *source["context"].to_dict("records"),
+            {
+                "evidence_id": "third-a3",
+                "feature_type": "a-road-spine",
+                "name": "A3",
+                "category": "A-road strategic spine",
+                "source_id": "third-spine-edge",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": LineString([(0.2, 0), (0.2, 0.01)]),
+            },
+        ]
+    )
+    return source
+
+
 def topology(compiled: object) -> list[tuple[object, ...]]:
     return sorted(
         (
@@ -131,11 +187,26 @@ def topology(compiled: object) -> list[tuple[object, ...]]:
     )
 
 
+def cross_spine_topology(compiled: object) -> list[tuple[object, ...]]:
+    return sorted(
+        (
+            row.meeting_connection_id,
+            row.from_place_id,
+            row.to_place_id,
+            row.from_root_spine_id,
+            row.to_root_spine_id,
+            row.geometry.wkb_hex,
+        )
+        for row in compiled.branch_meeting_connections.itertuples()
+    )
+
+
 def test_all_spines_seed_order_independent_growth_and_hinterland_chaining() -> None:
     first = compile_network(config(), parallel_spine_source(), FakeAgentRuntime())
     reordered = compile_network(config(), parallel_spine_source(reverse=True), FakeAgentRuntime())
 
     assert topology(first) == topology(reordered)
+    assert cross_spine_topology(first) == cross_spine_topology(reordered)
     assert len(first.spine_access_connections) == 3
     assert len(first.access_obligations) == 3
     assert set(first.access_obligations["service_status"]) == {"served"}
@@ -165,6 +236,34 @@ def test_all_spines_seed_order_independent_growth_and_hinterland_chaining() -> N
     assert access_ids <= {record.connection_id for record in first.agent_records}
     assert first.criteria["spine_network"]["all_access_obligations_resolved"] == "green"
     assert first.criteria["spine_network"]["degree_one_access_valid"] == "green"
+
+    assert len(first.branch_meeting_connections) == 1
+    meeting = first.branch_meeting_connections.iloc[0]
+    assert {meeting["from_place_id"], meeting["to_place_id"]} == {
+        "hinterland",
+        "right-near",
+    }
+    assert {meeting["from_root_spine_id"], meeting["to_root_spine_id"]} == set(
+        first.strategic_spines["spine_id"]
+    )
+    assert meeting["network_role"] == "branch-meeting-connection"
+    assert meeting["status"] == "validated"
+    assert meeting["intervention_archetype"] == "transverse link between Strategic Spine branches"
+    assert "first justified" in meeting["selection_reason"]
+
+    assert len(first.cross_spine_connectors) == 1
+    connector = first.cross_spine_connectors.iloc[0]
+    assert connector["network_role"] == "cross-spine-connector"
+    assert connector["meeting_connection_id"] == meeting["meeting_connection_id"]
+    assert {connector["from_root_spine_id"], connector["to_root_spine_id"]} == set(
+        first.strategic_spines["spine_id"]
+    )
+    connector_ids = set(json.loads(connector["connection_ids"]))
+    assert meeting["meeting_connection_id"] in connector_ids
+    assert set(first.spine_access_connections["access_connection_id"]) <= connector_ids
+    assert connector.geometry.covers(meeting.geometry)
+    assert first.criteria["spine_network"]["cross_spine_traversal"] == "green"
+    assert first.criteria["spine_network"]["parallel_meetings_suppressed"] == "green"
 
 
 def test_reachable_attachment_can_bypass_a_nearer_disconnected_fragment() -> None:
@@ -198,6 +297,190 @@ def test_reachable_attachment_can_bypass_a_nearer_disconnected_fragment() -> Non
     assert obligation["service_status"] == "served"
     access = compiled.spine_access_connections.set_index("place_id").loc["near-island"]
     assert access["community_attachment_node"] != "xy:0.0500000:0.0010000"
+
+
+def test_cross_spine_roles_publish_consistently_to_spatial_and_review_artifacts(
+    tmp_path: Path,
+) -> None:
+    council = config()
+    council.publication.output_dir = tmp_path / "output"
+    source = parallel_spine_source()
+    source["boundary"] = gpd.GeoDataFrame(
+        [{"geometry": Polygon([(-0.01, -0.01), (0.11, -0.01), (0.11, 0.02), (-0.01, 0.02)])}],
+        geometry="geometry",
+        crs=4326,
+    )
+    compiled = compile_network(council, source, FakeAgentRuntime())
+
+    artifacts = publish(council, compiled, "run-cross-spine")
+
+    layer_names = set(gpd.list_layers(artifacts["geopackage"])["name"])
+    assert {"branch_meeting_connections", "cross_spine_connectors"} <= layer_names
+    meeting = gpd.read_file(artifacts["geopackage"], layer="branch_meeting_connections")
+    connector = gpd.read_file(artifacts["geopackage"], layer="cross_spine_connectors")
+    network = json.loads(artifacts["geojson"].read_text())
+    feature_by_id = {feature["id"]: feature for feature in network["features"]}
+    assert feature_by_id[meeting.iloc[0]["meeting_connection_id"]]["properties"][
+        "network_role"
+    ] == "branch-meeting-connection"
+    assert feature_by_id[connector.iloc[0]["cross_spine_connector_id"]]["properties"][
+        "selection_reason"
+    ] == connector.iloc[0]["selection_reason"]
+    html = artifacts["review_map"].read_text()
+    assert 'id="layer-cross-spine-connectors"' in html
+    assert 'id="legend-cross-spine-connectors"' in html
+
+
+def test_first_meetings_connect_three_roots_without_forming_a_mesh() -> None:
+    source = three_spine_source()
+    reordered = {
+        name: value.iloc[::-1].reset_index(drop=True)
+        for name, value in source.items()
+    }
+
+    compiled = compile_network(config(), source, FakeAgentRuntime())
+    repeated = compile_network(config(), reordered, FakeAgentRuntime())
+
+    roots = set(compiled.spine_access_connections["root_spine_id"])
+    assert len(roots) == 3
+    assert len(compiled.branch_meeting_connections) == 2
+    assert len(compiled.cross_spine_connectors) == 2
+    assert cross_spine_topology(compiled) == cross_spine_topology(repeated)
+    root_graph = nx.Graph()
+    root_graph.add_nodes_from(roots)
+    root_graph.add_edges_from(
+        compiled.branch_meeting_connections[
+            ["from_root_spine_id", "to_root_spine_id"]
+        ].itertuples(index=False, name=None)
+    )
+    assert nx.is_tree(root_graph)
+
+
+def test_rejected_first_meeting_falls_through_to_next_adjacency() -> None:
+    accept_direct = {
+        "decision": "accept",
+        "selected_role": "direct",
+        "rationale": "Access candidate accepted.",
+    }
+    runtime = FakeAgentRuntime(
+        {
+            AgentRole.SYNTHESISER: [
+                accept_direct.copy(),
+                accept_direct.copy(),
+                accept_direct.copy(),
+                {
+                    "decision": "gap",
+                    "selected_role": None,
+                    "rationale": "Reject the first meeting candidate.",
+                },
+                {
+                    "decision": "accept",
+                    "selected_role": "cross-spine-connector",
+                    "rationale": "Accept the next meeting candidate.",
+                },
+            ]
+        }
+    )
+
+    compiled = compile_network(config(), parallel_spine_source(), runtime)
+
+    assert len(compiled.branch_meeting_connections) == 1
+    meeting_records = [
+        record
+        for record in compiled.agent_records
+        if record.connection_id.startswith("branch-meeting-")
+    ]
+    assert [record.decision for record in meeting_records] == ["superseded", "accept"]
+    assert (
+        compiled.branch_meeting_connections.iloc[0]["meeting_connection_id"]
+        == meeting_records[-1].connection_id
+    )
+
+
+def test_rejected_meetings_superseded_when_other_tree_edges_connect_the_roots() -> None:
+    accept = {
+        "decision": "accept",
+        "selected_role": "direct",
+        "rationale": "Candidate accepted.",
+    }
+    reject = {
+        "decision": "gap",
+        "selected_role": None,
+        "rationale": "Reject this meeting candidate.",
+    }
+    runtime = FakeAgentRuntime(
+        {
+            AgentRole.SYNTHESISER: [
+                *(accept.copy() for _ in range(4)),
+                reject.copy(),
+                reject.copy(),
+                accept.copy(),
+                accept.copy(),
+            ]
+        }
+    )
+
+    compiled = compile_network(config(), three_spine_source(), runtime)
+
+    meeting_records = [
+        record
+        for record in compiled.agent_records
+        if record.connection_id.startswith("branch-meeting-")
+    ]
+    assert [record.decision for record in meeting_records].count("accept") == 2
+    assert [record.decision for record in meeting_records].count("superseded") == 2
+    assert all(record.decision != "gap" for record in meeting_records)
+
+
+@pytest.mark.parametrize("row_factory", ["_connection_row", "_meeting_row"])
+def test_intervention_coverage_includes_every_backbone_connection_role(
+    monkeypatch: pytest.MonkeyPatch,
+    row_factory: str,
+) -> None:
+    original = getattr(backbone_module, row_factory)
+
+    def without_intervention(*args: object, **kwargs: object) -> dict[str, object]:
+        row = original(*args, **kwargs)
+        row["intervention_archetype"] = None
+        return row
+
+    monkeypatch.setattr(backbone_module, row_factory, without_intervention)
+
+    compiled = compile_network(config(), parallel_spine_source(), FakeAgentRuntime())
+
+    assert compiled.criteria["network"]["intervention_coverage"] == "red"
+
+
+def test_meeting_distance_challenge_uses_unrounded_route_length() -> None:
+    compiled = compile_network(config(), parallel_spine_source(), FakeAgentRuntime())
+    grouped = list(compiled.spine_access_connections.groupby("root_spine_id", sort=True))
+    left = grouped[0][1].iloc[0]
+    right = grouped[1][1].iloc[0]
+    candidate = backbone_module._MeetingCandidate(
+        rank=(),
+        left=left,
+        right=right,
+        option=RouteOption(
+            role="direct",
+            geometry=LineString([(0, 0), (0.1, 0)]),
+            length_km=15.0004,
+            edge_ids=["forward"],
+            a_road_share=0.0,
+            ncn_share=0.0,
+            bidirectional=True,
+            reverse_length_km=15.0004,
+            reverse_edge_ids=["reverse"],
+            reverse_corridor_share=1.0,
+            impracticable_alongside=False,
+        ),
+        start_node="left",
+        end_node="right",
+    )
+
+    row = backbone_module._meeting_row(candidate, max_connection_km=15.0)
+
+    assert row["distance_km"] == 15.0
+    assert row["criterion_distance"] == "amber"
 
 
 def test_equidistant_attachment_tie_is_stable_when_source_rows_reverse() -> None:

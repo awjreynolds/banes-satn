@@ -44,6 +44,8 @@ class CompiledNetwork:
     access_obligations: gpd.GeoDataFrame
     spine_access_connections: gpd.GeoDataFrame
     spine_access_branches: gpd.GeoDataFrame
+    branch_meeting_connections: gpd.GeoDataFrame
+    cross_spine_connectors: gpd.GeoDataFrame
     a_road_spines: gpd.GeoDataFrame
     ncn_routes: gpd.GeoDataFrame
     schools: gpd.GeoDataFrame
@@ -105,10 +107,13 @@ def compile_network(
         strategic_spines,
         road_graph,
         gate,
+        config.compilation.max_connection_km,
     )
     spine_access_connections = backbone.connections
     access_obligations = backbone.obligations
     spine_access_branches = backbone.branches
+    branch_meeting_connections = backbone.meeting_connections
+    cross_spine_connectors = backbone.cross_spine_connectors
     candidate_pairs = _local_adjacency_pairs(communities, road_graph, attachments)
     candidate_pairs.update(_gateway_pairs(gateways, communities, road_graph, attachments))
     accepted: list[dict[str, object]] = []
@@ -243,7 +248,7 @@ def compile_network(
             "mandatory_checks": TrafficLight.RED if unresolved else TrafficLight.GREEN,
             "distance_challenges": (
                 TrafficLight.AMBER
-                if "amber" in set(connections.get("criterion_distance", []))
+                if _has_distance_challenge(connections, branch_meeting_connections)
                 else TrafficLight.GREEN
             ),
         },
@@ -256,7 +261,11 @@ def compile_network(
             "internal_termini": (TrafficLight.GREEN if not internal_termini else TrafficLight.RED),
             "intervention_coverage": (
                 TrafficLight.GREEN
-                if not connections.empty and connections["intervention_archetype"].notna().all()
+                if _intervention_coverage_complete(
+                    connections,
+                    spine_access_connections,
+                    branch_meeting_connections,
+                )
                 else TrafficLight.RED
             ),
         },
@@ -302,6 +311,15 @@ def compile_network(
                 if backbone.gateway_count
                 else TrafficLight.GREY
             ),
+            "cross_spine_traversal": _cross_spine_status(
+                spine_access_connections,
+                branch_meeting_connections,
+            ),
+            "parallel_meetings_suppressed": (
+                TrafficLight.GREEN
+                if _meeting_root_pairs_unique(branch_meeting_connections)
+                else TrafficLight.RED
+            ),
             "a_road_intervention_assumptions": (
                 TrafficLight.GREEN
                 if _a_road_assumptions_complete(strategic_spines)
@@ -326,6 +344,8 @@ def compile_network(
         access_obligations=access_obligations,
         spine_access_connections=spine_access_connections,
         spine_access_branches=spine_access_branches,
+        branch_meeting_connections=branch_meeting_connections,
+        cross_spine_connectors=cross_spine_connectors,
         a_road_spines=_context_frame(context, "a-road-spine"),
         ncn_routes=_context_frame(context, "ncn-route"),
         schools=_context_frame(context, "school"),
@@ -728,6 +748,23 @@ def _rural_communities(
     return communities[~place_class.isin(config.source.urban_place_types)].copy()
 
 
+def _has_distance_challenge(*frames: gpd.GeoDataFrame) -> bool:
+    return any(
+        "amber" in set(frame.get("criterion_distance", []))
+        for frame in frames
+        if not frame.empty
+    )
+
+
+def _intervention_coverage_complete(*frames: gpd.GeoDataFrame) -> bool:
+    populated = [frame for frame in frames if not frame.empty]
+    return bool(populated) and all(
+        "intervention_archetype" in frame
+        and bool(frame["intervention_archetype"].notna().all())
+        for frame in populated
+    )
+
+
 def _branch_provenance_complete(connections: gpd.GeoDataFrame) -> bool:
     required = {"root_spine_id", "branch_id", "parent_role", "source_ids"}
     community_connections = connections[
@@ -760,6 +797,39 @@ def _degree_one_access_valid(
         for _, row in community_connections.iterrows()
     }
     return actual == expected
+
+
+def _cross_spine_status(
+    connections: gpd.GeoDataFrame,
+    meetings: gpd.GeoDataFrame,
+) -> TrafficLight:
+    roots = sorted(
+        connections.loc[
+            connections["obligation_kind"] == "community", "root_spine_id"
+        ]
+        .dropna()
+        .unique()
+    )
+    if len(roots) < 2:
+        return TrafficLight.GREY
+    root_graph = nx.Graph()
+    root_graph.add_nodes_from(roots)
+    root_graph.add_edges_from(
+        (
+            str(row["from_root_spine_id"]),
+            str(row["to_root_spine_id"]),
+        )
+        for _, row in meetings.iterrows()
+    )
+    return TrafficLight.GREEN if nx.is_connected(root_graph) else TrafficLight.RED
+
+
+def _meeting_root_pairs_unique(meetings: gpd.GeoDataFrame) -> bool:
+    pairs = [
+        tuple(sorted((str(row["from_root_spine_id"]), str(row["to_root_spine_id"]))))
+        for _, row in meetings.iterrows()
+    ]
+    return len(pairs) == len(set(pairs))
 
 
 def _stable_role_id(prefix: str, *parts: object) -> str:
