@@ -7,6 +7,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import combinations
+from numbers import Number
 
 import geopandas as gpd
 import networkx as nx
@@ -89,8 +90,9 @@ def compile_network(
     if len(communities) < 2:
         raise ValueError("a network requires at least two Communities")
     gateways = places[places["kind"] == "cross_boundary_gateway"].copy()
+    strategic_destinations = places[places["kind"] == "strategic_destination"].copy()
     participants = gpd.GeoDataFrame(
-        pd.concat([communities, gateways], ignore_index=True),
+        pd.concat([communities, gateways, strategic_destinations], ignore_index=True),
         geometry="geometry",
         crs=places.crs,
     )
@@ -100,9 +102,11 @@ def compile_network(
     attachments = _network_place_attachments(places, participants, road_graph)
     strategic_spines = _strategic_spines(context)
     rural_communities = _rural_communities(communities, config)
+    rural_schools = _rural_schools(context)
     assembly_enabled = not strategic_spines.empty
     backbone = assemble_backbone_outward(
         rural_communities if assembly_enabled else rural_communities.iloc[0:0],
+        rural_schools,
         gateways if assembly_enabled else gateways.iloc[0:0],
         strategic_spines,
         road_graph,
@@ -116,6 +120,9 @@ def compile_network(
     cross_spine_connectors = backbone.cross_spine_connectors
     candidate_pairs = _local_adjacency_pairs(communities, road_graph, attachments)
     candidate_pairs.update(_gateway_pairs(gateways, communities, road_graph, attachments))
+    candidate_pairs.update(
+        _gateway_pairs(strategic_destinations, communities, road_graph, attachments)
+    )
     accepted: list[dict[str, object]] = []
     rejected: list[dict[str, object]] = []
     records: list[AgentRecord] = []
@@ -281,12 +288,12 @@ def compile_network(
                 else TrafficLight.GREY
             ),
             "all_access_obligations_resolved": (
-                TrafficLight.GREEN
-                if not access_obligations.empty
-                and set(access_obligations["service_status"]) == {"served"}
-                else TrafficLight.RED
-                if not access_obligations.empty
-                else TrafficLight.GREY
+                _access_obligation_status(access_obligations)
+            ),
+            "school_access_state": _access_obligation_status(
+                access_obligations[
+                    access_obligations["obligation_kind"] == "school"
+                ]
             ),
             "branch_provenance": (
                 TrafficLight.GREEN
@@ -748,12 +755,91 @@ def _rural_communities(
     return communities[~place_class.isin(config.source.urban_place_types)].copy()
 
 
+def _rural_schools(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    schools = context[context["feature_type"] == "school"].copy()
+    if schools.empty:
+        return gpd.GeoDataFrame(
+            columns=[
+                "place_id",
+                "name",
+                "kind",
+                "place_class",
+                "source_id",
+                "evidence_id",
+                "school_kind",
+                "access_point_status",
+                "access_point_source_id",
+                "access_point_rationale",
+                "geometry",
+            ],
+            geometry="geometry",
+            crs=context.crs,
+        )
+    eligible = schools.get(
+        "school_obligation_eligible",
+        schools["category"].eq("school"),
+    ).map(_truthy)
+    scope = schools.get(
+        "network_scope", pd.Series("unresolved", index=schools.index, dtype=object)
+    )
+    schools = schools[eligible & scope.eq(NetworkScope.RURAL.value)].copy()
+    access_status = schools.get(
+        "access_point_status",
+        pd.Series("unresolved", index=schools.index, dtype=object),
+    )
+    schools["access_point_status"] = access_status.where(
+        access_status.isin(["mapped", "inferred", "unresolved"]),
+        "unresolved",
+    )
+    schools["access_point_source_id"] = schools.get(
+        "access_point_source_id", pd.Series(None, index=schools.index, dtype=object)
+    )
+    default_rationale = (
+        "No governed School Access Point evidence is present; the contextual point "
+        "is not snapped to a road."
+    )
+    rationale = schools.get(
+        "access_point_rationale",
+        pd.Series(default_rationale, index=schools.index, dtype=object),
+    )
+    schools["access_point_rationale"] = rationale.fillna(default_rationale)
+    schools["place_id"] = schools["evidence_id"].astype(str)
+    schools["kind"] = "school"
+    school_kind = schools.get(
+        "school_kind", pd.Series("school-unspecified", index=schools.index, dtype=object)
+    )
+    schools["school_kind"] = school_kind.fillna("school-unspecified")
+    schools["place_class"] = schools["school_kind"]
+    return schools.sort_values("place_id")
+
+
+def _truthy(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, Number):
+        return float(value) == 1.0
+    if value is None or (not isinstance(value, str) and bool(pd.isna(value))):
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
 def _has_distance_challenge(*frames: gpd.GeoDataFrame) -> bool:
     return any(
         "amber" in set(frame.get("criterion_distance", []))
         for frame in frames
         if not frame.empty
     )
+
+
+def _access_obligation_status(obligations: gpd.GeoDataFrame) -> TrafficLight:
+    if obligations.empty:
+        return TrafficLight.GREY
+    statuses = set(obligations["service_status"])
+    if "network-gap" in statuses:
+        return TrafficLight.RED
+    if "served-provisional" in statuses:
+        return TrafficLight.AMBER
+    return TrafficLight.GREEN if statuses == {"served"} else TrafficLight.RED
 
 
 def _intervention_coverage_complete(*frames: gpd.GeoDataFrame) -> bool:
@@ -766,11 +852,17 @@ def _intervention_coverage_complete(*frames: gpd.GeoDataFrame) -> bool:
 
 
 def _branch_provenance_complete(connections: gpd.GeoDataFrame) -> bool:
-    required = {"root_spine_id", "branch_id", "parent_role", "source_ids"}
-    community_connections = connections[
-        connections["obligation_kind"] == "community"
+    required = {
+        "root_spine_id",
+        "branch_id",
+        "parent_role",
+        "parent_target_id",
+        "source_ids",
+    }
+    obligation_connections = connections[
+        connections["obligation_kind"].isin(["community", "school"])
     ]
-    for provenance in community_connections.get("provenance", []):
+    for provenance in obligation_connections.get("provenance", []):
         parsed = json.loads(str(provenance))
         if not required <= set(parsed) or not parsed["source_ids"]:
             return False
@@ -782,7 +874,10 @@ def _degree_one_access_valid(
     connections: gpd.GeoDataFrame,
 ) -> bool:
     """Prove that every served Community is a valid leaf with one parent edge."""
-    served = obligations[obligations["service_status"] == "served"]
+    served = obligations[
+        (obligations["obligation_kind"] == "community")
+        & (obligations["service_status"] == "served")
+    ]
     community_connections = connections[
         connections["obligation_kind"] == "community"
     ]

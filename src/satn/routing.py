@@ -13,7 +13,7 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString, Point
-from shapely.ops import linemerge, unary_union
+from shapely.ops import linemerge, substring, unary_union
 
 LOW_TRAFFIC = {
     "living_street",
@@ -65,6 +65,25 @@ class RoutedAttachment:
     end_node: str
     end_snap_m: float
     total_distance_km: float
+    start_point: Point
+    end_point: Point
+    start_attachment_id: str
+    end_attachment_id: str
+
+
+@dataclass(frozen=True)
+class PointAttachment:
+    node_id: str
+    routing_cost_m: float
+    association_m: float
+    prefix_geometry: LineString | None
+    prefix_length_m: float
+    edge_id: str | None
+    reverse_edge_id: str | None
+    a_road: bool
+    ncn: bool
+    impracticable_alongside: bool
+    attachment_point: Point
 
 
 class RoadGraph:
@@ -119,6 +138,14 @@ class RoadGraph:
             [self.node_points[node] for node in self._node_ids], crs=self.crs
         ).to_crs(27700)
         self._projected_node_index = self._projected_nodes.sindex
+        edge_rows = [
+            {"u": u, "v": v, "geometry": attrs["geometry"]}
+            for u, v, attrs in self.graph.edges(data=True)
+        ]
+        self._projected_edges = gpd.GeoDataFrame(
+            edge_rows, geometry="geometry", crs=self.crs
+        ).to_crs(27700)
+        self._projected_edge_index = self._projected_edges.sindex
 
     def _add_best_edge(self, u: str, v: str, attrs: dict[str, object]) -> None:
         existing = self.graph.get_edge_data(u, v)
@@ -181,6 +208,174 @@ class RoadGraph:
         return sorted(
             (match for match in matches if match[1] <= tolerance_m),
             key=lambda match: (match[1], match[0]),
+        )
+
+    def best_point_attachment(
+        self,
+        point: Point,
+        max_association_m: float,
+        ends: list[tuple[str, float]],
+        *,
+        excluded_pairs: set[tuple[str, str]] | None = None,
+    ) -> RoutedAttachment | None:
+        """Attach a point to nearby nodes or edge interiors without hiding edge travel."""
+        attachments = self._point_attachments(point, max_association_m)
+        choice = self.best_attachment(
+            [(item.node_id, item.routing_cost_m) for item in attachments],
+            ends,
+            excluded_pairs=excluded_pairs,
+        )
+        if choice is None:
+            return None
+        selected = min(
+            (
+                item
+                for item in attachments
+                if item.node_id == choice.start_node
+                and abs(item.routing_cost_m - choice.start_snap_m) < 1e-6
+            ),
+            key=lambda item: (
+                item.routing_cost_m,
+                item.edge_id or "",
+                item.reverse_edge_id or "",
+            ),
+        )
+        option = self._prepend_point_attachment(selected, choice.option)
+        return RoutedAttachment(
+            option=option,
+            start_node=choice.start_node,
+            start_snap_m=selected.association_m,
+            end_node=choice.end_node,
+            end_snap_m=choice.end_snap_m,
+            total_distance_km=choice.total_distance_km,
+            start_point=selected.attachment_point,
+            end_point=choice.end_point,
+            start_attachment_id=(
+                choice.start_attachment_id
+                if selected.edge_id is None
+                else (
+                    f"edge:{selected.edge_id}:"
+                    f"{_coordinate_id(selected.attachment_point.coords[0])}"
+                )
+            ),
+            end_attachment_id=choice.end_attachment_id,
+        )
+
+    def has_point_attachment(self, point: Point, max_association_m: float) -> bool:
+        """Return whether a point has a governed bidirectional node/edge attachment."""
+        return bool(self._point_attachments(point, max_association_m))
+
+    def _point_attachments(
+        self,
+        point: Point,
+        max_association_m: float,
+    ) -> list[PointAttachment]:
+        attachments = [
+            PointAttachment(
+                node_id=node_id,
+                routing_cost_m=distance_m,
+                association_m=distance_m,
+                prefix_geometry=None,
+                prefix_length_m=0.0,
+                edge_id=None,
+                reverse_edge_id=None,
+                a_road=False,
+                ncn=False,
+                impracticable_alongside=False,
+                attachment_point=self.node_points[node_id],
+            )
+            for node_id, distance_m in self.nodes_near(point, max_association_m)
+        ]
+        target = gpd.GeoSeries([point], crs=self.crs).to_crs(27700).iloc[0]
+        positions = self._projected_edge_index.query(
+            target.buffer(max_association_m), predicate="intersects"
+        )
+        for position in positions:
+            projected = self._projected_edges.iloc[int(position)]
+            projected_geometry = projected.geometry
+            distance_along = projected_geometry.project(target)
+            projected_point = projected_geometry.interpolate(distance_along)
+            association_m = float(target.distance(projected_point))
+            if association_m > max_association_m or projected_geometry.length == 0:
+                continue
+            u = str(projected["u"])
+            v = str(projected["v"])
+            if not self.graph.has_edge(v, u):
+                continue
+            fraction = float(distance_along / projected_geometry.length)
+            if fraction <= 1e-9 or fraction >= 1 - 1e-9:
+                continue
+            attrs = self.graph[u][v]
+            reverse = self.graph[v][u]
+            reverse_geometry = reverse["geometry"]
+            if not isinstance(reverse_geometry, LineString) or min(
+                _corridor_share(attrs["geometry"], reverse_geometry, self.crs),
+                _corridor_share(reverse_geometry, attrs["geometry"], self.crs),
+            ) < 0.5:
+                continue
+            prefix_length_m = float(attrs["length_m"]) * (1 - fraction)
+            prefix = substring(attrs["geometry"], fraction, 1, normalized=True)
+            if not isinstance(prefix, LineString) or prefix.is_empty:
+                continue
+            attachments.append(
+                PointAttachment(
+                    node_id=v,
+                    routing_cost_m=association_m + prefix_length_m,
+                    association_m=association_m,
+                    prefix_geometry=prefix,
+                    prefix_length_m=prefix_length_m,
+                    edge_id=str(attrs["edge_id"]),
+                    reverse_edge_id=str(reverse["edge_id"]),
+                    a_road=_is_a_road(attrs["ref"]),
+                    ncn=bool(attrs["ncn"]),
+                    impracticable_alongside=str(attrs["alongside"]) == "impracticable",
+                    attachment_point=gpd.GeoSeries([projected_point], crs=27700)
+                    .to_crs(self.crs)
+                    .iloc[0],
+                )
+            )
+        return sorted(
+            attachments,
+            key=lambda item: (item.routing_cost_m, item.node_id, item.edge_id or ""),
+        )
+
+    @staticmethod
+    def _prepend_point_attachment(
+        attachment: PointAttachment,
+        option: RouteOption,
+    ) -> RouteOption:
+        if attachment.prefix_geometry is None or attachment.edge_id is None:
+            return option
+        geometry = _merge_route([attachment.prefix_geometry, option.geometry])
+        if geometry is None:
+            geometry = option.geometry
+        total_m = attachment.prefix_length_m + option.length_km * 1000
+        a_road_m = attachment.prefix_length_m if attachment.a_road else 0.0
+        a_road_m += option.a_road_share * option.length_km * 1000
+        ncn_m = attachment.prefix_length_m if attachment.ncn else 0.0
+        ncn_m += option.ncn_share * option.length_km * 1000
+        reverse_length_km = (
+            option.reverse_length_km + attachment.prefix_length_m / 1000
+            if option.reverse_length_km is not None
+            else None
+        )
+        return RouteOption(
+            role=option.role,
+            geometry=geometry,
+            length_km=total_m / 1000,
+            edge_ids=[attachment.edge_id, *option.edge_ids],
+            a_road_share=a_road_m / total_m if total_m else 0.0,
+            ncn_share=ncn_m / total_m if total_m else 0.0,
+            bidirectional=option.bidirectional and attachment.reverse_edge_id is not None,
+            reverse_length_km=reverse_length_km,
+            reverse_edge_ids=[
+                *option.reverse_edge_ids,
+                *([attachment.reverse_edge_id] if attachment.reverse_edge_id else []),
+            ],
+            reverse_corridor_share=option.reverse_corridor_share,
+            impracticable_alongside=(
+                option.impracticable_alongside or attachment.impracticable_alongside
+            ),
         )
 
     def network_distance(
@@ -260,7 +455,7 @@ class RoadGraph:
             total_m, nodes, start, start_snap, end, end_snap = routed
             if start == end:
                 option = (
-                    _stationary_route_option(self.node_points[start])
+                    stationary_route_option(self.node_points[start])
                     if allow_stationary
                     else None
                 )
@@ -278,6 +473,10 @@ class RoadGraph:
                     end_node=end,
                     end_snap_m=end_snap,
                     total_distance_km=total_m / 1000,
+                    start_point=self.node_points[start],
+                    end_point=self.node_points[end],
+                    start_attachment_id=start,
+                    end_attachment_id=end,
                 )
             add_search(
                 [attachment for attachment in search_starts if attachment[0] != start],
@@ -459,7 +658,7 @@ def _weight_for(role: str) -> Callable[[str, str, dict[str, object]], float]:
     return weight
 
 
-def _stationary_route_option(point: Point) -> RouteOption:
+def stationary_route_option(point: Point) -> RouteOption:
     return RouteOption(
         role="direct",
         geometry=LineString([point, point]),

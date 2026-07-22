@@ -35,7 +35,14 @@
         <label><input id="layer-ncn-routes" type="checkbox"> Raw National Cycle Network evidence</label>
         <label><input id="layer-urban-structure" type="checkbox" checked> Urban network structure</label>
         <label><input id="layer-places" type="checkbox" checked> Places</label>
-        <label><input id="layer-schools" type="checkbox"> Schools &amp; education</label>
+        <label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label>
+        <div id="legend-schools" class="layer-summary" role="note" hidden>
+          <p>Green — Mapped and served</p>
+          <p>Amber — Inferred access point; needs verification</p>
+          <p>Red — mapped access point but no reachable backbone attachment</p>
+          <p>Grey — Unresolved access point</p>
+          <p>Purple — contextual college or university</p>
+        </div>
         <label><input id="layer-retail-centres" type="checkbox"> High streets &amp; retail centres</label>
         <label><input id="layer-healthcare" type="checkbox"> Doctors, pharmacies &amp; hospitals</label>
         <label><input id="layer-gaps-warnings" type="checkbox" checked> Gaps and warnings</label>

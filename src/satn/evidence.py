@@ -9,7 +9,7 @@ from collections import Counter
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import linemerge
 
 from satn.models import NetworkScope
@@ -22,6 +22,11 @@ CONTEXT_COLUMNS = [
     "source_id",
     "feature_count",
     "network_scope",
+    "school_kind",
+    "school_obligation_eligible",
+    "access_point_status",
+    "access_point_source_id",
+    "access_point_rationale",
     "geometry",
 ]
 
@@ -40,7 +45,9 @@ def derive_context_layers(
     if ncn_features is not None and not ncn_features.empty:
         frames.append(derive_ncn_routes(ncn_features, network.crs))
     if facilities is not None and not facilities.empty:
-        frames.append(derive_facilities(facilities, network.crs))
+        frames.append(
+            derive_facilities(facilities, network, network.crs)
+        )
     populated = [frame for frame in frames if not frame.empty]
     if not populated:
         return empty_context(network.crs)
@@ -60,12 +67,6 @@ def govern_network_scope(
     urban_scope_buffer_km: float,
 ) -> gpd.GeoDataFrame:
     """Split strategic line evidence at the configured urban extent and type each part."""
-    strategic_types = {"a-road-spine", "ncn-route"}
-    strategic = context[context["feature_type"].isin(strategic_types)]
-    other = context[~context["feature_type"].isin(strategic_types)].copy()
-    if strategic.empty:
-        return context.copy()
-
     urban = place_features[
         place_features.get("place", pd.Series("", index=place_features.index, dtype=object)).isin(
             urban_place_types
@@ -74,6 +75,25 @@ def govern_network_scope(
     urban_extent = None
     if not urban.empty:
         urban_extent = urban.to_crs(27700).geometry.buffer(urban_scope_buffer_km * 1000).union_all()
+
+    strategic_types = {"a-road-spine", "ncn-route"}
+    strategic = context[context["feature_type"].isin(strategic_types)]
+    other = context[~context["feature_type"].isin(strategic_types)].copy()
+    school_indexes = other.index[other["feature_type"] == "school"]
+    if len(school_indexes):
+        projected_schools = other.loc[school_indexes].to_crs(27700)
+        other.loc[school_indexes, "network_scope"] = [
+            (
+                NetworkScope.URBAN.value
+                if urban_extent is not None and urban_extent.covers(geometry)
+                else NetworkScope.RURAL.value
+            )
+            for geometry in projected_schools.geometry
+        ]
+    if strategic.empty:
+        return gpd.GeoDataFrame(
+            other, columns=CONTEXT_COLUMNS, geometry="geometry", crs=context.crs
+        ).sort_values("evidence_id")
 
     rows: list[dict[str, object]] = []
     for _, evidence in strategic.to_crs(27700).iterrows():
@@ -148,11 +168,21 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
     return _frame(rows, target_crs)
 
 
-def derive_facilities(features: gpd.GeoDataFrame, target_crs: object) -> gpd.GeoDataFrame:
+def derive_facilities(
+    features: gpd.GeoDataFrame,
+    network: gpd.GeoDataFrame,
+    target_crs: object,
+) -> gpd.GeoDataFrame:
     source = features.to_crs(target_crs)
+    projected_source = source.to_crs(27700)
+    access_candidates = _school_access_candidates(source)
+    projected_network = network.to_crs(27700)
+    network_linework = (
+        projected_network.geometry.union_all() if not projected_network.empty else None
+    )
     rows: list[dict[str, object]] = []
     retail_points: list[dict[str, object]] = []
-    for index, feature in source.iterrows():
+    for position, (index, feature) in enumerate(source.iterrows()):
         if feature.geometry is None or feature.geometry.is_empty:
             continue
         amenity = (_text(feature.get("amenity")) or "").lower()
@@ -162,6 +192,15 @@ def derive_facilities(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
         point = feature.geometry.representative_point()
         name = _text(feature.get("name"))
         if amenity in {"school", "college", "university"}:
+            access_point, access_status, access_source_id, access_rationale = (
+                _school_access_point(
+                    projected_source.iloc[position],
+                    access_candidates,
+                    network_linework,
+                    target_crs,
+                    school_source_id=source_id,
+                )
+            )
             rows.append(
                 _row(
                     "school",
@@ -169,7 +208,12 @@ def derive_facilities(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
                     name or "Unnamed education site",
                     amenity,
                     source_id,
-                    point,
+                    access_point,
+                    school_kind=_school_kind(feature, amenity),
+                    school_obligation_eligible=amenity == "school",
+                    access_point_status=access_status,
+                    access_point_source_id=access_source_id,
+                    access_point_rationale=access_rationale,
                 )
             )
         if amenity in {"doctors", "pharmacy", "clinic", "hospital"}:
@@ -195,6 +239,150 @@ def derive_facilities(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
             )
     rows.extend(_retail_centres(retail_points, target_crs))
     return _frame(rows, target_crs)
+
+
+def _school_access_point(
+    school: pd.Series,
+    access_candidates: gpd.GeoDataFrame,
+    network_linework: object,
+    target_crs: object,
+    *,
+    school_source_id: str,
+) -> tuple[Point, str, str | None, str]:
+    mapped: list[tuple[int, float, str, Point]] = []
+    school_geometry = school.geometry
+    boundary = school_geometry if isinstance(school_geometry, Point) else school_geometry.boundary
+    if not access_candidates.empty:
+        positions = access_candidates.sindex.query(boundary.buffer(5), predicate="intersects")
+    else:
+        positions = []
+    for position in positions:
+        candidate = access_candidates.iloc[int(position)]
+        point = candidate.geometry
+        explicitly_associated = str(candidate.get("school_source_id") or "") == school_source_id
+        on_site_boundary = (
+            not isinstance(school_geometry, Point)
+            and school_geometry.buffer(3).covers(point)
+            and boundary.distance(point) <= 5
+        )
+        adjoining_network = (
+            network_linework is not None and network_linework.distance(point) <= 20
+        )
+        if not adjoining_network or not (explicitly_associated or on_site_boundary):
+            continue
+        distance_m = float(boundary.distance(point))
+        entrance = (_text(candidate.get("entrance")) or "").lower()
+        priority = 0 if entrance == "main" else 1 if entrance in {"yes", "secondary"} else 2
+        mapped.append((priority, distance_m, str(candidate["source_id"]), point))
+    if mapped:
+        _, _, source_id, point = min(mapped, key=lambda item: (item[0], item[1], item[2]))
+        output_point = gpd.GeoSeries([point], crs=27700).to_crs(target_crs).iloc[0]
+        return (
+            output_point,
+            "mapped",
+            source_id,
+            "Mapped usable School entrance is associated with the site boundary and "
+            "adjoining routable linework; preferred over inference.",
+        )
+
+    if not isinstance(school_geometry, Point) and network_linework is not None:
+        intersections = _geometry_points(boundary.intersection(network_linework))
+        if intersections:
+            point = sorted(intersections, key=lambda value: value.wkb_hex)[0]
+            return (
+                gpd.GeoSeries([point], crs=27700).to_crs(target_crs).iloc[0],
+                "inferred",
+                None,
+                "Inferred where routable street/path linework intersects the mapped "
+                "school boundary; requires verification.",
+            )
+
+    return (
+        gpd.GeoSeries([school_geometry.representative_point()], crs=27700)
+        .to_crs(target_crs)
+        .iloc[0],
+        "unresolved",
+        None,
+        "No mapped usable entrance or defensible boundary/path inference is available; "
+        "the representative point is context only and is not snapped to a road.",
+    )
+
+
+def _school_access_candidates(facilities: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Project usable access points once so each School can use the spatial index."""
+    rows: list[dict[str, object]] = []
+    for index, feature in facilities.iterrows():
+        if not _usable_school_access(feature):
+            continue
+        rows.append(
+            {
+                "source_id": _source_id(feature, index),
+                "school_source_id": _text(feature.get("school_source_id")),
+                "entrance": _text(feature.get("entrance")),
+                "geometry": feature.geometry.representative_point(),
+            }
+        )
+    if not rows:
+        return gpd.GeoDataFrame(
+            columns=["source_id", "school_source_id", "entrance", "geometry"],
+            geometry="geometry",
+            crs=27700,
+        )
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=facilities.crs).to_crs(27700)
+
+
+def _usable_school_access(feature: pd.Series) -> bool:
+    entrance = (_text(feature.get("entrance")) or "").lower()
+    barrier = (_text(feature.get("barrier")) or "").lower()
+    access = (_text(feature.get("access")) or "").lower()
+    foot = (_text(feature.get("foot")) or "").lower()
+    if access in {"no", "private"} or foot == "no" or entrance in {"no", "emergency"}:
+        return False
+    return bool(entrance or barrier in {"gate", "lift_gate", "swing_gate"})
+
+
+def _school_kind(feature: pd.Series, amenity: str) -> str:
+    if amenity != "school":
+        return amenity
+    values = " ".join(
+        filter(
+            None,
+            (
+                _text(feature.get("school")),
+                _text(feature.get("school:type")),
+                _text(feature.get("designation")),
+                _text(feature.get("name")),
+            ),
+        )
+    ).lower()
+    special_needs = (_text(feature.get("special_needs")) or "").lower()
+    if special_needs in {"yes", "only", "designated"} or "special" in values:
+        return "special"
+    if "all_through" in values or "all-through" in values:
+        return "all-through"
+    levels = {
+        level.strip()
+        for value in _tag_values(feature.get("isced:level"))
+        for level in value.replace(",", ";").split(";")
+        if level.strip()
+    }
+    if "primary" in values or levels & {"0", "1"}:
+        return "primary"
+    if "secondary" in values or levels & {"2", "3"}:
+        return "secondary"
+    return "school-unspecified"
+
+
+def _geometry_points(geometry: object) -> list[Point]:
+    if geometry is None or geometry.is_empty:
+        return []
+    if isinstance(geometry, Point):
+        return [geometry]
+    if isinstance(geometry, LineString):
+        return [Point(geometry.coords[0]), Point(geometry.coords[-1])]
+    if hasattr(geometry, "geoms"):
+        return [point for part in geometry.geoms for point in _geometry_points(part)]
+    return []
 
 
 def mark_ncn_edges(network: gpd.GeoDataFrame, context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -264,6 +452,7 @@ def _row(
     *,
     feature_count: int = 1,
     network_scope: NetworkScope = NetworkScope.UNRESOLVED,
+    **attributes: object,
 ) -> dict[str, object]:
     digest = hashlib.sha256(f"{feature_type}:{identity}".encode()).hexdigest()[:12]
     return {
@@ -274,6 +463,7 @@ def _row(
         "source_id": source_id,
         "feature_count": feature_count,
         "network_scope": network_scope.value,
+        **attributes,
         "geometry": geometry,
     }
 

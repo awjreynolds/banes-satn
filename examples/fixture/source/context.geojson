@@ -19,8 +19,8 @@
     },
     {
       "type": "Feature",
-      "properties": {"evidence_id": "school-fixture", "feature_type": "school", "name": "Fixture School", "category": "school", "source_id": "school1", "feature_count": 1},
-      "geometry": {"type": "Point", "coordinates": [-2.482, 51.413]}
+      "properties": {"evidence_id": "school-fixture", "feature_type": "school", "name": "Fixture School", "category": "school", "source_id": "school1", "feature_count": 1, "network_scope": "rural", "school_kind": "primary", "school_obligation_eligible": true, "access_point_status": "mapped", "access_point_source_id": "school1-entrance", "access_point_rationale": "Mapped usable entrance in the synthetic fixture."},
+      "geometry": {"type": "Point", "coordinates": [-2.482, 51.412]}
     },
     {
       "type": "Feature",

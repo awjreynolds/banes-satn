@@ -10,14 +10,16 @@ from dataclasses import dataclass
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import MultiPoint
+from shapely.geometry import MultiPoint, Point
+from shapely.ops import nearest_points
 
 from satn.agents import CompilationGate
 from satn.models import AgentRecord
-from satn.routing import RoadGraph, RouteOption
+from satn.routing import RoadGraph, RouteOption, stationary_route_option
 
 MAX_OBLIGATION_ATTACHMENT_M = 2000.0
 MAX_SPINE_ATTACHMENT_M = 20.0
+MAX_SCHOOL_ATTACHMENT_M = 20.0
 
 ACCESS_COLUMNS = [
     "access_connection_id",
@@ -28,6 +30,12 @@ ACCESS_COLUMNS = [
     "place_kind",
     "community_id",
     "community_name",
+    "school_id",
+    "school_name",
+    "school_kind",
+    "access_point_status",
+    "access_point_source_id",
+    "access_point_rationale",
     "spine_id",
     "spine_name",
     "spine_kind",
@@ -35,6 +43,8 @@ ACCESS_COLUMNS = [
     "branch_id",
     "parent_branch_id",
     "parent_role",
+    "parent_target_id",
+    "parent_target_name",
     "parent_place_id",
     "parent_access_connection_id",
     "attachment_depth",
@@ -68,9 +78,16 @@ OBLIGATION_COLUMNS = [
     "obligation_kind",
     "place_id",
     "community_id",
+    "school_id",
+    "school_kind",
     "name",
     "network_role",
     "service_status",
+    "service_rationale",
+    "access_point_status",
+    "access_point_source_id",
+    "access_point_rationale",
+    "criterion_access_point",
     "access_connection_id",
     "root_spine_id",
     "branch_id",
@@ -155,6 +172,11 @@ GAP_COLUMNS = [
     "agent_outcome",
     "agent_attempt_count",
     "agent_findings",
+    "school_id",
+    "school_kind",
+    "access_point_status",
+    "access_point_source_id",
+    "access_point_rationale",
     "source_ids",
     "cache_status",
     "alignment_options",
@@ -182,6 +204,7 @@ class BackboneAssembly:
 @dataclass(frozen=True)
 class _Frontier:
     target_id: str
+    target_name: str
     target_role: str
     target_place_id: str | None
     root_spine_id: str
@@ -193,6 +216,8 @@ class _Frontier:
     parent_access_connection_id: str | None
     depth: int
     attachments: tuple[tuple[str, float], ...]
+    geometry: object
+    projected_geometry: object
 
 
 @dataclass(frozen=True)
@@ -205,6 +230,10 @@ class _Candidate:
     start_snap_m: float
     end_node: str
     end_snap_m: float
+    start_point: Point
+    end_point: Point
+    start_attachment_id: str
+    end_attachment_id: str
 
 
 @dataclass(frozen=True)
@@ -219,6 +248,7 @@ class _MeetingCandidate:
 
 def assemble_backbone_outward(
     communities: gpd.GeoDataFrame,
+    schools: gpd.GeoDataFrame,
     gateways: gpd.GeoDataFrame,
     strategic_spines: gpd.GeoDataFrame,
     graph: RoadGraph,
@@ -226,7 +256,7 @@ def assemble_backbone_outward(
     max_connection_km: float,
 ) -> BackboneAssembly:
     """Grow one deterministic served frontier from every Strategic Spine concurrently."""
-    crs = communities.crs or strategic_spines.crs or graph.crs
+    crs = communities.crs or schools.crs or strategic_spines.crs or graph.crs
     frontiers = _spine_frontiers(strategic_spines, graph)
     unserved = {
         str(row["place_id"]): row for _, row in communities.sort_values("place_id").iterrows()
@@ -268,7 +298,7 @@ def assemble_backbone_outward(
             rejected.outcome_reason = "A different governed frontier attachment was accepted."
         rows.append(row)
         del unserved[place_id]
-        served_frontier = _served_frontier(row)
+        served_frontier = _served_frontier(row, graph)
         frontiers.append(served_frontier)
         frontiers.sort(key=_frontier_key)
         add_frontier_candidates(served_frontier)
@@ -295,6 +325,53 @@ def assemble_backbone_outward(
         max_connection_km=max_connection_km,
     )
     agent_records.extend(meeting_records)
+
+    school_frontiers = _school_attachment_frontiers(
+        strategic_spines,
+        community_connections,
+        cross_spine_connectors,
+        graph,
+    )
+    for _, school in schools.sort_values("place_id").iterrows():
+        if str(school.get("access_point_status")) == "unresolved":
+            gap_rows.append(_gap_row(school, graph, obligation_kind="school"))
+            continue
+        rejected_school_records: list[AgentRecord] = []
+        excluded_pairs: set[tuple[str, str]] = set()
+        while selected := _school_candidate(
+            school,
+            school_frontiers,
+            graph,
+            excluded_pairs=excluded_pairs,
+        ):
+            row = _connection_row(selected, graph, obligation_kind="school")
+            record = _evaluate(row, gate)
+            agent_records.append(record)
+            if record.decision != "accept":
+                rejected_school_records.append(record)
+                excluded_pairs.add((selected.start_node, selected.end_node))
+                continue
+            _record_gate_acceptance(row, record)
+            for rejected in rejected_school_records:
+                rejected.decision = "superseded"
+                rejected.outcome_reason = (
+                    "A different governed School-to-backbone attachment was accepted."
+                )
+            rows.append(row)
+            break
+        else:
+            gap_rows.append(
+                _gap_row(
+                    school,
+                    graph,
+                    obligation_kind="school",
+                    gate_reason=(
+                        rejected_school_records[-1].outcome_reason
+                        if rejected_school_records
+                        else None
+                    ),
+                )
+            )
 
     connected_gateways = 0
     for _, gateway in gateways.sort_values("place_id").iterrows():
@@ -343,7 +420,7 @@ def assemble_backbone_outward(
     gaps = gpd.GeoDataFrame(
         gap_rows, columns=GAP_COLUMNS, geometry="geometry", crs=crs
     ).sort_values("connection_id")
-    obligations = _obligations(communities, connections, gaps)
+    obligations = _obligations(communities, schools, connections, gaps)
     branches = _branches(connections, strategic_spines, crs)
     return BackboneAssembly(
         connections=connections,
@@ -368,6 +445,7 @@ def _spine_frontiers(
         frontiers.append(
             _Frontier(
                 target_id=str(spine["spine_id"]),
+                target_name=str(spine.get("name") or spine["spine_id"]),
                 target_role="strategic-spine",
                 target_place_id=None,
                 root_spine_id=str(spine["spine_id"]),
@@ -379,14 +457,19 @@ def _spine_frontiers(
                 parent_access_connection_id=None,
                 depth=0,
                 attachments=attachments,
+                geometry=spine.geometry,
+                projected_geometry=gpd.GeoSeries([spine.geometry], crs=graph.crs)
+                .to_crs(27700)
+                .iloc[0],
             )
         )
     return sorted(frontiers, key=_frontier_key)
 
 
-def _served_frontier(row: dict[str, object]) -> _Frontier:
+def _served_frontier(row: dict[str, object], graph: RoadGraph) -> _Frontier:
     return _Frontier(
         target_id=str(row["access_connection_id"]),
+        target_name=str(row.get("place_name") or row["access_connection_id"]),
         target_role="spine-access-connection",
         target_place_id=str(row["place_id"]),
         root_spine_id=str(row["root_spine_id"]),
@@ -398,7 +481,85 @@ def _served_frontier(row: dict[str, object]) -> _Frontier:
         parent_access_connection_id=str(row["access_connection_id"]),
         depth=int(row["attachment_depth"]),
         attachments=((str(row["community_attachment_node"]), 0.0),),
+        geometry=row["geometry"],
+        projected_geometry=gpd.GeoSeries([row["geometry"]], crs=graph.crs)
+        .to_crs(27700)
+        .iloc[0],
     )
+
+
+def _school_attachment_frontiers(
+    strategic_spines: gpd.GeoDataFrame,
+    community_connections: gpd.GeoDataFrame,
+    cross_spine_connectors: gpd.GeoDataFrame,
+    graph: RoadGraph,
+) -> list[_Frontier]:
+    """Expose fixed backbone geometry to Schools without making Schools new frontiers."""
+    frontiers = _spine_frontiers(strategic_spines, graph)
+    for _, connection in community_connections.sort_values("access_connection_id").iterrows():
+        provenance = json.loads(str(connection["provenance"]))
+        attachments = tuple(graph.nodes_on_geometry(connection.geometry))
+        if not attachments:
+            continue
+        frontiers.append(
+            _Frontier(
+                target_id=str(connection["access_connection_id"]),
+                target_name=str(
+                    f"{connection.get('place_name')} Spine Access Connection"
+                    if connection.get("place_name")
+                    else connection["access_connection_id"]
+                ),
+                target_role="spine-access-connection",
+                target_place_id=str(connection["place_id"]),
+                root_spine_id=str(connection["root_spine_id"]),
+                root_spine_name=str(connection["spine_name"]),
+                root_spine_kind=str(connection["spine_kind"]),
+                root_evidence_id=str(provenance["root_evidence_id"]),
+                root_source_id=str(provenance["root_source_id"]),
+                branch_id=str(connection["branch_id"]),
+                parent_access_connection_id=str(connection["access_connection_id"]),
+                depth=int(connection["attachment_depth"]),
+                attachments=attachments,
+                geometry=connection.geometry,
+                projected_geometry=gpd.GeoSeries([connection.geometry], crs=graph.crs)
+                .to_crs(27700)
+                .iloc[0],
+            )
+        )
+    spine_by_id = strategic_spines.set_index("spine_id", drop=False)
+    for _, connector in cross_spine_connectors.sort_values(
+        "cross_spine_connector_id"
+    ).iterrows():
+        root_id = str(connector["from_root_spine_id"])
+        spine = spine_by_id.loc[root_id]
+        attachments = tuple(graph.nodes_on_geometry(connector.geometry))
+        if not attachments:
+            continue
+        frontiers.append(
+            _Frontier(
+                target_id=str(connector["cross_spine_connector_id"]),
+                target_name=(
+                    f"{connector['from_root_spine_name']} → "
+                    f"{connector['to_root_spine_name']} connector"
+                ),
+                target_role="cross-spine-connector",
+                target_place_id=None,
+                root_spine_id=root_id,
+                root_spine_name=str(spine.get("name") or root_id),
+                root_spine_kind=str(spine["spine_kind"]),
+                root_evidence_id=str(spine["evidence_id"]),
+                root_source_id=str(spine["source_id"]),
+                branch_id=None,
+                parent_access_connection_id=None,
+                depth=0,
+                attachments=attachments,
+                geometry=connector.geometry,
+                projected_geometry=gpd.GeoSeries([connector.geometry], crs=graph.crs)
+                .to_crs(27700)
+                .iloc[0],
+            )
+        )
+    return sorted(frontiers, key=_frontier_key)
 
 
 def _frontier_key(frontier: _Frontier) -> tuple[object, ...]:
@@ -450,6 +611,128 @@ def _candidate(
         start_snap_m=choice.start_snap_m,
         end_node=choice.end_node,
         end_snap_m=choice.end_snap_m,
+        start_point=choice.start_point,
+        end_point=choice.end_point,
+        start_attachment_id=choice.start_attachment_id,
+        end_attachment_id=choice.end_attachment_id,
+    )
+
+
+def _school_candidate(
+    school: pd.Series,
+    frontiers: list[_Frontier],
+    graph: RoadGraph,
+    *,
+    excluded_pairs: set[tuple[str, str]],
+) -> _Candidate | None:
+    """Route once from a School to all labelled fixed-backbone attachments."""
+    direct = _direct_school_candidate(school, frontiers, graph, excluded_pairs)
+    if direct is not None:
+        return direct
+    ends = [
+        attachment
+        for frontier in frontiers
+        for attachment in frontier.attachments
+        if attachment[1] <= MAX_SPINE_ATTACHMENT_M
+    ]
+    choice = graph.best_point_attachment(
+        school.geometry,
+        MAX_SCHOOL_ATTACHMENT_M,
+        ends,
+        excluded_pairs=excluded_pairs,
+    )
+    if choice is None:
+        return None
+    matching_frontiers = [
+        (snap_m, frontier)
+        for frontier in frontiers
+        for node_id, snap_m in frontier.attachments
+        if node_id == choice.end_node and snap_m <= MAX_SPINE_ATTACHMENT_M
+    ]
+    if not matching_frontiers:
+        return None
+    _, frontier = min(
+        matching_frontiers,
+        key=lambda match: (round(match[0], 9), _frontier_key(match[1])),
+    )
+    rank = (
+        round(choice.total_distance_km, 9),
+        str(school["place_id"]),
+        0 if frontier.target_role == "strategic-spine" else 1,
+        frontier.root_spine_id,
+        frontier.target_id,
+        choice.start_node,
+        choice.end_node,
+        "school",
+    )
+    return _Candidate(
+        rank=rank,
+        place=school,
+        frontier=frontier,
+        option=choice.option,
+        start_node=choice.start_node,
+        start_snap_m=choice.start_snap_m,
+        end_node=choice.end_node,
+        end_snap_m=choice.end_snap_m,
+        start_point=choice.start_point,
+        end_point=choice.end_point,
+        start_attachment_id=choice.start_attachment_id,
+        end_attachment_id=choice.end_attachment_id,
+    )
+
+
+def _direct_school_candidate(
+    school: pd.Series,
+    frontiers: list[_Frontier],
+    graph: RoadGraph,
+    excluded_pairs: set[tuple[str, str]],
+) -> _Candidate | None:
+    projected_school = gpd.GeoSeries([school.geometry], crs=graph.crs).to_crs(27700).iloc[0]
+    nearby: list[tuple[float, _Frontier, Point, str]] = []
+    for frontier in frontiers:
+        distance_m = float(projected_school.distance(frontier.projected_geometry))
+        if distance_m > MAX_SCHOOL_ATTACHMENT_M:
+            continue
+        _, projected_attachment = nearest_points(
+            projected_school, frontier.projected_geometry
+        )
+        attachment = (
+            gpd.GeoSeries([projected_attachment], crs=27700).to_crs(graph.crs).iloc[0]
+        )
+        virtual_node = _stable_id(
+            "school-frontier-attachment", frontier.target_id, attachment.wkb_hex
+        )
+        if (virtual_node, virtual_node) not in excluded_pairs:
+            nearby.append((distance_m, frontier, attachment, virtual_node))
+    if not nearby or not graph.has_point_attachment(school.geometry, MAX_SCHOOL_ATTACHMENT_M):
+        return None
+    association_m, frontier, attachment, virtual_node = min(
+        nearby,
+        key=lambda match: (round(match[0], 9), _frontier_key(match[1])),
+    )
+    option = stationary_route_option(attachment)
+    return _Candidate(
+        rank=(
+            round(association_m / 1000, 9),
+            str(school["place_id"]),
+            0 if frontier.target_role == "strategic-spine" else 1,
+            frontier.root_spine_id,
+            frontier.target_id,
+            virtual_node,
+            virtual_node,
+            "school",
+        ),
+        place=school,
+        frontier=frontier,
+        option=option,
+        start_node=virtual_node,
+        start_snap_m=association_m,
+        end_node=virtual_node,
+        end_snap_m=0.0,
+        start_point=attachment,
+        end_point=attachment,
+        start_attachment_id=virtual_node,
+        end_attachment_id=virtual_node,
     )
 
 
@@ -475,7 +758,8 @@ def _evaluate(row: dict[str, object], gate: CompilationGate) -> AgentRecord:
         str(row["access_connection_id"]),
         {
             "from_place": str(row["place_id"]),
-            "to_place": str(row["parent_place_id"] or row["root_spine_id"]),
+            "to_place": str(row["parent_target_id"]),
+            "target_role": str(row["parent_role"]),
             "selection_reason": str(row["selection_reason"]),
             "evidence_ids": tuple(json.loads(str(row["source_ids"]))),
             "checks_by_role": {
@@ -514,21 +798,48 @@ def _connection_row(
     place_id = str(candidate.place["place_id"])
     frontier = candidate.frontier
     branch_id = frontier.branch_id
-    if branch_id is None and obligation_kind == "community":
+    if branch_id is None and obligation_kind in {"community", "school"}:
         branch_id = _stable_id("spine-access-branch", frontier.root_spine_id, place_id)
-    parent_id = frontier.parent_access_connection_id or frontier.root_spine_id
-    connection_id = _stable_id("spine-access", place_id, frontier.root_spine_id, parent_id)
+    parent_id = frontier.target_id
+    route_identity = json.dumps(
+        [
+            candidate.start_node,
+            candidate.end_node,
+            *candidate.option.edge_ids,
+            "reverse",
+            *candidate.option.reverse_edge_ids,
+        ]
+    )
+    connection_id = _stable_id(
+        "spine-access",
+        place_id,
+        frontier.root_spine_id,
+        parent_id,
+        route_identity,
+    )
     source_ids = sorted(
         {
             *candidate.option.edge_ids,
             *candidate.option.reverse_edge_ids,
             frontier.root_evidence_id,
             frontier.root_source_id,
+            *(
+                {
+                    str(candidate.place.get("evidence_id")),
+                    str(candidate.place.get("source_id")),
+                    str(candidate.place.get("access_point_source_id")),
+                }
+                if obligation_kind == "school"
+                else set()
+            ),
         }
     )
-    network_role = (
-        "spine-access-connection" if obligation_kind == "community" else "gateway-access-connection"
-    )
+    source_ids = [source_id for source_id in source_ids if source_id not in {"None", "nan"}]
+    network_role = {
+        "community": "spine-access-connection",
+        "school": "school-access-connection",
+        "gateway": "gateway-access-connection",
+    }[obligation_kind]
     depth = frontier.depth + 1
     provenance = {
         "access_connection_id": connection_id,
@@ -540,15 +851,32 @@ def _connection_row(
         "branch_id": branch_id,
         "parent_branch_id": frontier.branch_id,
         "parent_role": frontier.target_role,
+        "parent_target_id": frontier.target_id,
+        "parent_target_name": frontier.target_name,
         "parent_place_id": frontier.target_place_id,
         "parent_access_connection_id": frontier.parent_access_connection_id,
         "source_ids": source_ids,
     }
+    if obligation_kind == "school":
+        provenance.update(
+            {
+                "school_id": place_id,
+                "school_kind": candidate.place.get("school_kind"),
+                "access_point_status": candidate.place.get("access_point_status"),
+                "access_point_source_id": candidate.place.get("access_point_source_id"),
+                "access_point_rationale": candidate.place.get("access_point_rationale"),
+            }
+        )
     direct_to_spine = frontier.target_role == "strategic-spine"
     return {
         "access_connection_id": connection_id,
         "obligation_id": (
-            _stable_id("access-obligation", place_id) if obligation_kind == "community" else None
+            _stable_id(
+                "school-access-obligation" if obligation_kind == "school" else "access-obligation",
+                place_id,
+            )
+            if obligation_kind in {"community", "school"}
+            else None
         ),
         "obligation_kind": obligation_kind,
         "place_id": place_id,
@@ -556,6 +884,22 @@ def _connection_row(
         "place_kind": candidate.place.get("kind"),
         "community_id": place_id if obligation_kind == "community" else None,
         "community_name": (candidate.place.get("name") if obligation_kind == "community" else None),
+        "school_id": place_id if obligation_kind == "school" else None,
+        "school_name": candidate.place.get("name") if obligation_kind == "school" else None,
+        "school_kind": candidate.place.get("school_kind") if obligation_kind == "school" else None,
+        "access_point_status": (
+            candidate.place.get("access_point_status") if obligation_kind == "school" else None
+        ),
+        "access_point_source_id": (
+            candidate.place.get("access_point_source_id")
+            if obligation_kind == "school"
+            else None
+        ),
+        "access_point_rationale": (
+            candidate.place.get("access_point_rationale")
+            if obligation_kind == "school"
+            else None
+        ),
         "spine_id": frontier.root_spine_id,
         "spine_name": frontier.root_spine_name,
         "spine_kind": frontier.root_spine_kind,
@@ -563,6 +907,8 @@ def _connection_row(
         "branch_id": branch_id,
         "parent_branch_id": frontier.branch_id,
         "parent_role": frontier.target_role,
+        "parent_target_id": frontier.target_id,
+        "parent_target_name": frontier.target_name,
         "parent_place_id": frontier.target_place_id,
         "parent_access_connection_id": frontier.parent_access_connection_id,
         "attachment_depth": depth,
@@ -577,25 +923,34 @@ def _connection_row(
         "agent_findings": "[]",
         "intervention_archetype": "access link to a high-quality Strategic Spine branch",
         "selection_reason": (
-            "Selected by minimum plausible cycling-network cost from all concurrent "
-            f"Strategic Spine and served-branch frontiers; extended {frontier.target_role}."
+            (
+                "Selected from the governed School Access Point by minimum plausible "
+                "cycling-network cost to fixed Strategic Spine, Cross-Spine Connector "
+                f"or established branch geometry; attached to {frontier.target_role} "
+                "without creating a School peer journey objective."
+            )
+            if obligation_kind == "school"
+            else (
+                "Selected by minimum plausible cycling-network cost from all concurrent "
+                f"Strategic Spine and served-branch frontiers; extended {frontier.target_role}."
+            )
         ),
         "geometry_semantics": (
             "routed OSM network alignment between canonical graph attachment points; "
             "snap distances are evidence associations, not claimed paths or final design"
         ),
-        "community_attachment_node": candidate.start_node,
+        "community_attachment_node": candidate.start_attachment_id,
         "community_attachment_distance_m": round(candidate.start_snap_m, 3),
-        "community_attachment_point": graph.node_points[candidate.start_node].wkt,
-        "target_attachment_node": candidate.end_node,
+        "community_attachment_point": candidate.start_point.wkt,
+        "target_attachment_node": candidate.end_attachment_id,
         "target_attachment_distance_m": round(candidate.end_snap_m, 3),
-        "target_attachment_point": graph.node_points[candidate.end_node].wkt,
-        "spine_attachment_node": candidate.end_node if direct_to_spine else None,
+        "target_attachment_point": candidate.end_point.wkt,
+        "spine_attachment_node": candidate.end_attachment_id if direct_to_spine else None,
         "spine_attachment_distance_m": (
             round(candidate.end_snap_m, 3) if direct_to_spine else None
         ),
         "spine_attachment_point": (
-            graph.node_points[candidate.end_node].wkt if direct_to_spine else None
+            candidate.end_point.wkt if direct_to_spine else None
         ),
         "source_ids": json.dumps(source_ids),
         "provenance": json.dumps(provenance, sort_keys=True),
@@ -613,22 +968,43 @@ def _gap_row(
     gate_reason: str | None = None,
 ) -> dict[str, object]:
     place_id = str(place["place_id"])
-    _, snap_distance_m = graph.nearest_node(place.geometry)
-    bounded = snap_distance_m <= MAX_OBLIGATION_ATTACHMENT_M
+    unresolved_school_access = (
+        obligation_kind == "school"
+        and str(place.get("access_point_status")) == "unresolved"
+    )
+    snap_distance_m = (
+        float("inf")
+        if unresolved_school_access
+        else graph.nearest_node(place.geometry)[1]
+    )
+    attachment_bound_m = (
+        MAX_SCHOOL_ATTACHMENT_M if obligation_kind == "school" else MAX_OBLIGATION_ATTACHMENT_M
+    )
+    bounded = (
+        graph.has_point_attachment(place.geometry, attachment_bound_m)
+        if obligation_kind == "school" and not unresolved_school_access
+        else snap_distance_m <= attachment_bound_m
+    )
     reason = gate_reason or (
-        "No continuous bidirectional OSM cycling-network path reaches any Strategic Spine "
-        "or served branch frontier."
-        if bounded
+        str(place.get("access_point_rationale"))
+        if unresolved_school_access
         else (
-            "The reference point has no routable graph attachment within the governed "
-            f"{MAX_OBLIGATION_ATTACHMENT_M:.0f} metre bound."
+            "No continuous bidirectional OSM cycling-network path reaches any Strategic Spine "
+            "or served branch frontier."
+            if bounded
+            else (
+                "The reference point has no routable graph attachment within the governed "
+                f"{attachment_bound_m:.0f} metre bound."
+            )
         )
     )
     return {
         "connection_id": _stable_id("spine-access-gap", obligation_kind, place_id),
-        "network_role": (
-            "spine-access-gap" if obligation_kind == "community" else "gateway-access-gap"
-        ),
+        "network_role": {
+            "community": "spine-access-gap",
+            "school": "school-access-gap",
+            "gateway": "gateway-access-gap",
+        }[obligation_kind],
         "from_place": place_id,
         "to_place": None,
         "from_place_name": place.get("name"),
@@ -642,10 +1018,23 @@ def _gap_row(
         "agent_outcome": reason,
         "agent_attempt_count": 0,
         "agent_findings": "[]",
+        "school_id": place_id if obligation_kind == "school" else None,
+        "school_kind": place.get("school_kind") if obligation_kind == "school" else None,
+        "access_point_status": (
+            place.get("access_point_status") if obligation_kind == "school" else None
+        ),
+        "access_point_source_id": (
+            place.get("access_point_source_id") if obligation_kind == "school" else None
+        ),
+        "access_point_rationale": (
+            place.get("access_point_rationale") if obligation_kind == "school" else None
+        ),
         "source_ids": "[]",
         "cache_status": "not-cacheable",
         "alignment_options": "[]",
-        "criterion_endpoints": "green" if bounded else "red",
+        "criterion_endpoints": (
+            "grey" if unresolved_school_access else "green" if bounded else "red"
+        ),
         "criterion_continuity": "red",
         "criterion_bidirectional": "red",
         "criterion_distance": "grey",
@@ -655,18 +1044,28 @@ def _gap_row(
 
 def _obligations(
     communities: gpd.GeoDataFrame,
+    schools: gpd.GeoDataFrame,
     connections: gpd.GeoDataFrame,
     gaps: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
-    served = {
+    served_communities = {
         str(row["place_id"]): row
         for _, row in connections[connections["obligation_kind"] == "community"].iterrows()
     }
-    gap_ids = set(gaps.loc[gaps["network_role"] == "spine-access-gap", "from_place"].astype(str))
+    served_schools = {
+        str(row["place_id"]): row
+        for _, row in connections[connections["obligation_kind"] == "school"].iterrows()
+    }
+    community_gap_ids = set(
+        gaps.loc[gaps["network_role"] == "spine-access-gap", "from_place"].astype(str)
+    )
+    school_gap_ids = set(
+        gaps.loc[gaps["network_role"] == "school-access-gap", "from_place"].astype(str)
+    )
     rows: list[dict[str, object]] = []
     for _, community in communities.sort_values("place_id").iterrows():
         place_id = str(community["place_id"])
-        access = served.get(place_id)
+        access = served_communities.get(place_id)
         service_status = "served" if access is not None else "network-gap"
         provenance = {
             "community_id": place_id,
@@ -676,7 +1075,7 @@ def _obligations(
             ),
             "gap_id": (
                 _stable_id("spine-access-gap", "community", place_id)
-                if place_id in gap_ids
+                if place_id in community_gap_ids
                 else None
             ),
         }
@@ -686,9 +1085,20 @@ def _obligations(
                 "obligation_kind": "community",
                 "place_id": place_id,
                 "community_id": place_id,
+                "school_id": None,
+                "school_kind": None,
                 "name": community.get("name"),
                 "network_role": "community-access-obligation",
                 "service_status": service_status,
+                "service_rationale": (
+                    "Community has one governed parent access edge to the assembled backbone."
+                    if access is not None
+                    else "Community remains exposed as a Network Gap."
+                ),
+                "access_point_status": None,
+                "access_point_source_id": None,
+                "access_point_rationale": None,
+                "criterion_access_point": "grey",
                 "access_connection_id": (
                     access["access_connection_id"] if access is not None else None
                 ),
@@ -698,8 +1108,76 @@ def _obligations(
                 "geometry": community.geometry,
             }
         )
+    for _, school in schools.sort_values("place_id").iterrows():
+        school_id = str(school["place_id"])
+        access = served_schools.get(school_id)
+        access_status = str(school.get("access_point_status"))
+        service_status = (
+            "served"
+            if access is not None and access_status == "mapped"
+            else "served-provisional"
+            if access is not None
+            else "network-gap"
+        )
+        provenance = {
+            "school_id": school_id,
+            "school_kind": school.get("school_kind"),
+            "access_point_status": access_status,
+            "access_point_source_id": school.get("access_point_source_id"),
+            "service_status": service_status,
+            "access_connection_id": (
+                str(access["access_connection_id"]) if access is not None else None
+            ),
+            "gap_id": (
+                _stable_id("spine-access-gap", "school", school_id)
+                if school_id in school_gap_ids
+                else None
+            ),
+        }
+        rows.append(
+            {
+                "obligation_id": _stable_id("school-access-obligation", school_id),
+                "obligation_kind": "school",
+                "place_id": school_id,
+                "community_id": None,
+                "school_id": school_id,
+                "school_kind": school.get("school_kind"),
+                "name": school.get("name"),
+                "network_role": "school-access-obligation",
+                "service_status": service_status,
+                "service_rationale": (
+                    "Mapped School Access Point has one governed parent edge to fixed "
+                    "backbone geometry."
+                    if service_status == "served"
+                    else (
+                        "Inferred School Access Point reaches fixed backbone geometry but "
+                        "remains subject to verification."
+                        if service_status == "served-provisional"
+                        else "School access is unresolved and remains visible as a Network Gap."
+                    )
+                ),
+                "access_point_status": access_status,
+                "access_point_source_id": school.get("access_point_source_id"),
+                "access_point_rationale": school.get("access_point_rationale"),
+                "criterion_access_point": {
+                    "mapped": "green",
+                    "inferred": "amber",
+                    "unresolved": "grey",
+                }.get(access_status, "grey"),
+                "access_connection_id": (
+                    access["access_connection_id"] if access is not None else None
+                ),
+                "root_spine_id": access["root_spine_id"] if access is not None else None,
+                "branch_id": access["branch_id"] if access is not None else None,
+                "provenance": json.dumps(provenance, sort_keys=True),
+                "geometry": school.geometry,
+            }
+        )
     return gpd.GeoDataFrame(
-        rows, columns=OBLIGATION_COLUMNS, geometry="geometry", crs=communities.crs
+        rows,
+        columns=OBLIGATION_COLUMNS,
+        geometry="geometry",
+        crs=communities.crs or schools.crs,
     )
 
 
@@ -1075,8 +1553,10 @@ def _branches(
 ) -> gpd.GeoDataFrame:
     rows: list[dict[str, object]] = []
     spine_names = strategic_spines.set_index("spine_id").get("name", pd.Series(dtype=object))
-    community_connections = connections[connections["obligation_kind"] == "community"]
-    for branch_id, members in community_connections.groupby("branch_id", sort=True):
+    branch_connections = connections[
+        connections["obligation_kind"].isin(["community", "school"])
+    ]
+    for branch_id, members in branch_connections.groupby("branch_id", sort=True):
         root_spine_id = str(members.iloc[0]["root_spine_id"])
         connection_ids = sorted(members["access_connection_id"].astype(str))
         place_ids = sorted(members["place_id"].astype(str))

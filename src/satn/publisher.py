@@ -156,13 +156,16 @@ def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, obje
 def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
     preferred = {
         "access-obligation": "obligation_id",
+        "school-access-obligation": "obligation_id",
         "spine-access-connection": "access_connection_id",
+        "school-access-connection": "access_connection_id",
         "spine-access-branch": "branch_id",
         "branch-meeting-connection": "meeting_connection_id",
         "cross-spine-connector": "cross_spine_connector_id",
         "strategic-spine": "spine_id",
         "connection": "connection_id",
         "gap": "connection_id",
+        "school-access-gap": "connection_id",
     }.get(feature_type)
     if preferred:
         value = _json_value(row.get(preferred))
@@ -204,6 +207,23 @@ def _json_value(value: object) -> object:
 
 
 def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
+    community_obligations = compiled.access_obligations[
+        compiled.access_obligations["obligation_kind"] == "community"
+    ]
+    school_obligations = compiled.access_obligations[
+        compiled.access_obligations["obligation_kind"] == "school"
+    ]
+    school_connections = compiled.spine_access_connections[
+        compiled.spine_access_connections["obligation_kind"] == "school"
+    ]
+    other_access_connections = compiled.spine_access_connections[
+        compiled.spine_access_connections["obligation_kind"] != "school"
+    ]
+    gap_roles = compiled.gaps.get(
+        "network_role", pd.Series("", index=compiled.gaps.index, dtype=object)
+    )
+    school_gaps = compiled.gaps[gap_roles == "school-access-gap"]
+    other_gaps = compiled.gaps[gap_roles != "school-access-gap"]
     return {
         "type": "FeatureCollection",
         "name": "SATN compiled network",
@@ -211,12 +231,15 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "features": (
             _features(compiled.connections, "connection")
             + _features(compiled.strategic_spines, "strategic-spine")
-            + _features(compiled.access_obligations, "access-obligation")
-            + _features(compiled.spine_access_connections, "spine-access-connection")
+            + _features(community_obligations, "access-obligation")
+            + _features(school_obligations, "school-access-obligation")
+            + _features(other_access_connections, "spine-access-connection")
+            + _features(school_connections, "school-access-connection")
             + _features(compiled.spine_access_branches, "spine-access-branch")
             + _features(compiled.branch_meeting_connections, "branch-meeting-connection")
             + _features(compiled.cross_spine_connectors, "cross-spine-connector")
-            + _features(compiled.gaps, "gap")
+            + _features(other_gaps, "gap")
+            + _features(school_gaps, "school-access-gap")
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
             + _features(compiled.crossing_warnings, "crossing-warning")
@@ -242,6 +265,10 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
     return {
         "strategic_spines": len(compiled.strategic_spines),
         "access_obligations": len(compiled.access_obligations),
+        "school_access_obligations": int(
+            (compiled.access_obligations["obligation_kind"] == "school").sum()
+        ),
+        "gaps": len(compiled.gaps),
         "spine_access_connections": len(compiled.spine_access_connections),
         "spine_access_branches": len(compiled.spine_access_branches),
         "branch_meeting_connections": len(compiled.branch_meeting_connections),
@@ -862,22 +889,26 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         raise ValueError("run manifest does not describe the current publication")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
     layer_types = {
-        "strategic_spines": "strategic-spine",
-        "access_obligations": "access-obligation",
-        "spine_access_connections": "spine-access-connection",
-        "spine_access_branches": "spine-access-branch",
-        "branch_meeting_connections": "branch-meeting-connection",
-        "cross_spine_connectors": "cross-spine-connector",
-        "a_road_spines": "a-road-spine",
-        "ncn_routes": "ncn-route",
-        "schools": "school",
-        "retail_centres": "retail-centre",
-        "healthcare": "healthcare",
+        "strategic_spines": ("strategic-spine",),
+        "access_obligations": ("access-obligation", "school-access-obligation"),
+        "spine_access_connections": (
+            "spine-access-connection",
+            "school-access-connection",
+        ),
+        "spine_access_branches": ("spine-access-branch",),
+        "branch_meeting_connections": ("branch-meeting-connection",),
+        "cross_spine_connectors": ("cross-spine-connector",),
+        "gaps": ("gap", "school-access-gap"),
+        "a_road_spines": ("a-road-spine",),
+        "ncn_routes": ("ncn-route",),
+        "schools": ("school",),
+        "retail_centres": ("retail-centre",),
+        "healthcare": ("healthcare",),
     }
-    for layer_name, feature_type in layer_types.items():
+    for layer_name, feature_types in layer_types.items():
         expected_count = run.get("layer_counts", {}).get(layer_name, 0)
         actual_count = sum(
-            feature["properties"].get("feature_type") == feature_type
+            feature["properties"].get("feature_type") in feature_types
             for feature in geojson["features"]
         )
         if actual_count != expected_count:

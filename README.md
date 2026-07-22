@@ -150,6 +150,16 @@ links cannot turn the result into a mesh. Each published Cross-Spine Connector t
 that meeting through both parent lineages to the relevant Strategic Spines, preserving
 the full connection, branch, evidence and agent-gate provenance.
 
+Rural primary, secondary, all-through and special Schools are separate School Access
+Obligations rather than Network Places. A mapped usable entrance is preferred; a point
+inferred from a mapped school-boundary/path intersection remains Amber and provisional,
+while an unresolved entrance is never silently snapped to a road. Each resolvable School
+selects one governed attachment to fixed spine, connector or established branch geometry
+after Community growth, so it can reuse a branch without becoming a frontier for another
+School or generating school-to-school or school-to-Community journey pairs. Colleges and
+universities remain contextual evidence unless their OSM source IDs are explicitly listed in
+`source.strategic_destination_source_ids`.
+
 The previous pairwise network remains temporarily available as the migration's
 comparison contract. It will cease to be authoritative only at the final expand–contract
 step, after cross-spine, School, urban and topography behavior is present and validated.
