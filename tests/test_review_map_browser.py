@@ -31,6 +31,18 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         page = browser.new_page()
         page.route("https://tile.openstreetmap.org/**", lambda route: route.abort())
         page.goto(result.artifacts["review_map"].as_uri())
+        page.wait_for_function("document.documentElement.dataset.mapReady === 'true'")
+        layer_ids = page.evaluate(
+            "window.SATN_REVIEW_MAP.getStyle().layers.map((layer) => layer.id)"
+        )
+        assert layer_ids.index("places") < layer_ids.index("access-obligations")
+        assert "low-traffic-area-outlines" in layer_ids
+        assert (
+            page.evaluate(
+                "window.SATN_REVIEW_MAP.getPaintProperty('low-traffic-areas', 'fill-opacity')"
+            )
+            >= 0.4
+        )
         card = page.locator('[data-feature-id^="spine-access-"]').first
         assert card.get_attribute("data-feature-id").startswith("spine-access-")
         card.hover()
@@ -38,6 +50,7 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert "Source identifiers" in page.locator("#feature-details").inner_text()
         assert "Topography comparison" in page.locator("#feature-details").inner_text()
         assert "Topography comparison rationale" in page.locator("#feature-details").inner_text()
+        assert "Community road association" in page.locator("#feature-details").inner_text()
         card.click()
         assert card.get_attribute("aria-pressed") == "true"
         page.locator("h1").hover()
@@ -109,12 +122,22 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         urban_legend = page.locator("#legend-urban-spines")
         assert urban_legend.is_visible()
         assert "Classified Unnumbered" in urban_legend.inner_text()
+        classification_unknowns = page.locator("#layer-urban-classification-unknowns")
+        assert not classification_unknowns.is_checked()
+        assert page.locator("#legend-urban-classification-unknowns").is_hidden()
+        classification_unknowns.check()
+        assert page.locator("#legend-urban-classification-unknowns").is_visible()
         page.locator("#layer-urban-spines").uncheck()
         assert urban_legend.is_hidden()
         area_legend = page.locator("#legend-low-traffic-areas")
         assert area_legend.is_visible()
         assert "not an existing LTN" in area_legend.inner_text()
         assert "no preferred residential cycling centreline" in area_legend.inner_text()
+        portals = page.locator("#layer-low-traffic-area-portals")
+        assert not portals.is_checked()
+        assert page.locator("#legend-low-traffic-area-portals").is_hidden()
+        portals.check()
+        assert page.locator("#legend-low-traffic-area-portals").is_visible()
         page.locator("#layer-low-traffic-areas").uncheck()
         assert area_legend.is_hidden()
         page.locator("#layer-schools").check()

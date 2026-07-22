@@ -147,6 +147,7 @@ class SourceConfig(BaseModel):
     urban_place_types: list[str] = Field(
         default_factory=lambda: ["city", "town", "suburb", "quarter", "neighbourhood"]
     )
+    urban_place_source_ids: list[str] = Field(default_factory=list)
     urban_scope_buffer_km: float = Field(default=2.0, gt=0)
     strategic_destination_source_ids: list[str] = Field(default_factory=list)
     official_road_classification: OfficialRoadClassificationConfig | None = None

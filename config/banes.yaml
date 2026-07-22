@@ -23,6 +23,11 @@ source:
     - suburb
     - quarter
     - neighbourhood
+  urban_place_source_ids:
+    # OSM classifies these substantial Somer Valley settlements as villages, but the
+    # circulation-plan model governs them as urban areas for LTA derivation.
+    - "25942875" # Peasedown St. John
+    - "26900589" # Paulton
   urban_scope_buffer_km: 2
   official_road_classification:
     path: ../data/governed/banes-os-open-roads-2026-04-07.geojson

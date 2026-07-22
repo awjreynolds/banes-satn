@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 import pytest
 from pypdf import PdfReader
 from shapely.geometry import LineString
@@ -46,6 +47,32 @@ def prepared_governed_urban_config(tmp_path: Path) -> CouncilConfig:
     places = gpd.read_file(places_path)
     places["place_class"] = "town"
     places.to_file(places_path, driver="GeoJSON")
+    network_path = fixture / "source" / "network.geojson"
+    network = gpd.read_file(network_path)
+    residential_grid = gpd.GeoDataFrame(
+        [
+            {
+                "source_id": f"urban-horizontal-{index}",
+                "highway": "residential",
+                "geometry": LineString([(-2.49, latitude), (-2.48, latitude)]),
+            }
+            for index, latitude in enumerate((51.402, 51.405, 51.408, 51.41), start=1)
+        ]
+        + [
+            {
+                "source_id": f"urban-vertical-{index}",
+                "highway": "residential",
+                "geometry": LineString([(longitude, 51.4), (longitude, 51.412)]),
+            }
+            for index, longitude in enumerate((-2.488, -2.485, -2.482), start=1)
+        ],
+        crs=4326,
+    )
+    gpd.GeoDataFrame(
+        pd.concat([network, residential_grid], ignore_index=True),
+        geometry="geometry",
+        crs=4326,
+    ).to_file(network_path, driver="GeoJSON")
     context_path = fixture / "source" / "context.geojson"
     context = gpd.read_file(context_path)
     context.loc[
@@ -415,6 +442,10 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
     assert "Urban Main-Road Spines" in review_html
+    assert 'id="layer-urban-classification-unknowns" type="checkbox"' in review_html
+    assert 'id="layer-urban-classification-unknowns" type="checkbox" checked' not in review_html
+    assert 'id="layer-low-traffic-area-portals" type="checkbox"' in review_html
+    assert 'id="layer-low-traffic-area-portals" type="checkbox" checked' not in review_html
     assert "not automatically a Circulation Boundary" in review_html
     assert "not an existing LTN" in review_html
     assert "no preferred residential cycling centreline" in review_html
