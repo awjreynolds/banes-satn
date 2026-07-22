@@ -394,6 +394,8 @@ centres and healthcare facilities default off to avoid noise; each has its own
 control. Road-classification evidence gaps and LTA portal evidence also default off,
 keeping the circulation-plan view legible while remaining independently auditable.
 Places, urban structure, gaps/warnings and ATM comparison are independently toggleable.
+The map itself carries a compact, collapsible legend for every symbol shown by the
+default layers, so the key remains available when the controls are off-screen on mobile.
 Gradient Sections use a separately selectable sequential blue terrain
 palette with a text-labelled legend distinct from Criterion Status colours; Grey
 dashed profiles expose unavailable Elevation Evidence. Connections, Network,
