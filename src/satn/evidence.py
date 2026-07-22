@@ -229,9 +229,7 @@ def derive_circulation_boundaries(
         for source_id, geometry in sorted(built_up_features, key=lambda value: value[0]):
             verified_edge = geometry.boundary.intersection(open_land)
             for position, line in enumerate(continuous_linework(verified_edge)):
-                identity = hashlib.sha256(
-                    f"{source_id}:{line.wkb_hex}".encode()
-                ).hexdigest()[:12]
+                identity = hashlib.sha256(f"{source_id}:{line.wkb_hex}".encode()).hexdigest()[:12]
                 rows.append(
                     _row(
                         "circulation-boundary",

@@ -80,15 +80,12 @@ def test_urban_school_service_uses_area_permeability_without_a_centreline() -> N
     assessed = assess_urban_school_access(schools, network, areas, portals)
 
     assert list(assessed["service_status"]) == ["served-provisional", "served"]
-    assert set(assessed["geometry_semantics"]) == {
-        "area-permeability-no-internal-centreline"
-    }
+    assert set(assessed["geometry_semantics"]) == {"area-permeability-no-internal-centreline"}
     assert set(assessed.geometry.geom_type) == {"Point"}
     assert set(assessed["low_traffic_area_id"]) == {"area-1"}
     assert set(assessed["portal_id"]) == {"portal-main-road"}
     assert all(
-        json.loads(value) == ["quiet-1", "quiet-2"]
-        for value in assessed["fabric_source_ids"]
+        json.loads(value) == ["quiet-1", "quiet-2"] for value in assessed["fabric_source_ids"]
     )
     assert set(assessed["criterion_continuity"]) == {"green"}
     assert all(value is None for value in assessed["finding"])

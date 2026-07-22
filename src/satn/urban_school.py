@@ -101,8 +101,7 @@ def assess_urban_school_access(
                     access_status=access_status,
                     service_status=AccessServiceStatus.NETWORK_GAP,
                     service_rationale=(
-                        "The usable School Access Point is not inside a Candidate "
-                        "Low-Traffic Area."
+                        "The usable School Access Point is not inside a Candidate Low-Traffic Area."
                     ),
                     finding="no-candidate-low-traffic-area",
                     criterion_continuity=TrafficLight.RED,
@@ -126,10 +125,7 @@ def assess_urban_school_access(
             for component in components:
                 association_m = float(component.geometry.distance(school.geometry))
                 for _, portal in area_portals.iterrows():
-                    if (
-                        component.geometry.distance(portal.geometry)
-                        <= PORTAL_CONTACT_TOLERANCE_M
-                    ):
+                    if component.geometry.distance(portal.geometry) <= PORTAL_CONTACT_TOLERANCE_M:
                         candidate = _ReachablePortal(
                             area=area,
                             portal=portal,
@@ -137,10 +133,7 @@ def assess_urban_school_access(
                             association_m=association_m,
                         )
                         inspected.append(candidate)
-                        if (
-                            association_m
-                            <= SCHOOL_FABRIC_CONTACT_TOLERANCE_M
-                        ):
+                        if association_m <= SCHOOL_FABRIC_CONTACT_TOLERANCE_M:
                             reachable.append(candidate)
         if not reachable:
             first_area = candidate_areas.iloc[0]
@@ -158,9 +151,7 @@ def assess_urban_school_access(
                 else None
             )
             finding_area = (
-                inspected_selection.area
-                if inspected_selection is not None
-                else first_area
+                inspected_selection.area if inspected_selection is not None else first_area
             )
             finding_portal = (
                 inspected_selection.portal
@@ -181,8 +172,7 @@ def assess_urban_school_access(
                     access_status=access_status,
                     service_status=AccessServiceStatus.NETWORK_GAP,
                     service_rationale=(
-                        "The Candidate Low-Traffic Area has no portal on an Urban "
-                        "Main-Road Spine."
+                        "The Candidate Low-Traffic Area has no portal on an Urban Main-Road Spine."
                         if not has_main_road_portal
                         else "The usable School Access Point does not share continuous "
                         "low-traffic street or path fabric with a main-road portal."
@@ -273,9 +263,7 @@ def _fabric_components(
     area: object,
 ) -> list[_FabricComponent]:
     highway = network.get("highway", pd.Series("", index=network.index, dtype=object))
-    admitted = network[
-        highway.map(lambda value: bool(set(_tag_values(value)) & LOW_TRAFFIC))
-    ]
+    admitted = network[highway.map(lambda value: bool(set(_tag_values(value)) & LOW_TRAFFIC))]
     records: list[_FabricRecord] = []
     for index, edge in admitted.iterrows():
         for geometry in continuous_linework(edge.geometry.intersection(area)):
@@ -294,11 +282,7 @@ def _fabric_components(
         graph.add_edge(record.start, record.end)
     components: list[_FabricComponent] = []
     for nodes in nx.connected_components(graph):
-        selected = [
-            record
-            for record in records
-            if record.start in nodes and record.end in nodes
-        ]
+        selected = [record for record in records if record.start in nodes and record.end in nodes]
         components.append(
             _FabricComponent(
                 source_ids=tuple(sorted({record.source_id for record in selected})),

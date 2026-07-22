@@ -1258,9 +1258,7 @@ def _topography_payload(
         "topography_comparison_rationale": (
             topography.rationale if topography is not None else "Not evaluated."
         ),
-        "topography_original_role": (
-            topography.original.role if topography is not None else None
-        ),
+        "topography_original_role": (topography.original.role if topography is not None else None),
         "topography_selected_role": selected.role,
         "alignment_options": (
             (
@@ -1620,9 +1618,7 @@ def _cross_spine_meetings(
         rows, columns=MEETING_COLUMNS, geometry="geometry", crs=crs
     ).sort_values("meeting_connection_id")
     connectors = _cross_spine_connectors(meetings, connections, strategic_spines, crs)
-    connectors_by_meeting = {
-        str(row.meeting_connection_id): row for row in connectors.itertuples()
-    }
+    connectors_by_meeting = {str(row.meeting_connection_id): row for row in connectors.itertuples()}
     for record in records:
         connector = connectors_by_meeting.get(record.connection_id)
         if record.decision == "accept" and connector is not None:

@@ -279,17 +279,13 @@ def _minor_road_areas(
     if observed_through_traffic is not None and not observed_through_traffic.empty:
         governed_observations = observed_through_traffic.to_crs(27700)
         governed_observations = governed_observations.copy()
-        governed_observations["geometry"] = governed_observations.geometry.map(
-            _normalise_topology
-        )
+        governed_observations["geometry"] = governed_observations.geometry.map(_normalise_topology)
     rows: list[dict[str, object]] = []
     portals: list[dict[str, object]] = []
     for cell in cells:
         evidence = _minor_evidence_in_cell(minor, cell, governed_observations)
         component_records = [
-            record
-            for component in _connected_components(evidence)
-            for record in component
+            record for component in _connected_components(evidence) for record in component
         ]
         if len(component_records) < 2:
             continue
@@ -403,11 +399,7 @@ def _connected_components(
         key=lambda component: (-len(component), sorted(component)),
     )
     return [
-        [
-            record
-            for record in evidence
-            if record.start in component and record.end in component
-        ]
+        [record for record in evidence if record.start in component and record.end in component]
         for component in components
     ]
 

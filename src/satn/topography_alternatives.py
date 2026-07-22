@@ -52,10 +52,7 @@ def compare_alignment_topography(
     if selected is None:
         return None
     frames = gpd.GeoDataFrame(
-        [
-            {"option_id": option.role, "geometry": option.geometry}
-            for option in options
-        ],
+        [{"option_id": option.role, "geometry": option.geometry} for option in options],
         geometry="geometry",
         crs=crs,
     )
@@ -123,8 +120,7 @@ def compare_alignment_topography(
         and not option.geometry.is_empty
         and option.bidirectional
         and not option.impracticable_alongside
-        and option.length_km
-        <= selected.length_km * config.maximum_alternative_detour_ratio
+        and option.length_km <= selected.length_km * config.maximum_alternative_detour_ratio
         and _materially_easier(original, assessments[option.role], config)
     ]
     if not candidates:
@@ -188,9 +184,7 @@ def _assessment(
                 f"{labels[band]} section sustained for {qualifying_length:.1f} m "
                 f"(trigger {minimum_length:.0f} m)"
             )
-    challenging = sections[
-        sections["gradient_band"].isin(["steep", "very-steep", "severe"])
-    ]
+    challenging = sections[sections["gradient_band"].isin(["steep", "very-steep", "severe"])]
     repeated_climbs = max(
         int((challenging["uphill_direction"] == "forward").sum()),
         int((challenging["uphill_direction"] == "reverse").sum()),

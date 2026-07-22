@@ -158,9 +158,7 @@ def test_configured_source_without_local_coverage_is_explicit_unknown(
     manifest = json.loads((path / "snapshot.json").read_text())
     profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
 
-    assert manifest["evidence_sources"]["elevation"]["coverage_status"] == (
-        "explicit-unknown"
-    )
+    assert manifest["evidence_sources"]["elevation"]["coverage_status"] == ("explicit-unknown")
     assert manifest["evidence_sources"]["elevation"]["sample_count"] == 0
     assert result.metadata["elevation_evidence_status"] == "explicit-unknown"
     assert set(profiles["evidence_status"]) == {"evidence-unavailable"}
@@ -199,9 +197,7 @@ def test_empty_remote_coverage_is_snapshotted_as_explicit_unknown(
     result = compile(config)
     manifest = json.loads((path / "snapshot.json").read_text())
 
-    assert manifest["evidence_sources"]["elevation"]["coverage_status"] == (
-        "explicit-unknown"
-    )
+    assert manifest["evidence_sources"]["elevation"]["coverage_status"] == ("explicit-unknown")
     assert result.metadata["elevation_evidence_status"] == "explicit-unknown"
 
 
@@ -339,9 +335,7 @@ def test_sparse_osm_height_tags_never_replace_missing_national_elevation(
 
     result = compile(config)
     profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
-    corroboration = gpd.read_file(
-        result.artifacts["geopackage"], layer="elevation_corroboration"
-    )
+    corroboration = gpd.read_file(result.artifacts["geopackage"], layer="elevation_corroboration")
 
     assert set(profiles["evidence_status"]) == {"evidence-unavailable"}
     assert result.metadata["elevation_evidence_status"] == "explicit-unknown"

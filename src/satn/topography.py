@@ -310,9 +310,7 @@ def _profile_edge(
                     f"{minimum_sustained_spacing_m:.1f} m sustained window."
                 )
             ),
-            "gradient_section_ids": json.dumps(
-                [section["section_id"] for section in section_rows]
-            ),
+            "gradient_section_ids": json.dumps([section["section_id"] for section in section_rows]),
             "elevation_evidence_ids": json.dumps(evidence_ids),
             "elevation_source_ids": json.dumps(source_ids),
             "geometry": geometry,
@@ -553,9 +551,7 @@ def _apply_profile(
         "reverse_ascent_m": profile["reverse_ascent_m"],
         "reverse_descent_m": profile["reverse_descent_m"],
         "steepest_sustained_gradient_pct": profile["steepest_sustained_gradient_pct"],
-        "steepest_sustained_gradient_rationale": profile[
-            "steepest_sustained_gradient_rationale"
-        ],
+        "steepest_sustained_gradient_rationale": profile["steepest_sustained_gradient_rationale"],
         "gradient_section_ids": profile["gradient_section_ids"],
     }
     for column, value in values.items():

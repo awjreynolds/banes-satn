@@ -13,8 +13,7 @@ from satn.models import AccessPointStatus, OfficialRoadClassification, TrafficLi
 
 ADJOINING_EVIDENCE_M = 20.0
 ASSESSMENT_QUALIFICATION = (
-    "Qualitative plausibility for investigation; not scheme feasibility or calibrated "
-    "probability."
+    "Qualitative plausibility for investigation; not scheme feasibility or calibrated probability."
 )
 
 SCHOOL_STREET_COLUMNS = [
@@ -125,10 +124,7 @@ def assess_school_street_candidates(
             missing,
         )
         network_source_ids = sorted(
-            {
-                _source_id(row, index)
-                for index, row in adjoining_network.iterrows()
-            }
+            {_source_id(row, index) for index, row in adjoining_network.iterrows()}
         )
         source_ids = sorted(
             {
@@ -254,8 +250,7 @@ def _road_classification(frame: gpd.GeoDataFrame) -> tuple[str, str | None]:
         ),
     )[1]
     classification = str(
-        selected.get("official_classification")
-        or OfficialRoadClassification.UNKNOWN.value
+        selected.get("official_classification") or OfficialRoadClassification.UNKNOWN.value
     )
     return classification, str(selected.get("source_id") or "") or None
 

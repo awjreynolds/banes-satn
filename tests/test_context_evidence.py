@@ -202,24 +202,18 @@ def test_built_up_edge_id_ignores_unrelated_built_up_polygons() -> None:
         {
             "osmid": "open-land",
             "landuse": "farmland",
-            "geometry": Polygon(
-                [(0, -0.01), (0.01, -0.01), (0.01, 0.01), (0, 0.01)]
-            ),
+            "geometry": Polygon([(0, -0.01), (0.01, -0.01), (0.01, 0.01), (0, 0.01)]),
         },
         {
             "osmid": "built-local",
             "landuse": "residential",
-            "geometry": Polygon(
-                [(0.01, -0.01), (0.02, -0.01), (0.02, 0.01), (0.01, 0.01)]
-            ),
+            "geometry": Polygon([(0.01, -0.01), (0.02, -0.01), (0.02, 0.01), (0.01, 0.01)]),
         },
     ]
     unrelated = {
         "osmid": "built-unrelated",
         "landuse": "residential",
-        "geometry": Polygon(
-            [(0.1, -0.01), (0.11, -0.01), (0.11, 0.01), (0.1, 0.01)]
-        ),
+        "geometry": Polygon([(0.1, -0.01), (0.11, -0.01), (0.11, 0.01), (0.1, 0.01)]),
     }
 
     before = derive_context_layers(
