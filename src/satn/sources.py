@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import shutil
 import tempfile
 import urllib.parse
@@ -178,20 +179,23 @@ def snapshot(
                 if config.source.ncn_feature_service_url
                 else OSM_ATTRIBUTION
             )
+        retrieved_at = datetime.now(UTC).isoformat()
         manifest = {
             "schema_version": SCHEMA_VERSION,
             "snapshot_id": config.source.snapshot_id,
             "council_id": config.council_id,
             "source_kind": config.source.kind,
             "source_identifier": source_identifier,
-            "retrieved_at": datetime.now(UTC).isoformat(),
+            "retrieved_at": retrieved_at,
             "attribution": attribution,
             "evidence_sources": {
                 "osm": config.source.osm_place_query,
                 "ncn": config.source.ncn_feature_service_url,
                 "official_road_classification": _road_classification_manifest(config, temporary),
                 "observed_through_traffic": _observed_through_traffic_manifest(config, temporary),
-                "elevation": _elevation_evidence_manifest(temporary),
+                "elevation": _elevation_evidence_manifest(
+                    config, temporary, retrieved_at
+                ),
             },
             "files": files,
             "file_sha256": {
@@ -230,7 +234,10 @@ def _write_fixture_snapshot(config: CouncilConfig, temporary: Path) -> tuple[str
     if _snapshot_observed_through_traffic(config, temporary):
         files.append(OBSERVED_THROUGH_TRAFFIC_FILENAME)
     elevation_source = config.source.fixture_dir / ELEVATION_EVIDENCE_FILENAME
-    if elevation_source.exists():
+    if config.source.national_elevation is not None:
+        _snapshot_national_elevation(config, temporary)
+        files.append(ELEVATION_EVIDENCE_FILENAME)
+    elif elevation_source.exists():
         _validate_fixture_elevation_evidence(elevation_source)
         shutil.copy2(elevation_source, temporary / ELEVATION_EVIDENCE_FILENAME)
         files.append(ELEVATION_EVIDENCE_FILENAME)
@@ -294,6 +301,11 @@ def _write_osm_snapshot(
         import osmnx as ox
 
         ox.save_graphml(data.graph, temporary / "network.graphml")
+    if config.source.national_elevation is not None:
+        _snapshot_national_elevation(config, temporary)
+        frames[ELEVATION_EVIDENCE_FILENAME] = gpd.read_file(
+            temporary / ELEVATION_EVIDENCE_FILENAME
+        )
     return str(config.source.osm_place_query), list(frames)
 
 
@@ -400,13 +412,42 @@ def _validate_fixture_elevation_evidence(path: Path) -> None:
     for field in ("evidence_id", "source_id", "effective_date", "licence"):
         if evidence[field].isna().any() or evidence[field].astype(str).str.strip().eq("").any():
             raise ValueError(f"fixture Elevation Evidence has missing {field}")
+    if evidence["evidence_id"].astype(str).duplicated().any():
+        raise ValueError("fixture Elevation Evidence has duplicate evidence_id values")
 
 
-def _elevation_evidence_manifest(path: Path) -> dict[str, object] | None:
+def _elevation_evidence_manifest(
+    config: CouncilConfig,
+    path: Path,
+    retrieved_at: str,
+) -> dict[str, object] | None:
     evidence_path = path / ELEVATION_EVIDENCE_FILENAME
     if not evidence_path.exists():
         return None
     evidence = gpd.read_file(evidence_path)
+    governed = config.source.national_elevation
+    if governed is not None:
+        return {
+            "provider": governed.provider,
+            "source_id": governed.source_id,
+            "effective_date": (
+                governed.effective_date.isoformat()
+                if governed.effective_date is not None
+                else retrieved_at.split("T", maxsplit=1)[0]
+            ),
+            "date_kind": (
+                "effective" if governed.effective_date is not None else "retrieved"
+            ),
+            "licence": governed.licence,
+            "attribution": governed.attribution,
+            "bounded_to_compilation_area": True,
+            "coverage_status": (
+                "available" if not evidence.empty else "explicit-unknown"
+            ),
+            "sample_count": len(evidence),
+            "content_fingerprint": hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+            "retrieved_at": retrieved_at,
+        }
     return {
         "source_ids": sorted({str(value) for value in evidence["source_id"]}),
         "effective_dates": sorted(
@@ -416,6 +457,113 @@ def _elevation_evidence_manifest(path: Path) -> dict[str, object] | None:
         "sample_count": len(evidence),
         "content_fingerprint": hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
     }
+
+
+def _snapshot_national_elevation(config: CouncilConfig, temporary: Path) -> None:
+    governed = config.source.national_elevation
+    if governed is None:
+        return
+    if governed.provider == "local-geojson":
+        if governed.path is None or not governed.path.exists():
+            raise ValueError("configured national Elevation Evidence path is missing")
+        source = gpd.read_file(governed.path)
+    else:
+        source = _load_remote_elevation(config, temporary)
+    if source.crs is None:
+        raise ValueError("national Elevation Evidence has no CRS")
+    if governed.elevation_field not in source:
+        raise ValueError(
+            "national Elevation Evidence is missing configured elevation field: "
+            f"{governed.elevation_field}"
+        )
+    if not source.empty and not source.geometry.geom_type.eq("Point").all():
+        raise ValueError("national Elevation Evidence requires Point samples")
+    boundary = gpd.read_file(temporary / "boundary.geojson")
+    compilation_area = (
+        boundary.to_crs(27700)
+        .geometry.buffer(config.source.external_buffer_km * 1000)
+        .union_all()
+    )
+    bounded = source.to_crs(27700)
+    bounded = bounded[bounded.geometry.intersects(compilation_area)].to_crs(source.crs)
+    rows: list[dict[str, object]] = []
+    evidence_date = (
+        governed.effective_date.isoformat()
+        if governed.effective_date is not None
+        else datetime.now(UTC).date().isoformat()
+    )
+    for _index, sample in bounded.iterrows():
+        try:
+            elevation = float(sample[governed.elevation_field])
+        except (TypeError, ValueError) as error:
+            raise ValueError("national Elevation Evidence has unusable heights") from error
+        if not math.isfinite(elevation):
+            raise ValueError("national Elevation Evidence has unusable heights")
+        identifier = sample.get(governed.identifier_field)
+        if pd.isna(identifier) or not str(identifier).strip():
+            identifier = hashlib.sha256(sample.geometry.wkb).hexdigest()[:16]
+        rows.append(
+            {
+                "evidence_id": str(identifier),
+                "source_id": governed.source_id,
+                "effective_date": evidence_date,
+                "licence": governed.licence,
+                "elevation_m": elevation,
+                "geometry": sample.geometry,
+            }
+        )
+    identifiers = [str(row["evidence_id"]) for row in rows]
+    if len(identifiers) != len(set(identifiers)):
+        raise ValueError("national Elevation Evidence has duplicate sample identifiers")
+    evidence = gpd.GeoDataFrame(
+        rows,
+        columns=[
+            "evidence_id",
+            "source_id",
+            "effective_date",
+            "licence",
+            "elevation_m",
+            "geometry",
+        ],
+        geometry="geometry",
+        crs=source.crs,
+    ).sort_values("evidence_id")
+    evidence.to_crs(4326).to_file(
+        temporary / ELEVATION_EVIDENCE_FILENAME,
+        driver="GeoJSON",
+    )
+
+
+def _load_remote_elevation(
+    config: CouncilConfig,
+    temporary: Path,
+) -> gpd.GeoDataFrame:
+    governed = config.source.national_elevation
+    if governed is None or not governed.url:
+        raise ValueError("remote national Elevation Evidence requires url")
+    boundary = gpd.read_file(temporary / "boundary.geojson").to_crs(27700)
+    compilation_area = gpd.GeoDataFrame(
+        geometry=boundary.geometry.buffer(config.source.external_buffer_km * 1000),
+        crs=27700,
+    ).to_crs(4326)
+    minx, miny, maxx, maxy = compilation_area.total_bounds
+    parsed = urllib.parse.urlparse(governed.url)
+    query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    query.append(("bbox", ",".join(f"{value:.8f}" for value in (minx, miny, maxx, maxy))))
+    url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query)))
+    request = urllib.request.Request(url, headers={"Accept": "application/geo+json"})
+    with urllib.request.urlopen(request, timeout=governed.timeout_seconds) as response:
+        payload = json.loads(response.read())
+    if payload.get("type") != "FeatureCollection":
+        raise ValueError("remote national Elevation Evidence is not a GeoJSON FeatureCollection")
+    features = payload.get("features", [])
+    if not features:
+        return gpd.GeoDataFrame(
+            columns=[governed.elevation_field, "geometry"],
+            geometry="geometry",
+            crs=4326,
+        )
+    return gpd.GeoDataFrame.from_features(features, crs=4326)
 
 
 def _load_governed_line_source(
@@ -890,4 +1038,49 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
                 crs=network.crs,
             )
         ),
+        "elevation_corroboration": _osm_elevation_corroboration(network),
     }
+
+
+def _osm_elevation_corroboration(network: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    rows: list[dict[str, object]] = []
+    for index, feature in network.iterrows():
+        elevation = feature.get("ele")
+        incline = feature.get("incline")
+        if not str(elevation or "").strip() and not str(incline or "").strip():
+            continue
+        source_id = _source_identifier(feature, index)
+        discriminator = hashlib.sha256(
+            "::".join(
+                (
+                    source_id,
+                    str(feature.get("u") or ""),
+                    str(feature.get("v") or ""),
+                    str(feature.get("key") or ""),
+                    feature.geometry.wkb_hex,
+                )
+            ).encode()
+        ).hexdigest()[:16]
+        rows.append(
+            {
+                "corroboration_id": f"osm-elevation-{discriminator}",
+                "source_id": source_id,
+                "osm_elevation": elevation,
+                "osm_incline": incline,
+                "evidence_role": "corroborating-only",
+                "geometry": feature.geometry,
+            }
+        )
+    return gpd.GeoDataFrame(
+        rows,
+        columns=[
+            "corroboration_id",
+            "source_id",
+            "osm_elevation",
+            "osm_incline",
+            "evidence_role",
+            "geometry",
+        ],
+        geometry="geometry",
+        crs=network.crs,
+    )

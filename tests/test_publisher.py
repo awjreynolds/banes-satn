@@ -148,6 +148,7 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         "profile_count": len(profiles),
         "gradient_section_count": run["layer_counts"]["gradient_sections"],
         "evidence_unavailable_count": unavailable_count,
+        "corroboration_count": 0,
     }
     assert run["criteria"] == {
         section: {criterion: status for criterion, status in values.items()}

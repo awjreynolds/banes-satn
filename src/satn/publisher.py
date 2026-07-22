@@ -96,6 +96,10 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.gradient_sections.to_file(
             path, layer="gradient_sections", driver="GPKG"
         )
+    if not compiled.elevation_corroboration.empty:
+        compiled.elevation_corroboration.to_file(
+            path, layer="elevation_corroboration", driver="GPKG"
+        )
     if not compiled.spine_access_connections.empty:
         compiled.spine_access_connections.to_file(
             path, layer="spine_access_connections", driver="GPKG"
@@ -181,6 +185,7 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "school-street-assessment": "assessment_id",
         "topography-profile": "profile_id",
         "gradient-section": "section_id",
+        "elevation-corroboration": "corroboration_id",
         "spine-access-connection": "access_connection_id",
         "school-access-connection": "access_connection_id",
         "spine-access-branch": "branch_id",
@@ -264,6 +269,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "name": "SATN compiled network",
         "disclaimer": DISCLAIMER,
         "urban_classification_status": compiled.urban_classification_status,
+        "elevation_evidence_status": compiled.elevation_evidence_status,
         "features": (
             _features(compiled.connections, "connection")
             + _features(compiled.strategic_spines, "strategic-spine")
@@ -293,6 +299,10 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             )
             + _features(compiled.topography_profiles, "topography-profile")
             + _features(compiled.gradient_sections, "gradient-section")
+            + _features(
+                compiled.elevation_corroboration,
+                "elevation-corroboration",
+            )
             + _features(compiled.retail_centres, "retail-centre")
             + _features(compiled.healthcare, "healthcare")
             + (
@@ -330,6 +340,7 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
         "school_street_assessments": len(compiled.school_street_assessments),
         "topography_profiles": len(compiled.topography_profiles),
         "gradient_sections": len(compiled.gradient_sections),
+        "elevation_corroboration": len(compiled.elevation_corroboration),
         "retail_centres": len(compiled.retail_centres),
         "healthcare": len(compiled.healthcare),
     }
@@ -354,12 +365,14 @@ def _write_json_records(
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
         "urban_classification_status": compiled.urban_classification_status,
+        "elevation_evidence_status": compiled.elevation_evidence_status,
         "topography": {
             "profile_count": len(compiled.topography_profiles),
             "gradient_section_count": len(compiled.gradient_sections),
             "evidence_unavailable_count": int(
                 (compiled.topography_profiles["evidence_status"] == "evidence-unavailable").sum()
             ),
+            "corroboration_count": len(compiled.elevation_corroboration),
         },
         "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
@@ -987,6 +1000,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "school_street_assessments": ("school-street-assessment",),
         "topography_profiles": ("topography-profile",),
         "gradient_sections": ("gradient-section",),
+        "elevation_corroboration": ("elevation-corroboration",),
         "retail_centres": ("retail-centre",),
         "healthcare": ("healthcare",),
     }

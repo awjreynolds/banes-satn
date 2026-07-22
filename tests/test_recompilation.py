@@ -61,6 +61,24 @@ def test_criteria_change_invalidates_all_reuse(tmp_path: Path) -> None:
     assert changed.metadata["cache"] == {"hits": 0, "misses": 1}
 
 
+def test_changed_elevation_evidence_invalidates_cache_and_run_fingerprint(
+    tmp_path: Path,
+) -> None:
+    config = prepared_config(tmp_path)
+    first = compile(config)
+    terrain_path = config.source.national_elevation.path
+    assert terrain_path is not None
+    terrain = gpd.read_file(terrain_path)
+    terrain.loc[0, "elevation_m"] = float(terrain.loc[0, "elevation_m"]) + 1
+    terrain.to_file(terrain_path, driver="GeoJSON")
+    snapshot(config, replace=True)
+
+    changed = compile(config)
+
+    assert changed.metadata["cache"] == {"hits": 0, "misses": 1}
+    assert changed.run_id != first.run_id
+
+
 def test_cli_full_directive_forces_recompilation(tmp_path: Path) -> None:
     config = prepared_config(tmp_path)
     compile(config)

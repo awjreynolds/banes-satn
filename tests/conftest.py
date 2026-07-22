@@ -22,6 +22,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help="run Playwright browser interaction tests",
     )
+    parser.addoption(
+        "--live-terrain",
+        action="store_true",
+        default=False,
+        help="run tests that retrieve configured national Elevation Evidence",
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -39,6 +45,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         if config.getoption("--browser")
         else pytest.mark.skip(reason="requires --browser and Playwright Chromium")
     )
+    terrain_skip = (
+        None
+        if config.getoption("--live-terrain")
+        else pytest.mark.skip(reason="requires --live-terrain")
+    )
     for item in items:
         if "live_osm" in item.keywords and osm_skip:
             item.add_marker(osm_skip)
@@ -46,3 +57,5 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             item.add_marker(agent_skip)
         if "browser" in item.keywords and browser_skip:
             item.add_marker(browser_skip)
+        if "live_terrain" in item.keywords and terrain_skip:
+            item.add_marker(terrain_skip)

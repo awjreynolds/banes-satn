@@ -98,6 +98,27 @@ class ObservedThroughTrafficConfig(GovernedSpatialSourceConfig):
     pass
 
 
+class NationalElevationConfig(BaseModel):
+    provider: Literal["local-geojson", "remote-geojson"]
+    source_id: str = Field(min_length=1)
+    licence: str = Field(min_length=1)
+    attribution: str = Field(min_length=1)
+    effective_date: date | None = None
+    path: Path | None = None
+    url: str | None = None
+    elevation_field: str = "elevation_m"
+    identifier_field: str = "evidence_id"
+    timeout_seconds: int = Field(default=90, ge=1, le=600)
+
+    @model_validator(mode="after")
+    def validate_provider_location(self) -> NationalElevationConfig:
+        if self.provider == "local-geojson" and self.path is None:
+            raise ValueError("local national Elevation Evidence requires path")
+        if self.provider == "remote-geojson" and not self.url:
+            raise ValueError("remote national Elevation Evidence requires url")
+        return self
+
+
 class SourceConfig(BaseModel):
     kind: Literal["fixture", "osm"] = "fixture"
     fixture_dir: Path | None = None
@@ -118,6 +139,7 @@ class SourceConfig(BaseModel):
     strategic_destination_source_ids: list[str] = Field(default_factory=list)
     official_road_classification: OfficialRoadClassificationConfig | None = None
     observed_through_traffic: ObservedThroughTrafficConfig | None = None
+    national_elevation: NationalElevationConfig | None = None
 
 
 class AgentConfig(BaseModel):
@@ -200,6 +222,13 @@ class CouncilConfig(BaseModel):
         observed_traffic = self.source.observed_through_traffic
         if observed_traffic is not None and not observed_traffic.path.is_absolute():
             observed_traffic.path = (root / observed_traffic.path).resolve()
+        national_elevation = self.source.national_elevation
+        if (
+            national_elevation is not None
+            and national_elevation.path is not None
+            and not national_elevation.path.is_absolute()
+        ):
+            national_elevation.path = (root / national_elevation.path).resolve()
         if not self.publication.output_dir.is_absolute():
             self.publication.output_dir = (root / self.publication.output_dir).resolve()
         if not self.compilation.cache_dir.is_absolute():
