@@ -31,7 +31,7 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         page = browser.new_page()
         page.route("https://tile.openstreetmap.org/**", lambda route: route.abort())
         page.goto(result.artifacts["review_map"].as_uri())
-        card = page.locator("#connection-list .connection").first
+        card = page.locator('[data-feature-id^="spine-access-"]').first
         assert card.get_attribute("data-feature-id").startswith("spine-access-")
         card.hover()
         assert "Route role" in page.locator("#feature-details").inner_text()
