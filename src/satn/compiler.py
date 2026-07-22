@@ -15,7 +15,12 @@ from shapely.geometry import MultiPoint
 
 from satn.agents import AgentRuntime, CompilationGate
 from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
-from satn.evidence import continuous_linework, empty_context, mark_ncn_edges
+from satn.evidence import (
+    continuous_linework,
+    empty_context,
+    govern_network_scope_for_urban_communities,
+    mark_ncn_edges,
+)
 from satn.identifiers import stable_id as _stable_id
 from satn.models import (
     AccessPointStatus,
@@ -30,6 +35,10 @@ from satn.models import (
 )
 from satn.routing import RoadGraph
 from satn.school_street import assess_school_street_candidates
+from satn.settlement import (
+    assess_community_urban_eligibility,
+    urban_settlement_form_profiles,
+)
 from satn.topography import (
     GradientThresholds,
     build_topography_profiles,
@@ -106,13 +115,33 @@ def compile_network(
     communities = places[places["kind"] == "community"].copy()
     if len(communities) < 2:
         raise ValueError("a network requires at least two Communities")
+    communities = assess_community_urban_eligibility(
+        communities,
+        source["network"],
+        context,
+        config.source,
+    )
+    places = gpd.GeoDataFrame(
+        pd.concat(
+            [communities, places[places["kind"] != "community"]],
+            ignore_index=True,
+            sort=False,
+        ),
+        geometry="geometry",
+        crs=places.crs,
+    ).sort_values("place_id")
+    urban_communities = _urban_communities(communities)
+    context = govern_network_scope_for_urban_communities(
+        context,
+        urban_communities,
+        urban_scope_buffer_km=config.source.urban_scope_buffer_km,
+    )
     gateways = places[places["kind"] == "cross_boundary_gateway"].copy()
     routable_network = mark_ncn_edges(source["network"], context)
     road_graph = RoadGraph(routable_network)
     gate = CompilationGate(runtime, config.compilation.agent)
     strategic_spines = _strategic_spines(context)
-    urban_communities = _urban_communities(communities, config)
-    rural_communities = _rural_communities(communities, config)
+    rural_communities = _rural_communities(communities)
     rural_schools = _rural_schools(context)
     backbone = assemble_backbone_outward(
         rural_communities,
@@ -127,6 +156,9 @@ def compile_network(
     )
     spine_access_connections = backbone.connections
     access_obligations = backbone.obligations
+    access_obligations["network_scope"] = access_obligations["network_scope"].astype(object)
+    rural_obligations = access_obligations["obligation_kind"].isin(["community", "school"])
+    access_obligations.loc[rural_obligations, "network_scope"] = NetworkScope.RURAL.value
     spine_access_branches = backbone.branches
     branch_meeting_connections = backbone.meeting_connections
     cross_spine_connectors = backbone.cross_spine_connectors
@@ -465,6 +497,7 @@ def compile_network(
         compilation_diagnostics={
             **backbone.compilation_diagnostics,
             "community_coverage": community_coverage,
+            "urban_settlement_form_profiles": urban_settlement_form_profiles(communities),
             "urban_a_road_spine_coverage": urban_a_road_coverage,
         },
     )
@@ -761,27 +794,15 @@ def _urban_a_road_spine_coverage(
 
 def _rural_communities(
     communities: gpd.GeoDataFrame,
-    config: CouncilConfig,
 ) -> gpd.GeoDataFrame:
-    urban_ids = set(_urban_communities(communities, config).index)
-    return communities[~communities.index.isin(urban_ids)].copy()
+    return communities[~communities["urban_circulation_eligible"].astype(bool)].copy()
 
 
 def _urban_communities(
     communities: gpd.GeoDataFrame,
-    config: CouncilConfig,
 ) -> gpd.GeoDataFrame:
-    """Return every identified Community governed as urban by council configuration."""
-    place_class = communities.get(
-        "place_class", pd.Series("", index=communities.index, dtype=object)
-    )
-    source_id = communities.get(
-        "source_id", pd.Series("", index=communities.index, dtype=object)
-    ).astype(str)
-    return communities[
-        place_class.isin(config.source.urban_place_types)
-        | source_id.isin(config.source.urban_place_source_ids)
-    ].copy()
+    """Return every Community admitted to an Urban Circulation Plan."""
+    return communities[communities["urban_circulation_eligible"].astype(bool)].copy()
 
 
 def _community_coverage(

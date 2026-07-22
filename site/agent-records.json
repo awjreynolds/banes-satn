@@ -3,11 +3,11 @@
   "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan.",
   "records": [
     {
-      "connection_id": "spine-access-34065da0c75c",
+      "connection_id": "spine-access-62180b94c4df",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -21,8 +21,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -46,14 +46,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:18.507482Z"
+      "created_at": "2026-07-22T17:51:36.443672Z"
     },
     {
-      "connection_id": "spine-access-212a61e497c2",
+      "connection_id": "spine-access-4838e49ce0ef",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-eba2998349db\", \"strategic-spine-sources-f158aae89ed7\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -67,8 +67,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-eba2998349db",
-              "strategic-spine-sources-f158aae89ed7"
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -92,14 +92,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:19.438114Z"
+      "created_at": "2026-07-22T17:51:37.192661Z"
     },
     {
-      "connection_id": "spine-access-ce01bd1dded9",
+      "connection_id": "spine-access-13f787d406fc",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -113,8 +113,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -138,14 +138,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:20.390467Z"
+      "created_at": "2026-07-22T17:51:37.849286Z"
     },
     {
-      "connection_id": "spine-access-ba674d0420d9",
+      "connection_id": "spine-access-ff7d9484c9d1",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-edc4a1eaa525\", \"strategic-spine-sources-49a9265af8bc\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -159,8 +159,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-edc4a1eaa525",
+              "strategic-spine-sources-49a9265af8bc"
             ]
           },
           "critique": {
@@ -184,14 +184,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:21.250687Z"
+      "created_at": "2026-07-22T17:51:38.391363Z"
     },
     {
-      "connection_id": "spine-access-16e61149c286",
+      "connection_id": "spine-access-b42cebf951ce",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -205,8 +205,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -230,14 +230,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:21.944237Z"
+      "created_at": "2026-07-22T17:51:39.176715Z"
     },
     {
-      "connection_id": "spine-access-c26e1a7058e6",
+      "connection_id": "spine-access-4cee5a753664",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -251,8 +251,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -276,14 +276,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:22.923459Z"
+      "created_at": "2026-07-22T17:51:39.688308Z"
     },
     {
-      "connection_id": "spine-access-b7efee718574",
+      "connection_id": "spine-access-56dcefb8a3e1",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -297,8 +297,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -322,14 +322,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:23.538977Z"
+      "created_at": "2026-07-22T17:51:40.538953Z"
     },
     {
-      "connection_id": "spine-access-178c4673ba72",
+      "connection_id": "spine-access-3aeef108fb80",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -343,8 +343,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -368,14 +368,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:24.637033Z"
+      "created_at": "2026-07-22T17:51:41.098707Z"
     },
     {
-      "connection_id": "spine-access-786a04ff9679",
+      "connection_id": "spine-access-2fae4fbc081b",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -389,8 +389,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -414,14 +414,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:25.318801Z"
+      "created_at": "2026-07-22T17:51:41.635517Z"
     },
     {
-      "connection_id": "spine-access-c32d550cc97a",
+      "connection_id": "spine-access-2a6e0fe9efba",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-1e9832b71205\", \"strategic-spine-sources-d1c97bab5ecf\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -435,8 +435,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-1e9832b71205",
+              "strategic-spine-sources-d1c97bab5ecf"
             ]
           },
           "critique": {
@@ -460,14 +460,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:25.975054Z"
+      "created_at": "2026-07-22T17:51:42.428072Z"
     },
     {
-      "connection_id": "spine-access-aa5cf45f865c",
+      "connection_id": "spine-access-1573f997295c",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -481,8 +481,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -506,60 +506,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:26.907452Z"
+      "created_at": "2026-07-22T17:51:43.018951Z"
     },
     {
-      "connection_id": "spine-access-da2d6095b94f",
+      "connection_id": "spine-access-38b4ac5fee6e",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:27.701945Z"
-    },
-    {
-      "connection_id": "spine-access-0d8cdb36e927",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172623184\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172623184\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -574,8 +528,8 @@
             "evidence_ids": [
               "osm-network",
               "172623184",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -599,14 +553,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:28.342403Z"
+      "created_at": "2026-07-22T17:51:43.537059Z"
     },
     {
-      "connection_id": "spine-access-a38cd2fcfa3b",
+      "connection_id": "spine-access-a8e8b39b5e99",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -620,8 +574,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -645,14 +599,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:29.153465Z"
+      "created_at": "2026-07-22T17:51:44.300091Z"
     },
     {
-      "connection_id": "spine-access-5b349512887e",
+      "connection_id": "spine-access-dbdaf567c66f",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -666,8 +620,8 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -691,14 +645,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:30.231783Z"
+      "created_at": "2026-07-22T17:51:45.230938Z"
     },
     {
-      "connection_id": "spine-access-3d0f045a9932",
+      "connection_id": "spine-access-8c5f4816095f",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"[45118864, 955305057]\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"[45118864, 955305057]\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -713,8 +667,8 @@
             "evidence_ids": [
               "osm-network",
               "[45118864, 955305057]",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -738,14 +692,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:30.955920Z"
+      "created_at": "2026-07-22T17:51:45.827511Z"
     },
     {
-      "connection_id": "spine-access-331cd2a2e759",
+      "connection_id": "spine-access-967918ff12e9",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"815930208\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"815930208\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -760,8 +714,8 @@
             "evidence_ids": [
               "osm-network",
               "815930208",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -785,14 +739,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:31.669243Z"
+      "created_at": "2026-07-22T17:51:46.324417Z"
     },
     {
-      "connection_id": "spine-access-d2dc6d51bafd",
+      "connection_id": "spine-access-bcd52505531a",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"[37657734, 546225671]\", \"strategic-spine-evidence-5d385c6816ed\", \"strategic-spine-sources-6fbaab9e0c9a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"4003160\", \"strategic-spine-evidence-edc4a1eaa525\", \"strategic-spine-sources-49a9265af8bc\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -806,9 +760,9 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "[37657734, 546225671]",
-              "strategic-spine-evidence-5d385c6816ed",
-              "strategic-spine-sources-6fbaab9e0c9a"
+              "4003160",
+              "strategic-spine-evidence-edc4a1eaa525",
+              "strategic-spine-sources-49a9265af8bc"
             ]
           },
           "critique": {
@@ -832,14 +786,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:32.366365Z"
+      "created_at": "2026-07-22T17:51:46.861223Z"
     },
     {
-      "connection_id": "spine-access-834e5d08cd53",
+      "connection_id": "spine-access-c02548f65b59",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"26630163\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"26630163\", \"strategic-spine-evidence-ed5685090822\", \"strategic-spine-sources-00fa7a7401de\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -854,8 +808,8 @@
             "evidence_ids": [
               "osm-network",
               "26630163",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "strategic-spine-evidence-ed5685090822",
+              "strategic-spine-sources-00fa7a7401de"
             ]
           },
           "critique": {
@@ -879,14 +833,61 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:33.119159Z"
+      "created_at": "2026-07-22T17:51:47.453448Z"
     },
     {
-      "connection_id": "spine-access-c3dd39eeb071",
+      "connection_id": "spine-access-6001fcfc6b2a",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"7992112\", \"[7992112, 1090870685]\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233889\", \"strategic-spine-evidence-429e29fbad5d\", \"strategic-spine-sources-c212a434e704\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "178233889",
+              "strategic-spine-evidence-429e29fbad5d",
+              "strategic-spine-sources-c212a434e704"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:47.800580Z"
+    },
+    {
+      "connection_id": "spine-access-01119fd8b37c",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"7992112\", \"[7992112, 1090870685]\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -902,8 +903,8 @@
               "osm-network",
               "7992112",
               "[7992112, 1090870685]",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -927,62 +928,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:33.596573Z"
+      "created_at": "2026-07-22T17:51:48.344535Z"
     },
     {
-      "connection_id": "spine-access-2022e4ccfac5",
+      "connection_id": "spine-access-4c5f51c5776a",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"145308674\", \"24330728\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "145308674",
-              "24330728",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:34.082016Z"
-    },
-    {
-      "connection_id": "spine-access-04abd96a29d2",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172139237\", \"310143540\", \"[545110034, 172139237]\", \"[545110034, 310143540]\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172139237\", \"310143540\", \"[545110034, 172139237]\", \"[545110034, 310143540]\", \"strategic-spine-evidence-edc4a1eaa525\", \"strategic-spine-sources-49a9265af8bc\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1000,8 +953,8 @@
               "310143540",
               "[545110034, 172139237]",
               "[545110034, 310143540]",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
+              "strategic-spine-evidence-edc4a1eaa525",
+              "strategic-spine-sources-49a9265af8bc"
             ]
           },
           "critique": {
@@ -1025,57 +978,10 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:34.631171Z"
+      "created_at": "2026-07-22T17:51:48.741031Z"
     },
     {
-      "connection_id": "spine-access-fc2af81b13eb",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"44684117\", \"strategic-spine-evidence-5d385c6816ed\", \"strategic-spine-sources-6fbaab9e0c9a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "44684117",
-              "strategic-spine-evidence-5d385c6816ed",
-              "strategic-spine-sources-6fbaab9e0c9a"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:35.358021Z"
-    },
-    {
-      "connection_id": "spine-access-10e9ef64aca0",
+      "connection_id": "spine-access-4511b7dcae60",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -1122,10 +1028,58 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:36.061053Z"
+      "created_at": "2026-07-22T17:51:49.314632Z"
     },
     {
-      "connection_id": "spine-access-bb92a7e8ed57",
+      "connection_id": "spine-access-5d79dcc2cb50",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"[151911908, 38038606]\", \"[35164681, 38038606, 38038607]\", \"strategic-spine-evidence-1e9832b71205\", \"strategic-spine-sources-d1c97bab5ecf\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "[151911908, 38038606]",
+              "[35164681, 38038606, 38038607]",
+              "strategic-spine-evidence-1e9832b71205",
+              "strategic-spine-sources-d1c97bab5ecf"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:49.807621Z"
+    },
+    {
+      "connection_id": "spine-access-5f9e71c81ec9",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -1169,14 +1123,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:36.736587Z"
+      "created_at": "2026-07-22T17:51:50.198771Z"
     },
     {
-      "connection_id": "spine-access-f380e570f780",
+      "connection_id": "spine-access-74aad901b878",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"27579415\", \"27579417\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"27579415\", \"27579417\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1192,8 +1146,8 @@
               "osm-network",
               "27579415",
               "27579417",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -1217,14 +1171,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:37.336729Z"
+      "created_at": "2026-07-22T17:51:50.626534Z"
     },
     {
-      "connection_id": "spine-access-448e92dd21ff",
+      "connection_id": "spine-access-8e7ad3bd5ae5",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"108331477\", \"1467894306\", \"196\", \"4003160\", \"659953716\", \"997161353\", \"[1467894306, 997161354]\", \"[659953716, 537759663]\", \"[997161353, 659953710]\", \"[997161354, 1467894306]\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"44684117\", \"546225681\", \"strategic-spine-evidence-429e29fbad5d\", \"strategic-spine-sources-c212a434e704\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1238,18 +1192,10 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "108331477",
-              "1467894306",
-              "196",
-              "4003160",
-              "659953716",
-              "997161353",
-              "[1467894306, 997161354]",
-              "[659953716, 537759663]",
-              "[997161353, 659953710]",
-              "[997161354, 1467894306]",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
+              "44684117",
+              "546225681",
+              "strategic-spine-evidence-429e29fbad5d",
+              "strategic-spine-sources-c212a434e704"
             ]
           },
           "critique": {
@@ -1273,14 +1219,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:37.734057Z"
+      "created_at": "2026-07-22T17:51:50.873366Z"
     },
     {
-      "connection_id": "spine-access-0e14b405f7d8",
+      "connection_id": "spine-access-59c93c13c0a2",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1099299132\", \"127744648\", \"170331123\", \"3188653\", \"335388955\", \"7595350\", \"[1099345533, 7595350]\", \"[1484112131, 170331123]\", \"[1484112131, 335388955]\", \"[170331123, 1099299132]\", \"[335388955, 1484112131]\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1099299132\", \"127744648\", \"170331123\", \"3188653\", \"335388955\", \"7595350\", \"[1099345533, 7595350]\", \"[1484112131, 170331123]\", \"[1484112131, 335388955]\", \"[170331123, 1099299132]\", \"[335388955, 1484112131]\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1305,8 +1251,8 @@
               "[1484112131, 335388955]",
               "[170331123, 1099299132]",
               "[335388955, 1484112131]",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -1330,14 +1276,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:38.301871Z"
+      "created_at": "2026-07-22T17:51:51.367646Z"
     },
     {
-      "connection_id": "spine-access-76269c78b777",
+      "connection_id": "spine-access-d43904c1efda",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"10075358\", \"26456385\", \"318144406\", \"553567927\", \"[318144406, 553567927]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1144843309\", \"24546402\", \"30355624\", \"80607942\", \"strategic-spine-evidence-ed5685090822\", \"strategic-spine-sources-00fa7a7401de\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1351,13 +1297,12 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "10075358",
-              "26456385",
-              "318144406",
-              "553567927",
-              "[318144406, 553567927]",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "1144843309",
+              "24546402",
+              "30355624",
+              "80607942",
+              "strategic-spine-evidence-ed5685090822",
+              "strategic-spine-sources-00fa7a7401de"
             ]
           },
           "critique": {
@@ -1381,63 +1326,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:38.939544Z"
+      "created_at": "2026-07-22T17:51:51.825674Z"
     },
     {
-      "connection_id": "spine-access-5b0b475c61e8",
+      "connection_id": "spine-access-69719130e14a",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"151911908\", \"[151911908, 38038606]\", \"[35164681, 38038606, 38038607]\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "151911908",
-              "[151911908, 38038606]",
-              "[35164681, 38038606, 38038607]",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:39.368286Z"
-    },
-    {
-      "connection_id": "spine-access-b240c7eb3b58",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233899\", \"378717380\", \"76065619\", \"997161360\", \"[76065608, 997161361, 178233899, 997161360]\", \"[997161360, 76065619]\", \"[997161360, 997161361, 76065608, 178233899]\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233899\", \"378717380\", \"76065619\", \"997161360\", \"[76065608, 997161361, 178233899, 997161360]\", \"[997161360, 76065619]\", \"[997161360, 997161361, 76065608, 178233899]\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1458,8 +1354,8 @@
               "[76065608, 997161361, 178233899, 997161360]",
               "[997161360, 76065619]",
               "[997161360, 997161361, 76065608, 178233899]",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -1483,14 +1379,114 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:39.814951Z"
+      "created_at": "2026-07-22T17:51:52.087044Z"
     },
     {
-      "connection_id": "spine-access-b1da326d594b",
+      "connection_id": "spine-access-3a8a6ab3d0c8",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"27579415\", \"27579417\", \"7992110\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"145308674\", \"24330728\", \"4427870\", \"[9515312, 100021435, 100021436]\", \"strategic-spine-evidence-1e9832b71205\", \"strategic-spine-sources-d1c97bab5ecf\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "145308674",
+              "24330728",
+              "4427870",
+              "[9515312, 100021435, 100021436]",
+              "strategic-spine-evidence-1e9832b71205",
+              "strategic-spine-sources-d1c97bab5ecf"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:52.405591Z"
+    },
+    {
+      "connection_id": "spine-access-833091187a4c",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"118063008\", \"24427472\", \"24546401\", \"30355623\", \"strategic-spine-evidence-ed5685090822\", \"strategic-spine-sources-00fa7a7401de\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "118063008",
+              "24427472",
+              "24546401",
+              "30355623",
+              "strategic-spine-evidence-ed5685090822",
+              "strategic-spine-sources-00fa7a7401de"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:52.729443Z"
+    },
+    {
+      "connection_id": "spine-access-4cd6e0e400cd",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"27579415\", \"27579417\", \"7992110\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1508,8 +1504,8 @@
               "27579415",
               "27579417",
               "7992110",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -1533,377 +1529,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:40.236738Z"
+      "created_at": "2026-07-22T17:51:52.925454Z"
     },
     {
-      "connection_id": "spine-access-3dbe8f445bf3",
+      "connection_id": "spine-access-de5bc7399742",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233899\", \"23497407\", \"997161364\", \"[27931138, 997161365, 27931135]\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "178233899",
-              "23497407",
-              "997161364",
-              "[27931138, 997161365, 27931135]",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:40.516887Z"
-    },
-    {
-      "connection_id": "spine-access-aac67978b498",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"33175952\", \"620668806\", \"69289359\", \"792995881\", \"[33175859, 1001848707, 7568510]\", \"[4003161, 537759665]\", \"[4003161, 792995881, 792995882]\", \"[4003161, 792995882, 792995881]\", \"[537759665, 537759663]\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "33175952",
-              "620668806",
-              "69289359",
-              "792995881",
-              "[33175859, 1001848707, 7568510]",
-              "[4003161, 537759665]",
-              "[4003161, 792995881, 792995882]",
-              "[4003161, 792995882, 792995881]",
-              "[537759665, 537759663]",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:40.852171Z"
-    },
-    {
-      "connection_id": "spine-access-8bb9df593af1",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1001848706\", \"1001848707\", \"1104685313\", \"178172932\", \"33175860\", \"33175953\", \"620668806\", \"76867054\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "1001848706",
-              "1001848707",
-              "1104685313",
-              "178172932",
-              "33175860",
-              "33175953",
-              "620668806",
-              "76867054",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:41.274324Z"
-    },
-    {
-      "connection_id": "spine-access-f0c7283aa87b",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"151911909\", \"46777467\", \"588422840\", \"[686637699, 40391166]\", \"[791499689, 686637699, 46777469, 46777470]\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "151911909",
-              "46777467",
-              "588422840",
-              "[686637699, 40391166]",
-              "[791499689, 686637699, 46777469, 46777470]",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:41.702620Z"
-    },
-    {
-      "connection_id": "spine-access-ec94722c5ab2",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "1030764620",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:41.977401Z"
-    },
-    {
-      "connection_id": "spine-access-c704d2a9fb00",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"151911909\", \"25286882\", \"46777467\", \"[40391170, 40391176, 374018953, 374018954, 159244336]\", \"[56752458, 25286883]\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "151911909",
-              "25286882",
-              "46777467",
-              "[40391170, 40391176, 374018953, 374018954, 159244336]",
-              "[56752458, 25286883]",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:42.199839Z"
-    },
-    {
-      "connection_id": "spine-access-fba8430b11d7",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"129274433\", \"370883411\", \"652037958\", \"686624158\", \"765643125\", \"9515305\", \"[38144276, 49774999]\", \"[9515305, 370883411]\", \"[966313867, 38036732]\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "129274433",
-              "370883411",
-              "652037958",
-              "686624158",
-              "765643125",
-              "9515305",
-              "[38144276, 49774999]",
-              "[9515305, 370883411]",
-              "[966313867, 38036732]",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:42.431587Z"
-    },
-    {
-      "connection_id": "spine-access-78cd2d847aa7",
-      "network_role": "spine-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030822316\", \"1030822328\", \"133638000\", \"34719194\", \"38334795\", \"38839577\", \"4390604\", \"4390607\", \"[133638010, 1379002204]\", \"[1379002212, 4390604, 1379002213]\", \"[70645412, 1379002204]\", \"[70645426, 1317415722]\", \"[974618872, 70645426]\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030822316\", \"1030822328\", \"133638000\", \"34719194\", \"38334795\", \"38839577\", \"4390604\", \"4390607\", \"[133638010, 1379002204]\", \"[1379002212, 4390604, 1379002213]\", \"[70645426, 1317415722]\", \"[974618872, 70645426]\", \"strategic-spine-evidence-c2ca75c669e1\", \"strategic-spine-sources-9fddc177b9bd\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1927,11 +1560,10 @@
               "4390607",
               "[133638010, 1379002204]",
               "[1379002212, 4390604, 1379002213]",
-              "[70645412, 1379002204]",
               "[70645426, 1317415722]",
               "[974618872, 70645426]",
-              "strategic-spine-evidence-4cfe81363ba0",
-              "strategic-spine-sources-092745b672d1"
+              "strategic-spine-evidence-c2ca75c669e1",
+              "strategic-spine-sources-9fddc177b9bd"
             ]
           },
           "critique": {
@@ -1955,14 +1587,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:42.732528Z"
+      "created_at": "2026-07-22T17:51:53.123477Z"
     },
     {
-      "connection_id": "spine-access-7d1c9bd83add",
+      "connection_id": "spine-access-c76a2b4a1e8e",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1130925218\", \"1130925234\", \"25286410\", \"26341784\", \"318144406\", \"[1130925218, 25286410]\", \"[1130925225, 1130925234]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233899\", \"23497407\", \"997161364\", \"[27931138, 997161365, 27931135]\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -1976,15 +1608,12 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "1130925218",
-              "1130925234",
-              "25286410",
-              "26341784",
-              "318144406",
-              "[1130925218, 25286410]",
-              "[1130925225, 1130925234]",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "178233899",
+              "23497407",
+              "997161364",
+              "[27931138, 997161365, 27931135]",
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -2008,14 +1637,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:43.000650Z"
+      "created_at": "2026-07-22T17:51:53.483295Z"
     },
     {
-      "connection_id": "spine-access-b5a1d8600f1b",
+      "connection_id": "spine-access-4cf50de09fdf",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"236061944\", \"604759278\", \"76379442\", \"[236061944, 1130925234]\", \"[236061944, 236061946, 76379442]\", \"[236061944, 76379442, 236061946]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"24427472\", \"[7991361, 750416843]\", \"[81330150, 750416843, 693413906, 51708310, 24546493, 301958590]\", \"strategic-spine-evidence-ed5685090822\", \"strategic-spine-sources-00fa7a7401de\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2029,14 +1658,11 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "236061944",
-              "604759278",
-              "76379442",
-              "[236061944, 1130925234]",
-              "[236061944, 236061946, 76379442]",
-              "[236061944, 76379442, 236061946]",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "24427472",
+              "[7991361, 750416843]",
+              "[81330150, 750416843, 693413906, 51708310, 24546493, 301958590]",
+              "strategic-spine-evidence-ed5685090822",
+              "strategic-spine-sources-00fa7a7401de"
             ]
           },
           "critique": {
@@ -2060,14 +1686,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:43.215893Z"
+      "created_at": "2026-07-22T17:51:53.683475Z"
     },
     {
-      "connection_id": "spine-access-48e73e02433d",
+      "connection_id": "spine-access-0a165891afb9",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"26546561\", \"604759485\", \"[26341894, 947619103]\", \"[26546561, 604759487]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"151911909\", \"25286882\", \"46777467\", \"[40391170, 40391176, 374018953, 374018954, 159244336]\", \"[56752458, 25286883]\", \"strategic-spine-evidence-1e9832b71205\", \"strategic-spine-sources-d1c97bab5ecf\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2081,12 +1707,13 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "26546561",
-              "604759485",
-              "[26341894, 947619103]",
-              "[26546561, 604759487]",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "151911909",
+              "25286882",
+              "46777467",
+              "[40391170, 40391176, 374018953, 374018954, 159244336]",
+              "[56752458, 25286883]",
+              "strategic-spine-evidence-1e9832b71205",
+              "strategic-spine-sources-d1c97bab5ecf"
             ]
           },
           "critique": {
@@ -2110,14 +1737,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:43.373653Z"
+      "created_at": "2026-07-22T17:51:53.854786Z"
     },
     {
-      "connection_id": "spine-access-967eaaf73280",
+      "connection_id": "spine-access-c5ea244cf8e3",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178172926\", \"23556333\", \"26120970\", \"26121011\", \"28580952\", \"28581115\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"128424632\", \"673337508\", \"7568481\", \"[1104964976, 1104964974, 1104964975]\", \"[33176017, 1001848710, 1001848711]\", \"[33176017, 997161359]\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2131,14 +1758,14 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "178172926",
-              "23556333",
-              "26120970",
-              "26121011",
-              "28580952",
-              "28581115",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "128424632",
+              "673337508",
+              "7568481",
+              "[1104964976, 1104964974, 1104964975]",
+              "[33176017, 1001848710, 1001848711]",
+              "[33176017, 997161359]",
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -2162,14 +1789,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:43.511442Z"
+      "created_at": "2026-07-22T17:51:54.103562Z"
     },
     {
-      "connection_id": "spine-access-d014b0f132c6",
+      "connection_id": "spine-access-5f36b0619a5d",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"370725627\", \"4365178\", \"61409006\", \"747187507\", \"[1379002212, 4390604, 1379002213]\", \"[4390604, 1379002212, 1379002213]\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1001848710\", \"33175860\", \"76867054\", \"[1001848710, 76867054]\", \"[76867054, 1001848710]\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2183,14 +1810,13 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "370725627",
-              "4365178",
-              "61409006",
-              "747187507",
-              "[1379002212, 4390604, 1379002213]",
-              "[4390604, 1379002212, 1379002213]",
-              "strategic-spine-evidence-4cfe81363ba0",
-              "strategic-spine-sources-092745b672d1"
+              "1001848710",
+              "33175860",
+              "76867054",
+              "[1001848710, 76867054]",
+              "[76867054, 1001848710]",
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -2214,14 +1840,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:43.666177Z"
+      "created_at": "2026-07-22T17:51:54.286265Z"
     },
     {
-      "connection_id": "spine-access-a90f4bb6b6bd",
+      "connection_id": "spine-access-454beb5236fa",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"243946929\", \"243946931\", \"243950938\", \"747187507\", \"931029299\", \"[243950938, 260967398, 256279938]\", \"[256279938, 243950938, 260967398]\", \"[370725635, 61409014]\", \"[4338437, 4546541, 37747534, 37747535, 37747536]\", \"[43626228, 370725639]\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"129274433\", \"370883411\", \"652037958\", \"686624158\", \"765643125\", \"9515305\", \"[38144276, 49774999]\", \"[9515305, 370883411]\", \"[966313867, 38036732]\", \"strategic-spine-evidence-1e9832b71205\", \"strategic-spine-sources-d1c97bab5ecf\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2235,18 +1861,17 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "243946929",
-              "243946931",
-              "243950938",
-              "747187507",
-              "931029299",
-              "[243950938, 260967398, 256279938]",
-              "[256279938, 243950938, 260967398]",
-              "[370725635, 61409014]",
-              "[4338437, 4546541, 37747534, 37747535, 37747536]",
-              "[43626228, 370725639]",
-              "strategic-spine-evidence-4cfe81363ba0",
-              "strategic-spine-sources-092745b672d1"
+              "129274433",
+              "370883411",
+              "652037958",
+              "686624158",
+              "765643125",
+              "9515305",
+              "[38144276, 49774999]",
+              "[9515305, 370883411]",
+              "[966313867, 38036732]",
+              "strategic-spine-evidence-1e9832b71205",
+              "strategic-spine-sources-d1c97bab5ecf"
             ]
           },
           "critique": {
@@ -2270,14 +1895,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:43.867701Z"
+      "created_at": "2026-07-22T17:51:54.517200Z"
     },
     {
-      "connection_id": "spine-access-5202c5d374c6",
+      "connection_id": "spine-access-c2d29a005098",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"203240679\", \"203240688\", \"203240692\", \"207644851\", \"244625851\", \"3403352\", \"4321799\", \"4321847\", \"4321848\", \"45131766\", \"48679745\", \"48680121\", \"48680122\", \"686\", \"[244625851, 1090866855]\", \"[244625851, 207644852]\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"203240679\", \"203240688\", \"203240692\", \"207644851\", \"3403352\", \"4321799\", \"4321847\", \"4321848\", \"45131766\", \"48679745\", \"48680121\", \"48680122\", \"686\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2295,7 +1920,6 @@
               "203240688",
               "203240692",
               "207644851",
-              "244625851",
               "3403352",
               "4321799",
               "4321847",
@@ -2305,10 +1929,8 @@
               "48680121",
               "48680122",
               "686",
-              "[244625851, 1090866855]",
-              "[244625851, 207644852]",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -2332,14 +1954,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:44.004245Z"
+      "created_at": "2026-07-22T17:51:54.694150Z"
     },
     {
-      "connection_id": "spine-access-d8725d60d6f2",
+      "connection_id": "spine-access-9cc5bbdd3490",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"24427474\", \"26341806\", \"26630163\", \"26676141\", \"40366892\", \"49876610\", \"8878337\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"23556333\", \"26120970\", \"26121011\", \"28580952\", \"28581115\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2353,15 +1975,13 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "24427474",
-              "26341806",
-              "26630163",
-              "26676141",
-              "40366892",
-              "49876610",
-              "8878337",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "23556333",
+              "26120970",
+              "26121011",
+              "28580952",
+              "28581115",
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -2385,14 +2005,69 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:44.073310Z"
+      "created_at": "2026-07-22T17:51:54.811250Z"
     },
     {
-      "connection_id": "spine-access-fc0c68dc6c94",
+      "connection_id": "spine-access-049470c5f82c",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1103169381\", \"1103217619\", \"127730680\", \"1491089779\", \"170331125\", \"170331129\", \"4073834\", \"[1103217619, 170331125]\", \"[1491089779, 1026200878, 1026200879]\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"24425608\", \"24427472\", \"26341812\", \"42840048\", \"694301454\", \"[24425608, 694301664]\", \"[42840048, 49608178, 694301454]\", \"[694301664, 24425608]\", \"[694301664, 42458506]\", \"strategic-spine-evidence-ed5685090822\", \"strategic-spine-sources-00fa7a7401de\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "24425608",
+              "24427472",
+              "26341812",
+              "42840048",
+              "694301454",
+              "[24425608, 694301664]",
+              "[42840048, 49608178, 694301454]",
+              "[694301664, 24425608]",
+              "[694301664, 42458506]",
+              "strategic-spine-evidence-ed5685090822",
+              "strategic-spine-sources-00fa7a7401de"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:54.976067Z"
+    },
+    {
+      "connection_id": "spine-access-1b27c2aa4d6f",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1103169381\", \"1103217619\", \"127730680\", \"1491089779\", \"170331125\", \"170331129\", \"4073834\", \"[1103217619, 170331125]\", \"[1491089779, 1026200878, 1026200879]\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2415,8 +2090,8 @@
               "4073834",
               "[1103217619, 170331125]",
               "[1491089779, 1026200878, 1026200879]",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -2440,14 +2115,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:44.127825Z"
+      "created_at": "2026-07-22T17:51:55.058302Z"
     },
     {
-      "connection_id": "spine-access-75f50a47189a",
+      "connection_id": "spine-access-0c56c3ccad4d",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"649724013\", \"649724018\", \"7593511\", \"[649724013, 1101451158]\", \"[649724018, 7593511]\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"649724013\", \"649724018\", \"7593511\", \"[649724013, 1101451158]\", \"[649724018, 7593511]\", \"strategic-spine-evidence-4c72a4cdce03\", \"strategic-spine-sources-25a57223e232\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2466,8 +2141,8 @@
               "7593511",
               "[649724013, 1101451158]",
               "[649724018, 7593511]",
-              "strategic-spine-evidence-a07df68b07b6",
-              "strategic-spine-sources-ba9916cc208f"
+              "strategic-spine-evidence-4c72a4cdce03",
+              "strategic-spine-sources-25a57223e232"
             ]
           },
           "critique": {
@@ -2491,14 +2166,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:44.186408Z"
+      "created_at": "2026-07-22T17:51:55.169279Z"
     },
     {
-      "connection_id": "spine-access-35aa470f5d23",
+      "connection_id": "spine-access-920773dd8a49",
       "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"118063004\", \"118063008\", \"126786137\", \"24427472\", \"24546401\", \"30355623\", \"30355624\", \"58659427\", \"604751503\", \"[118063004, 604751503]\", \"[126786138, 32452052]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"145263551\", \"145263663\", \"178265886\", \"26649189\", \"26649262\", \"7992106\", \"[145263551, 145263663]\", \"[145263663, 145263551]\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -2512,19 +2187,16 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "118063004",
-              "118063008",
-              "126786137",
-              "24427472",
-              "24546401",
-              "30355623",
-              "30355624",
-              "58659427",
-              "604751503",
-              "[118063004, 604751503]",
-              "[126786138, 32452052]",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "145263551",
+              "145263663",
+              "178265886",
+              "26649189",
+              "26649262",
+              "7992106",
+              "[145263551, 145263663]",
+              "[145263663, 145263551]",
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -2548,10 +2220,174 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:44.230001Z"
+      "created_at": "2026-07-22T17:51:55.240135Z"
     },
     {
-      "connection_id": "branch-meeting-a89732d2e4bc",
+      "connection_id": "spine-access-4b79fc88ca29",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"145262051\", \"604759278\", \"[125202600, 125202601, 34068306]\", \"[189103937, 189103940, 189103942, 125167466, 604759275, 604759276]\", \"[26341894, 947619103]\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "145262051",
+              "604759278",
+              "[125202600, 125202601, 34068306]",
+              "[189103937, 189103940, 189103942, 125167466, 604759275, 604759276]",
+              "[26341894, 947619103]",
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:55.280782Z"
+    },
+    {
+      "connection_id": "spine-access-98e3163daa60",
+      "network_role": "spine-access-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1130925218\", \"1130925234\", \"236061944\", \"25286410\", \"26341784\", \"26466555\", \"76379442\", \"[1130925218, 25286410]\", \"[1130925225, 1130925234]\", \"[236061944, 1130925234]\", \"[236061944, 236061946, 76379442]\", \"[236061944, 76379442, 236061946]\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "direct",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "1130925218",
+              "1130925234",
+              "236061944",
+              "25286410",
+              "26341784",
+              "26466555",
+              "76379442",
+              "[1130925218, 25286410]",
+              "[1130925225, 1130925234]",
+              "[236061944, 1130925234]",
+              "[236061944, 236061946, 76379442]",
+              "[236061944, 76379442, 236061946]",
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "direct",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [],
+      "created_at": "2026-07-22T17:51:55.313125Z"
+    },
+    {
+      "connection_id": "branch-meeting-ad8345cba4d5",
+      "network_role": "branch-meeting-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233889\", \"37657734\", \"44684117\", \"546225671\", \"[37657734, 546225671]\", \"[546225681, 1527581517, 37657734]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
+      "decision": "accept",
+      "selected_role": "cross-spine-connector",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "cross-spine-connector",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "178233889",
+              "37657734",
+              "44684117",
+              "546225671",
+              "[37657734, 546225671]",
+              "[546225681, 1527581517, 37657734]"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "cross-spine-connector",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-c7d5e6f07b0c",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T17:52:05.931488Z"
+    },
+    {
+      "connection_id": "branch-meeting-ce20aa37c8f0",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -2600,18 +2436,18 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-b7cb5957e383",
+          "feature_id": "cross-spine-connector-d809004a06f9",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115073Z"
+      "created_at": "2026-07-22T17:52:05.931603Z"
     },
     {
-      "connection_id": "branch-meeting-9e636ed425d1",
+      "connection_id": "branch-meeting-266951e1c4cc",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1144843309\", \"24546402\", \"27027456\", \"30355624\", \"32452053\", \"46770011\", \"588422840\", \"604751503\", \"80607942\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"24427472\", \"26341812\", \"[222614379, 222614380, 42764471]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
       "decision": "accept",
@@ -2625,15 +2461,10 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "1144843309",
-              "24546402",
-              "27027456",
-              "30355624",
-              "32452053",
-              "46770011",
-              "588422840",
-              "604751503",
-              "80607942"
+              "1030764620",
+              "24427472",
+              "26341812",
+              "[222614379, 222614380, 42764471]"
             ]
           },
           "critique": {
@@ -2658,14 +2489,78 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-6dd6ec78c615",
+          "feature_id": "cross-spine-connector-fc812243fb0b",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115207Z"
+      "created_at": "2026-07-22T17:52:05.931687Z"
     },
     {
-      "connection_id": "branch-meeting-872d0edde41d",
+      "connection_id": "branch-meeting-641dc6723da8",
+      "network_role": "branch-meeting-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1001848706\", \"1001848707\", \"33175860\", \"33175952\", \"33175953\", \"4003160\", \"659953716\", \"69289359\", \"792995881\", \"[33175859, 1001848707, 7568510]\", \"[4003161, 537759665]\", \"[4003161, 792995881, 792995882]\", \"[4003161, 792995882, 792995881]\", \"[537759665, 537759663]\", \"[659953716, 537759663]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
+      "decision": "accept",
+      "selected_role": "cross-spine-connector",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "cross-spine-connector",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "1001848706",
+              "1001848707",
+              "33175860",
+              "33175952",
+              "33175953",
+              "4003160",
+              "659953716",
+              "69289359",
+              "792995881",
+              "[33175859, 1001848707, 7568510]",
+              "[4003161, 537759665]",
+              "[4003161, 792995881, 792995882]",
+              "[4003161, 792995882, 792995881]",
+              "[537759665, 537759663]",
+              "[659953716, 537759663]"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "cross-spine-connector",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-2fcb9f283a57",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T17:52:05.931767Z"
+    },
+    {
+      "connection_id": "branch-meeting-7caee5b34b7a",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -2726,18 +2621,18 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-9016579f9063",
+          "feature_id": "cross-spine-connector-40bb1281785c",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115330Z"
+      "created_at": "2026-07-22T17:52:05.931856Z"
     },
     {
-      "connection_id": "branch-meeting-981efde22341",
+      "connection_id": "branch-meeting-3aeab5db2d3b",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1090866855\", \"165355458\", \"165355459\", \"195032580\", \"244625850\", \"244625851\", \"48680122\", \"61463549\", \"91376388\", \"[165355459, 195032580]\", \"[244625851, 1090866855]\", \"[244625851, 207644852]\", \"[45450840, 45450845, 61463549]\", \"[45450840, 61463549, 45450845]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"25286882\", \"32452053\", \"46770011\", \"588422840\", \"[56752458, 25286883]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
       "decision": "accept",
@@ -2751,20 +2646,11 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "1090866855",
-              "165355458",
-              "165355459",
-              "195032580",
-              "244625850",
-              "244625851",
-              "48680122",
-              "61463549",
-              "91376388",
-              "[165355459, 195032580]",
-              "[244625851, 1090866855]",
-              "[244625851, 207644852]",
-              "[45450840, 45450845, 61463549]",
-              "[45450840, 61463549, 45450845]"
+              "25286882",
+              "32452053",
+              "46770011",
+              "588422840",
+              "[56752458, 25286883]"
             ]
           },
           "critique": {
@@ -2789,14 +2675,71 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-00c0c5eed20a",
+          "feature_id": "cross-spine-connector-e6c39b12cc00",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115428Z"
+      "created_at": "2026-07-22T17:52:05.931934Z"
     },
     {
-      "connection_id": "branch-meeting-cdadc3643855",
+      "connection_id": "branch-meeting-bfbaa32de187",
+      "network_role": "branch-meeting-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1144843309\", \"189173683\", \"24546402\", \"26341819\", \"5153972\", \"80607942\", \"[189173683, 5153972]\", \"[40385232, 40385235, 588422841, 588422842, 189173694]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
+      "decision": "accept",
+      "selected_role": "cross-spine-connector",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "cross-spine-connector",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "1144843309",
+              "189173683",
+              "24546402",
+              "26341819",
+              "5153972",
+              "80607942",
+              "[189173683, 5153972]",
+              "[40385232, 40385235, 588422841, 588422842, 189173694]"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "cross-spine-connector",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-1eba00f8cec4",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T17:52:05.932007Z"
+    },
+    {
+      "connection_id": "branch-meeting-f4bda7b4b910",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -2849,14 +2792,14 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-93f25955d5f5",
+          "feature_id": "cross-spine-connector-5bad1dbe1dc9",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115531Z"
+      "created_at": "2026-07-22T17:52:05.932090Z"
     },
     {
-      "connection_id": "branch-meeting-6c765b7ff607",
+      "connection_id": "branch-meeting-9a0369b52709",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -2906,18 +2849,18 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-73280f8136d2",
+          "feature_id": "cross-spine-connector-a0c00e84cbe6",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115617Z"
+      "created_at": "2026-07-22T17:52:05.932169Z"
     },
     {
-      "connection_id": "branch-meeting-4303ead712d5",
+      "connection_id": "branch-meeting-7d69a4cfca94",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"200763804\", \"201105039\", \"201105041\", \"3383412\", \"378717383\", \"659953716\", \"7568481\", \"8174699\", \"997161358\", \"[200763804, 201100718]\", \"[201103901, 201103902]\", \"[33176017, 997161359]\", \"[3383412, 76036613, 76036614]\", \"[659953716, 537759663]\", \"[76043872, 7568069, 76043870]\", \"[785355152, 88046529, 378717378, 785355151]\", \"[88046553, 88046498, 88046527]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"170420271\", \"172623170\", \"448212409\", \"448214982\", \"448214983\", \"518403476\", \"619571214\", \"687911439\", \"[170420265, 448212409, 619571215]\", \"[170420265, 448214983]\", \"[448212409, 170420265, 619571215]\", \"[518403476, 448214981]\", \"[518403476, 518403477, 687911438, 649719671]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
       "decision": "accept",
@@ -2931,23 +2874,19 @@
             "rationale": "Use the best current OSM alignment under the governed rules.",
             "evidence_ids": [
               "osm-network",
-              "200763804",
-              "201105039",
-              "201105041",
-              "3383412",
-              "378717383",
-              "659953716",
-              "7568481",
-              "8174699",
-              "997161358",
-              "[200763804, 201100718]",
-              "[201103901, 201103902]",
-              "[33176017, 997161359]",
-              "[3383412, 76036613, 76036614]",
-              "[659953716, 537759663]",
-              "[76043872, 7568069, 76043870]",
-              "[785355152, 88046529, 378717378, 785355151]",
-              "[88046553, 88046498, 88046527]"
+              "170420271",
+              "172623170",
+              "448212409",
+              "448214982",
+              "448214983",
+              "518403476",
+              "619571214",
+              "687911439",
+              "[170420265, 448212409, 619571215]",
+              "[170420265, 448214983]",
+              "[448212409, 170420265, 619571215]",
+              "[518403476, 448214981]",
+              "[518403476, 518403477, 687911438, 649719671]"
             ]
           },
           "critique": {
@@ -2972,130 +2911,14 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-d45b8d75ea49",
+          "feature_id": "cross-spine-connector-c5a8e11b7275",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115707Z"
+      "created_at": "2026-07-22T17:52:05.932242Z"
     },
     {
-      "connection_id": "branch-meeting-c8961f8fd63e",
-      "network_role": "branch-meeting-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"145263551\", \"145263663\", \"178265886\", \"178267554\", \"187790247\", \"26546561\", \"7992106\", \"[145263551, 145263663]\", \"[145263663, 145263551]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
-      "decision": "accept",
-      "selected_role": "cross-spine-connector",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "cross-spine-connector",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "145263551",
-              "145263663",
-              "178265886",
-              "178267554",
-              "187790247",
-              "26546561",
-              "7992106",
-              "[145263551, 145263663]",
-              "[145263663, 145263551]"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "cross-spine-connector",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [
-        {
-          "feature_id": "cross-spine-connector-b284e867ce34",
-          "network_role": "cross-spine-connector"
-        }
-      ],
-      "created_at": "2026-07-22T16:00:55.115790Z"
-    },
-    {
-      "connection_id": "branch-meeting-40e1a3c8a057",
-      "network_role": "branch-meeting-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"151911909\", \"151911910\", \"189173683\", \"46777467\", \"588422840\", \"[189173683, 5153972]\", \"[189173684, 159244990]\", \"[686637699, 40391166]\", \"[791499689, 686637699, 46777469, 46777470]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
-      "decision": "accept",
-      "selected_role": "cross-spine-connector",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "cross-spine-connector",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "151911909",
-              "151911910",
-              "189173683",
-              "46777467",
-              "588422840",
-              "[189173683, 5153972]",
-              "[189173684, 159244990]",
-              "[686637699, 40391166]",
-              "[791499689, 686637699, 46777469, 46777470]"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "cross-spine-connector",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [
-        {
-          "feature_id": "cross-spine-connector-27d4172ba594",
-          "network_role": "cross-spine-connector"
-        }
-      ],
-      "created_at": "2026-07-22T16:00:55.115871Z"
-    },
-    {
-      "connection_id": "branch-meeting-69c3aab3db7a",
+      "connection_id": "branch-meeting-8898b408a7cb",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -3145,18 +2968,18 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-99a29ec82ca7",
+          "feature_id": "cross-spine-connector-7d844511b9c4",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.115961Z"
+      "created_at": "2026-07-22T17:52:05.932318Z"
     },
     {
-      "connection_id": "branch-meeting-3822ecbd4669",
+      "connection_id": "branch-meeting-39d0a61f9217",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"38260821\", \"4321846\", \"4321850\", \"45362542\", \"7992107\", \"[4321850, 1116511372]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"4321846\", \"4321850\", \"45362542\", \"7992107\", \"[4321850, 1116511372]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
       "decision": "accept",
@@ -3171,7 +2994,6 @@
             "evidence_ids": [
               "osm-network",
               "1030764620",
-              "38260821",
               "4321846",
               "4321850",
               "45362542",
@@ -3201,69 +3023,14 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-fdc7464fdd2f",
+          "feature_id": "cross-spine-connector-c50cc4ff9d4e",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.116063Z"
+      "created_at": "2026-07-22T17:52:05.932408Z"
     },
     {
-      "connection_id": "branch-meeting-1c17956c2c8f",
-      "network_role": "branch-meeting-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"24427474\", \"26341812\", \"58659415\", \"[222614377, 58659415]\", \"[222614379, 222614380, 42764471]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
-      "decision": "accept",
-      "selected_role": "cross-spine-connector",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "cross-spine-connector",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "1030764620",
-              "24427474",
-              "26341812",
-              "58659415",
-              "[222614377, 58659415]",
-              "[222614379, 222614380, 42764471]"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "cross-spine-connector",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [
-        {
-          "feature_id": "cross-spine-connector-34656f91b610",
-          "network_role": "cross-spine-connector"
-        }
-      ],
-      "created_at": "2026-07-22T16:00:55.116141Z"
-    },
-    {
-      "connection_id": "branch-meeting-c5dd6b428ced",
+      "connection_id": "branch-meeting-00de536f17f1",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -3313,14 +3080,14 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-e46227572776",
+          "feature_id": "cross-spine-connector-cb705271ec90",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.116241Z"
+      "created_at": "2026-07-22T17:52:05.932483Z"
     },
     {
-      "connection_id": "branch-meeting-c4e6d56f289a",
+      "connection_id": "branch-meeting-2c08506b48ca",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
@@ -3372,86 +3139,18 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-f45808a5fa4c",
+          "feature_id": "cross-spine-connector-8bac018e056e",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.116326Z"
+      "created_at": "2026-07-22T17:52:05.932567Z"
     },
     {
-      "connection_id": "branch-meeting-65066c93524a",
+      "connection_id": "branch-meeting-54f76ebc0a40",
       "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1525167116\", \"1525170070\", \"1525170184\", \"370883411\", \"38324296\", \"39694068\", \"4338437\", \"765643125\", \"9515309\", \"[1525166091, 4281588, 1525166092]\", \"[1525170040, 4551700]\", \"[1525170185, 9515309]\", \"[374758658, 374758659]\", \"[38324296, 44443127]\", \"[4281588, 1525166091, 1525166092]\", \"[4406136, 4406137, 309713646]\", \"[667952161, 1525177611, 544779787, 2959438, 9516821, 667952159]\", \"[667952161, 667954254]\", \"[98728736, 374760169, 98728732, 98728733, 98728734]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
-      "decision": "accept",
-      "selected_role": "cross-spine-connector",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "cross-spine-connector",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "1525167116",
-              "1525170070",
-              "1525170184",
-              "370883411",
-              "38324296",
-              "39694068",
-              "4338437",
-              "765643125",
-              "9515309",
-              "[1525166091, 4281588, 1525166092]",
-              "[1525170040, 4551700]",
-              "[1525170185, 9515309]",
-              "[374758658, 374758659]",
-              "[38324296, 44443127]",
-              "[4281588, 1525166091, 1525166092]",
-              "[4406136, 4406137, 309713646]",
-              "[667952161, 1525177611, 544779787, 2959438, 9516821, 667952159]",
-              "[667952161, 667954254]",
-              "[98728736, 374760169, 98728732, 98728733, 98728734]"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "cross-spine-connector",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [
-        {
-          "feature_id": "cross-spine-connector-7733a539b3a8",
-          "network_role": "cross-spine-connector"
-        }
-      ],
-      "created_at": "2026-07-22T16:00:55.116652Z"
-    },
-    {
-      "connection_id": "branch-meeting-b48d9ebd2e54",
-      "network_role": "branch-meeting-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1090866855\", \"178233889\", \"203240679\", \"207644851\", \"244625851\", \"270846515\", \"3401505\", \"369745844\", \"369745845\", \"4235525\", \"4269376\", \"4279575\", \"4279576\", \"4321799\", \"48680121\", \"48680122\", \"546225661\", \"546225671\", \"686\", \"7985223\", \"[1317293877, 34784844, 4235525, 34784845]\", \"[133875189, 34784846]\", \"[133875191, 48679743]\", \"[178233889, 369745845]\", \"[203240689, 546225661]\", \"[244625851, 1090866855]\", \"[244625851, 207644852]\", \"[3401505, 553589297]\", \"[369745844, 546225668]\", \"[383679366, 34784845, 383679373, 4279573, 37992379]\", \"[4235525, 1317293877, 34784844, 34784845]\", \"[546225668, 546225669]\", \"[546225669, 369745845]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1090866855\", \"178233889\", \"203240679\", \"207644851\", \"244625851\", \"270846515\", \"3401505\", \"369745844\", \"369745845\", \"4235525\", \"4269376\", \"4279575\", \"4279576\", \"4321799\", \"48680121\", \"48680122\", \"546225661\", \"686\", \"7985223\", \"[1317293877, 34784844, 4235525, 34784845]\", \"[133875189, 34784846]\", \"[133875191, 48679743]\", \"[178233889, 369745845]\", \"[203240689, 546225661]\", \"[244625851, 1090866855]\", \"[244625851, 207644852]\", \"[3401505, 553589297]\", \"[369745844, 546225668]\", \"[383679366, 34784845, 383679373, 4279573, 37992379]\", \"[4235525, 1317293877, 34784844, 34784845]\", \"[546225668, 546225669]\", \"[546225669, 369745845]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
       "decision": "accept",
@@ -3482,7 +3181,6 @@
               "48680121",
               "48680122",
               "546225661",
-              "546225671",
               "686",
               "7985223",
               "[1317293877, 34784844, 4235525, 34784845]",
@@ -3522,18 +3220,166 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-f72d6fe1a09d",
+          "feature_id": "cross-spine-connector-69a5dde197b7",
           "network_role": "cross-spine-connector"
         }
       ],
-      "created_at": "2026-07-22T16:00:55.116780Z"
+      "created_at": "2026-07-22T17:52:05.932817Z"
     },
     {
-      "connection_id": "spine-access-0c7f5c9be608",
+      "connection_id": "branch-meeting-918fa91e686c",
+      "network_role": "branch-meeting-connection",
+      "runtime": "fake",
+      "model": "deterministic-roles-v1",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"101395749\", \"1030822316\", \"1030822328\", \"1102622929\", \"1194757862\", \"1205716889\", \"1221535668\", \"1279782223\", \"1280050348\", \"1288401946\", \"1305612326\", \"1305613786\", \"133638015\", \"133638016\", \"133875200\", \"133875203\", \"133875207\", \"133875211\", \"133875212\", \"133875219\", \"1346491654\", \"1525111439\", \"1528766561\", \"178233889\", \"192668650\", \"207644855\", \"209\", \"210\", \"212\", \"3086257\", \"3086258\", \"309842640\", \"3120967\", \"3292445\", \"3292454\", \"331545472\", \"34719196\", \"34719197\", \"352983607\", \"369745844\", \"369745845\", \"37657734\", \"39352131\", \"39590930\", \"40137898\", \"40138636\", \"4235526\", \"42837654\", \"4340899\", \"4390604\", \"4390607\", \"444272568\", \"44684117\", \"465899322\", \"546225671\", \"55290798\", \"592193933\", \"592488402\", \"59592162\", \"61483629\", \"695868553\", \"815885856\", \"837573373\", \"8769305\", \"972310897\", \"972310899\", \"[1279782221, 34719196, 35390541]\", \"[1279782224, 131628669, 1368613087]\", \"[1305612184, 1305612325, 1305612326]\", \"[133638000, 34719195, 34719196]\", \"[133638018, 61483629]\", \"[133875200, 133875211]\", \"[133875203, 133875219]\", \"[133875205, 465899325]\", \"[133875219, 133875203]\", \"[1528766561, 1112494139]\", \"[178233889, 369745845]\", \"[2424675, 54448020, 35390542]\", \"[30992002, 1368613087]\", \"[34719193, 34719194, 54448020]\", \"[369745844, 546225668]\", \"[37657734, 546225671]\", \"[37747316, 133638015]\", \"[38570712, 133638016]\", \"[40137898, 133875212]\", \"[4340899, 133638013]\", \"[4390604, 1379002212, 1379002213]\", \"[444272568, 1120385897]\", \"[444272568, 1305612326]\", \"[444272569, 39352131]\", \"[444272569, 837573373]\", \"[465899325, 133875205]\", \"[465906456, 41406211]\", \"[546225668, 546225669]\", \"[546225669, 369745845]\", \"[546225681, 1527581517, 37657734]\", \"[695868553, 4236443, 133638014]\", \"[837573373, 1305612327]\", \"[972310896, 922486427, 922486428]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
+      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
+      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"cross-spine-connector\"}",
+      "decision": "accept",
+      "selected_role": "cross-spine-connector",
+      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "proposal": {
+            "selected_role": "cross-spine-connector",
+            "rationale": "Use the best current OSM alignment under the governed rules.",
+            "evidence_ids": [
+              "osm-network",
+              "101395749",
+              "1030822316",
+              "1030822328",
+              "1102622929",
+              "1194757862",
+              "1205716889",
+              "1221535668",
+              "1279782223",
+              "1280050348",
+              "1288401946",
+              "1305612326",
+              "1305613786",
+              "133638015",
+              "133638016",
+              "133875200",
+              "133875203",
+              "133875207",
+              "133875211",
+              "133875212",
+              "133875219",
+              "1346491654",
+              "1525111439",
+              "1528766561",
+              "178233889",
+              "192668650",
+              "207644855",
+              "209",
+              "210",
+              "212",
+              "3086257",
+              "3086258",
+              "309842640",
+              "3120967",
+              "3292445",
+              "3292454",
+              "331545472",
+              "34719196",
+              "34719197",
+              "352983607",
+              "369745844",
+              "369745845",
+              "37657734",
+              "39352131",
+              "39590930",
+              "40137898",
+              "40138636",
+              "4235526",
+              "42837654",
+              "4340899",
+              "4390604",
+              "4390607",
+              "444272568",
+              "44684117",
+              "465899322",
+              "546225671",
+              "55290798",
+              "592193933",
+              "592488402",
+              "59592162",
+              "61483629",
+              "695868553",
+              "815885856",
+              "837573373",
+              "8769305",
+              "972310897",
+              "972310899",
+              "[1279782221, 34719196, 35390541]",
+              "[1279782224, 131628669, 1368613087]",
+              "[1305612184, 1305612325, 1305612326]",
+              "[133638000, 34719195, 34719196]",
+              "[133638018, 61483629]",
+              "[133875200, 133875211]",
+              "[133875203, 133875219]",
+              "[133875205, 465899325]",
+              "[133875219, 133875203]",
+              "[1528766561, 1112494139]",
+              "[178233889, 369745845]",
+              "[2424675, 54448020, 35390542]",
+              "[30992002, 1368613087]",
+              "[34719193, 34719194, 54448020]",
+              "[369745844, 546225668]",
+              "[37657734, 546225671]",
+              "[37747316, 133638015]",
+              "[38570712, 133638016]",
+              "[40137898, 133875212]",
+              "[4340899, 133638013]",
+              "[4390604, 1379002212, 1379002213]",
+              "[444272568, 1120385897]",
+              "[444272568, 1305612326]",
+              "[444272569, 39352131]",
+              "[444272569, 837573373]",
+              "[465899325, 133875205]",
+              "[465906456, 41406211]",
+              "[546225668, 546225669]",
+              "[546225669, 369745845]",
+              "[546225681, 1527581517, 37657734]",
+              "[695868553, 4236443, 133638014]",
+              "[837573373, 1305612327]",
+              "[972310896, 922486427, 922486428]"
+            ]
+          },
+          "critique": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "red_team": {
+            "summary": "No blocking finding.",
+            "findings": []
+          },
+          "synthesis": {
+            "decision": "accept",
+            "selected_role": "cross-spine-connector",
+            "rationale": "Proposal passes deterministic and adversarial review."
+          },
+          "deterministic_findings": []
+        }
+      ],
+      "usage": {
+        "requests": 4,
+        "tokens": 4
+      },
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-91898ef02004",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T17:52:05.933086Z"
+    },
+    {
+      "connection_id": "spine-access-fc14396a89e5",
       "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"235481602\", \"[48045698, 955306159]\", \"school-049594b34b66\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"235481602\", \"[48045698, 955306159]\", \"school-049594b34b66\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -3550,8 +3396,8 @@
               "235481602",
               "[48045698, 955306159]",
               "school-049594b34b66",
-              "strategic-spine-evidence-8717342e81c0",
-              "strategic-spine-sources-09ef3391197a"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -3575,14 +3421,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.231125Z"
+      "created_at": "2026-07-22T17:52:06.043138Z"
     },
     {
-      "connection_id": "spine-access-ac77e13444d1",
+      "connection_id": "spine-access-358acff9be0f",
       "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172154025\", \"28951990\", \"2953993\", \"310145349\", \"3209117\", \"375500188\", \"390424518\", \"4929103\", \"698438659\", \"8877254\", \"[172154025, 375500188]\", \"[2953993, 375500188]\", \"[310145349, 8877254]\", \"school-2842de49fd2a\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172154025\", \"28951990\", \"2953993\", \"310145349\", \"3209117\", \"375500188\", \"390424518\", \"4929103\", \"698438659\", \"8877254\", \"[172154025, 375500188]\", \"[2953993, 375500188]\", \"[310145349, 8877254]\", \"school-2842de49fd2a\", \"strategic-spine-evidence-edc4a1eaa525\", \"strategic-spine-sources-49a9265af8bc\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -3610,8 +3456,8 @@
               "[2953993, 375500188]",
               "[310145349, 8877254]",
               "school-2842de49fd2a",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
+              "strategic-spine-evidence-edc4a1eaa525",
+              "strategic-spine-sources-49a9265af8bc"
             ]
           },
           "critique": {
@@ -3635,166 +3481,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.249766Z"
+      "created_at": "2026-07-22T17:52:06.059177Z"
     },
     {
-      "connection_id": "spine-access-88431830d69a",
+      "connection_id": "spine-access-565a57d39c33",
       "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"187790248\", \"26544621\", \"26546703\", \"346305227\", \"school-3f90f52e434f\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "187790248",
-              "26544621",
-              "26546703",
-              "346305227",
-              "school-3f90f52e434f",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.269156Z"
-    },
-    {
-      "connection_id": "spine-access-d6e2a13a2421",
-      "network_role": "school-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"393518554\", \"393518894\", \"school-578c7bcac76e\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "393518554",
-              "393518894",
-              "school-578c7bcac76e",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.275406Z"
-    },
-    {
-      "connection_id": "spine-access-90dfdf0d49e7",
-      "network_role": "school-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"1037128155\", \"126211912\", \"26464711\", \"26466363\", \"50447797\", \"school-9064e01c61e3\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "1037128155",
-              "126211912",
-              "26464711",
-              "26466363",
-              "50447797",
-              "school-9064e01c61e3",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.292755Z"
-    },
-    {
-      "connection_id": "spine-access-fd8bcee1f24e",
-      "network_role": "school-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"397460240\", \"45118882\", \"90177055\", \"school-9b1e147762ac\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"397460240\", \"45118882\", \"90177055\", \"school-9b1e147762ac\", \"strategic-spine-evidence-206c24073ef4\", \"strategic-spine-sources-342cbe6c3af2\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -3812,8 +3506,8 @@
               "45118882",
               "90177055",
               "school-9b1e147762ac",
-              "strategic-spine-evidence-a70b55b96066",
-              "strategic-spine-sources-1927af0f1d84"
+              "strategic-spine-evidence-206c24073ef4",
+              "strategic-spine-sources-342cbe6c3af2"
             ]
           },
           "critique": {
@@ -3837,14 +3531,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.307659Z"
+      "created_at": "2026-07-22T17:52:06.073443Z"
     },
     {
-      "connection_id": "spine-access-6c9236b88e83",
+      "connection_id": "spine-access-6568e1448340",
       "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172259579\", \"393603245\", \"7116026586\", \"769758553\", \"school-ca24a9a5973d\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"172259579\", \"393603245\", \"7116026586\", \"769758553\", \"school-ca24a9a5973d\", \"strategic-spine-evidence-edc4a1eaa525\", \"strategic-spine-sources-49a9265af8bc\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -3863,8 +3557,8 @@
               "7116026586",
               "769758553",
               "school-ca24a9a5973d",
-              "strategic-spine-evidence-81fab8c91c96",
-              "strategic-spine-sources-f516c0259b2c"
+              "strategic-spine-evidence-edc4a1eaa525",
+              "strategic-spine-sources-49a9265af8bc"
             ]
           },
           "critique": {
@@ -3888,63 +3582,14 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.324467Z"
+      "created_at": "2026-07-22T17:52:06.086922Z"
     },
     {
-      "connection_id": "spine-access-73215497844c",
-      "network_role": "school-access-connection",
-      "runtime": "fake",
-      "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"6556561602\", \"79542765\", \"school-e9e5b72474f4\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
-      "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
-      "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "All mandatory checks and bounded agent reviews passed.",
-      "attempts": [
-        {
-          "attempt": 1,
-          "proposal": {
-            "selected_role": "direct",
-            "rationale": "Use the best current OSM alignment under the governed rules.",
-            "evidence_ids": [
-              "osm-network",
-              "6556561602",
-              "79542765",
-              "school-e9e5b72474f4",
-              "strategic-spine-evidence-9b43ccdc57a7",
-              "strategic-spine-sources-cf6da52eda8d"
-            ]
-          },
-          "critique": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "red_team": {
-            "summary": "No blocking finding.",
-            "findings": []
-          },
-          "synthesis": {
-            "decision": "accept",
-            "selected_role": "direct",
-            "rationale": "Proposal passes deterministic and adversarial review."
-          },
-          "deterministic_findings": []
-        }
-      ],
-      "usage": {
-        "requests": 4,
-        "tokens": 4
-      },
-      "derived_features": [],
-      "created_at": "2026-07-22T16:00:55.327548Z"
-    },
-    {
-      "connection_id": "spine-access-d2276be9f47c",
+      "connection_id": "spine-access-ec724b32da39",
       "network_role": "gateway-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
-      "proposal": "{\"evidence_ids\": [\"osm-network\", \"10075358\", \"1210829042\", \"1210829044\", \"170314667\", \"203281379\", \"203490192\", \"26456385\", \"297352360\", \"301821547\", \"301821548\", \"3217157\", \"4291464\", \"4291467\", \"4299580\", \"4299581\", \"529502429\", \"553567927\", \"620534487\", \"[1210829042, 1210829043, 1210829044]\", \"[1210829044, 529502429]\", \"[297352360, 553567926, 553567927]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
+      "proposal": "{\"evidence_ids\": [\"osm-network\", \"10075358\", \"1210829042\", \"1210829044\", \"170314667\", \"203281379\", \"203490192\", \"26466556\", \"297352360\", \"301821547\", \"301821548\", \"3217157\", \"4291464\", \"4291467\", \"4299580\", \"4299581\", \"529502429\", \"553567927\", \"620534487\", \"[1210829042, 1210829043, 1210829044]\", \"[1210829044, 529502429]\", \"[176150393, 26466555]\", \"[176150393, 26466556]\", \"[297352360, 553567926, 553567927]\", \"strategic-spine-evidence-cecc59ee8379\", \"strategic-spine-sources-3ce804a5596b\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
       "critique": "{\"findings\": [], \"summary\": \"No blocking finding.\"}",
       "revision": "{\"decision\": \"accept\", \"rationale\": \"Proposal passes deterministic and adversarial review.\", \"selected_role\": \"direct\"}",
       "decision": "accept",
@@ -3964,7 +3609,7 @@
               "170314667",
               "203281379",
               "203490192",
-              "26456385",
+              "26466556",
               "297352360",
               "301821547",
               "301821548",
@@ -3978,9 +3623,11 @@
               "620534487",
               "[1210829042, 1210829043, 1210829044]",
               "[1210829044, 529502429]",
+              "[176150393, 26466555]",
+              "[176150393, 26466556]",
               "[297352360, 553567926, 553567927]",
-              "strategic-spine-evidence-15a08e089777",
-              "strategic-spine-sources-6458d2ef0386"
+              "strategic-spine-evidence-cecc59ee8379",
+              "strategic-spine-sources-3ce804a5596b"
             ]
           },
           "critique": {
@@ -4004,7 +3651,7 @@
         "tokens": 4
       },
       "derived_features": [],
-      "created_at": "2026-07-22T16:00:57.431911Z"
+      "created_at": "2026-07-22T17:52:07.844451Z"
     }
   ]
 }

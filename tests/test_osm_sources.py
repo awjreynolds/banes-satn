@@ -321,6 +321,54 @@ def test_osm_snapshot_is_attributable_and_reloadable(tmp_path: Path) -> None:
     assert snapshot(config, osm_adapter=FakeOSMAdapter()) == path
 
 
+def test_osm_snapshot_persists_settlement_form_eligibility_and_scope(tmp_path: Path) -> None:
+    class SettlementFormOSMAdapter:
+        def acquire(self, config: CouncilConfig) -> OSMData:
+            data = source_frames()
+            centre = (-2.525, 51.395)
+            branches = [
+                LineString([centre, (-2.528, 51.395)]),
+                LineString([centre, (-2.522, 51.395)]),
+                LineString([centre, (-2.525, 51.392)]),
+                LineString([centre, (-2.525, 51.398)]),
+            ]
+            data.network = gpd.GeoDataFrame(
+                [
+                    *data.network.to_dict("records"),
+                    *[
+                        {
+                            "osmid": f"village-street-{index}",
+                            "highway": "residential",
+                            "geometry": geometry,
+                        }
+                        for index, geometry in enumerate(branches)
+                    ],
+                ],
+                geometry="geometry",
+                crs=4326,
+            )
+            return data
+
+    config = base_config()
+    config.source.snapshot_dir = tmp_path
+    config.source.snapshot_id = "settlement-form-osm"
+    config.source.urban_settlement_form.assessment_radius_km = 0.5
+    config.source.urban_settlement_form.minimum_minor_street_length_km = 0.1
+    config.source.urban_settlement_form.minimum_junction_count = 1
+
+    path = snapshot(config, osm_adapter=SettlementFormOSMAdapter())
+
+    places = gpd.read_file(path / "places.geojson").set_index("name")
+    village = places.loc["Large Village"]
+    assert bool(village["urban_circulation_eligible"])
+    assert village["urban_eligibility_basis"] == "settlement-form"
+    assert village["minor_street_length_km"] >= 0.1
+    assert village["junction_count"] >= 1
+    context = gpd.read_file(path / "context.geojson")
+    a_road = context[context["feature_type"] == "a-road-spine"]
+    assert "urban" in set(a_road["network_scope"])
+
+
 def test_osm_snapshot_governs_official_road_classification(tmp_path: Path) -> None:
     classification_path = tmp_path / "classification.geojson"
     gpd.GeoDataFrame(

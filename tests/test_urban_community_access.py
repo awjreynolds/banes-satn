@@ -256,6 +256,205 @@ def test_public_compile_honours_governed_urban_village_source_overrides() -> Non
     assert obligation["service_status"] == "served"
 
 
+def test_public_compile_uses_settlement_form_to_scope_substantial_villages() -> None:
+    source = _urban_source()
+    direct = source["places"]["place_id"] == "direct-community"
+    sparse = source["places"]["place_id"] == "unreachable-nearby-community"
+    source["places"].loc[direct, "place_class"] = "village"
+    source["places"].loc[sparse, "place_class"] = "village"
+    source["places"].loc[sparse, "geometry"] = Point(5000, 5000)
+    source["network"] = _frame(
+        [
+            *source["network"].to_dict("records"),
+            {
+                "osmid": "direct-north",
+                "highway": "residential",
+                "geometry": LineString([(50, 50), (50, 150)]),
+            },
+        ]
+    )
+    source["context"] = _frame(
+        [
+            *source["context"].to_dict("records"),
+            {
+                "evidence_id": "dense-village-school",
+                "feature_type": "school",
+                "name": "Dense Village School",
+                "category": "school",
+                "source_id": "dense-village-school",
+                "school_kind": "primary",
+                "school_obligation_eligible": True,
+                "access_point_status": "unresolved",
+                "network_scope": "rural",
+                "geometry": Point(25, 50),
+            },
+            {
+                "evidence_id": "sparse-village-school",
+                "feature_type": "school",
+                "name": "Sparse Village School",
+                "category": "school",
+                "source_id": "sparse-village-school",
+                "school_kind": "primary",
+                "school_obligation_eligible": True,
+                "access_point_status": "unresolved",
+                "network_scope": "urban",
+                "geometry": Point(5000, 5000),
+            },
+        ]
+    )
+    payload = _config().model_dump(mode="json")
+    payload["source"]["urban_settlement_form"] = {
+        "assessment_radius_km": 0.15,
+        "minimum_minor_street_length_km": 0.15,
+        "minimum_junction_count": 1,
+    }
+    config = CouncilConfig.model_validate(payload)
+
+    compiled = compile_network(config, source, FakeAgentRuntime())
+    obligations = compiled.access_obligations.set_index("community_id")
+
+    assert obligations.loc["direct-community", "network_scope"] == "urban"
+    assert obligations.loc["unreachable-nearby-community", "network_scope"] == "rural"
+    schools = compiled.schools.set_index("source_id")
+    assert schools.loc["dense-village-school", "network_scope"] == "urban"
+    assert schools.loc["sparse-village-school", "network_scope"] == "rural"
+    profiles = {
+        profile["community_id"]: profile
+        for profile in compiled.compilation_diagnostics["urban_settlement_form_profiles"]
+    }
+    assert profiles["direct-community"]["eligibility_basis"] == "settlement-form"
+    assert profiles["direct-community"]["minor_street_length_km"] >= 0.15
+    assert profiles["direct-community"]["junction_count"] >= 1
+    assert profiles["unreachable-nearby-community"]["eligibility_basis"] == (
+        "insufficient-settlement-form"
+    )
+    assert profiles["unreachable-nearby-community"]["minor_street_component_id"] is None
+    assert profiles["unreachable-nearby-community"]["component_association_distance_m"] is None
+    assert profiles["unreachable-nearby-community"]["minor_street_length_km"] == 0
+    assert profiles["unreachable-nearby-community"]["junction_count"] == 0
+    assert (
+        "No minor-street component is reachable"
+        in profiles["unreachable-nearby-community"]["urban_eligibility_rationale"]
+    )
+
+
+def test_public_compile_ignores_dense_streets_disconnected_from_a_sparse_village() -> None:
+    source = _urban_source()
+    sparse_id = "unreachable-nearby-community"
+    sparse = source["places"]["place_id"] == sparse_id
+    source["places"].loc[sparse, "place_class"] = "village"
+    source["places"].loc[sparse, "geometry"] = Point(5000, 5000)
+    disconnected_dense_cluster = [
+        LineString([(5100, 5000), (5050, 5000)]),
+        LineString([(5100, 5000), (5150, 5000)]),
+        LineString([(5100, 5000), (5100, 4950)]),
+        LineString([(5100, 5000), (5100, 5050)]),
+    ]
+    source["network"] = _frame(
+        [
+            *source["network"].to_dict("records"),
+            {
+                "osmid": "sparse-village-stub",
+                "highway": "residential",
+                "geometry": LineString([(5000, 5000), (5005, 5000)]),
+            },
+            *[
+                {
+                    "osmid": f"disconnected-dense-{index}",
+                    "highway": "residential",
+                    "geometry": geometry,
+                }
+                for index, geometry in enumerate(disconnected_dense_cluster)
+            ],
+        ]
+    )
+    payload = _config().model_dump(mode="json")
+    payload["source"]["urban_settlement_form"] = {
+        "assessment_radius_km": 0.2,
+        "maximum_component_association_m": 20,
+        "minimum_minor_street_length_km": 0.15,
+        "minimum_junction_count": 1,
+    }
+    config = CouncilConfig.model_validate(payload)
+
+    compiled = compile_network(config, source, FakeAgentRuntime())
+    obligation = compiled.access_obligations[
+        compiled.access_obligations["community_id"] == sparse_id
+    ].iloc[0]
+    profile = next(
+        profile
+        for profile in compiled.compilation_diagnostics["urban_settlement_form_profiles"]
+        if profile["community_id"] == sparse_id
+    )
+
+    assert obligation["network_scope"] == "rural"
+    assert profile["eligibility_basis"] == "insufficient-settlement-form"
+    assert profile["component_association_distance_m"] == 0
+    assert profile["minor_street_length_km"] == 0.005
+    assert profile["junction_count"] == 0
+
+
+def test_public_compile_uses_near_equivalent_residential_component_not_service_stub() -> None:
+    source = _urban_source()
+    village_id = "unreachable-nearby-community"
+    village = source["places"]["place_id"] == village_id
+    source["places"].loc[village, "place_class"] = "village"
+    source["places"].loc[village, "geometry"] = Point(5000, 5000)
+    dense_component = [
+        LineString([(5061, 5000), (5111, 5000)]),
+        LineString([(5061, 5000), (5061, 5050)]),
+        LineString([(5061, 5000), (5061, 4950)]),
+        LineString([(5061, 5000), (5091, 5040)]),
+    ]
+    source["network"] = _frame(
+        [
+            *source["network"].to_dict("records"),
+            {
+                "osmid": "nearest-service-stub",
+                "highway": "service",
+                "geometry": LineString([(5000, 5000), (5005, 5000)]),
+            },
+            {
+                "osmid": "nearest-residential-stub",
+                "highway": "residential",
+                "geometry": LineString([(5054, 5000), (5055, 5000)]),
+            },
+            *[
+                {
+                    "osmid": f"dense-residential-{index}",
+                    "highway": "residential",
+                    "geometry": geometry,
+                }
+                for index, geometry in enumerate(dense_component)
+            ],
+        ]
+    )
+    payload = _config().model_dump(mode="json")
+    payload["source"]["urban_settlement_form"] = {
+        "assessment_radius_km": 0.2,
+        "maximum_component_association_m": 100,
+        "component_association_tolerance_m": 10,
+        "minimum_minor_street_length_km": 0.15,
+        "minimum_junction_count": 1,
+    }
+    config = CouncilConfig.model_validate(payload)
+
+    compiled = compile_network(config, source, FakeAgentRuntime())
+    obligation = compiled.access_obligations[
+        compiled.access_obligations["community_id"] == village_id
+    ].iloc[0]
+    profile = next(
+        profile
+        for profile in compiled.compilation_diagnostics["urban_settlement_form_profiles"]
+        if profile["community_id"] == village_id
+    )
+
+    assert obligation["network_scope"] == "urban"
+    assert profile["component_association_distance_m"] == 61
+    assert profile["minor_street_length_km"] == 0.2
+    assert profile["junction_count"] == 1
+
+
 def test_spine_targets_require_a_bounded_mapping_to_their_rooted_portal() -> None:
     network = _frame(
         [
