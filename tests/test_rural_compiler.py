@@ -380,7 +380,9 @@ def test_distant_community_snap_cannot_become_a_served_access_obligation() -> No
     assert compiled.access_obligations.empty
 
 
-def test_bounded_off_network_community_attachment_is_explicitly_published() -> None:
+def test_bounded_off_network_community_uses_a_canonical_attachment_without_inventing_a_path() -> (
+    None
+):
     community_point = Point(0, 0.005)
     places = gpd.GeoDataFrame(
         [
@@ -440,9 +442,13 @@ def test_bounded_off_network_community_attachment_is_explicitly_published() -> N
     )
 
     access = compiled.spine_access_connections.iloc[0]
-    assert access.geometry.intersects(community_point)
+    assert not access.geometry.intersects(community_point)
     assert access.geometry.intersects(spine_geometry)
-    assert "bounded Community and Spine attachment" in access["geometry_semantics"]
+    assert 0 < access["community_attachment_distance_m"] < 2000
+    assert access["community_attachment_point"].startswith("POINT")
+    assert access["spine_attachment_distance_m"] == 0
+    assert "canonical graph attachment points" in access["geometry_semantics"]
+    assert "not claimed paths" in access["geometry_semantics"]
 
 
 def test_invalid_network_scope_is_rejected_at_the_compiler_boundary() -> None:

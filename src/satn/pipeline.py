@@ -82,6 +82,10 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     row.access_connection_id,
                     row.community_id,
                     row.spine_id,
+                    row.community_attachment_node,
+                    row.community_attachment_distance_m,
+                    row.spine_attachment_node,
+                    row.spine_attachment_distance_m,
                     row.geometry.wkb_hex,
                 )
                 for row in compiled.spine_access_connections.itertuples()
@@ -129,6 +133,12 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "access_connection_id": row.access_connection_id,
                     "community_id": row.community_id,
                     "spine_id": row.spine_id,
+                    "community_attachment_node": row.community_attachment_node,
+                    "community_attachment_distance_m": row.community_attachment_distance_m,
+                    "community_attachment_point": row.community_attachment_point,
+                    "spine_attachment_node": row.spine_attachment_node,
+                    "spine_attachment_distance_m": row.spine_attachment_distance_m,
+                    "spine_attachment_point": row.spine_attachment_point,
                     "source_ids": row.source_ids,
                 }
                 for row in compiled.spine_access_connections.itertuples()

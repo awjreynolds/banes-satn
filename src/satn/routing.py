@@ -11,7 +11,7 @@ from itertools import pairwise
 import geopandas as gpd
 import networkx as nx
 from shapely.geometry import LineString, Point
-from shapely.ops import linemerge, nearest_points, unary_union
+from shapely.ops import linemerge, unary_union
 
 LOW_TRAFFIC = {
     "living_street",
@@ -139,14 +139,6 @@ class RoadGraph:
             (match for match in matches if match[1] <= tolerance_m),
             key=lambda match: (match[1], match[0]),
         )
-
-    def attachment_line(self, node_id: str, geometry: object) -> LineString | None:
-        """Return the explicit straight attachment from a graph node to governed geometry."""
-        node = self.node_points[node_id]
-        target = nearest_points(node, geometry)[1]
-        if node.equals(target):
-            return None
-        return LineString([node, target])
 
     def network_distance(
         self,

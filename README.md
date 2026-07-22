@@ -84,9 +84,10 @@ Community attachment prefers that dominant routable component instead of snappin
 a nearby isolated digitising fragment.
 
 The Backbone-and-Access tracer promotes only governed rural A-road and established NCN
-evidence. Its first Spine Access Connection includes bounded attachment linework from
-the Community Reference Point to the routable graph and from that graph to the selected
-spine, so a legitimate nearby snap remains visible and auditable.
+evidence. Its first Spine Access Connection publishes only routed OSM geometry between
+canonical graph attachment points. Bounded Community and spine snap distances, node IDs
+and point coordinates remain visible and auditable metadata; they are not drawn or
+validated as paths without traversable network evidence.
 
 - a direct A-road corridor is the preferred Strategic Spine, representing a wide
   alongside shared path rather than cycling in the carriageway. Its authoritative

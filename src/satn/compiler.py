@@ -11,13 +11,12 @@ from itertools import combinations
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString, MultiLineString, MultiPoint
-from shapely.ops import linemerge, unary_union
+from shapely.geometry import MultiPoint
 
 from satn.agents import AgentRuntime, CompilationGate
 from satn.atm import choose_seeded_alignment
 from satn.cache import ConnectionCache
-from satn.evidence import empty_context, mark_ncn_edges
+from satn.evidence import continuous_linework, empty_context, mark_ncn_edges
 from satn.models import (
     AgentRecord,
     CouncilConfig,
@@ -707,7 +706,7 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             evidence_id = str(evidence.get("evidence_id", evidence.get("source_id", "")))
             source_id = str(evidence.get("source_id", evidence_id))
             is_a_road = spine_kind == "a-road"
-            for geometry in _continuous_linework(evidence.geometry):
+            for geometry in continuous_linework(evidence.geometry):
                 segment_key = hashlib.sha256(geometry.wkb).hexdigest()[:12]
                 rows.append(
                     {
@@ -754,24 +753,6 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=context.crs)
 
 
-def _continuous_linework(geometry: object) -> list[LineString]:
-    if geometry is None or geometry.is_empty:
-        return []
-    if isinstance(geometry, LineString):
-        return [geometry]
-    if isinstance(geometry, MultiLineString):
-        merged = linemerge(geometry)
-        if isinstance(merged, LineString):
-            return [merged]
-        return sorted(list(merged.geoms), key=lambda line: line.wkb_hex)
-    if hasattr(geometry, "geoms"):
-        return sorted(
-            [line for part in geometry.geoms for line in _continuous_linework(part)],
-            key=lambda line: line.wkb_hex,
-        )
-    return []
-
-
 def _network_scope(value: object) -> NetworkScope:
     try:
         return NetworkScope(str(value))
@@ -802,6 +783,12 @@ def _first_spine_access_connection(
         "intervention_archetype",
         "selection_reason",
         "geometry_semantics",
+        "community_attachment_node",
+        "community_attachment_distance_m",
+        "community_attachment_point",
+        "spine_attachment_node",
+        "spine_attachment_distance_m",
+        "spine_attachment_point",
         "source_ids",
         "criterion_continuity",
         "criterion_bidirectional",
@@ -835,7 +822,7 @@ def _first_spine_access_connection(
 
     for _, community, spine, targets in sorted(pair_candidates, key=lambda candidate: candidate[0]):
         community_id = str(community["place_id"])
-        routes: list[tuple[tuple[object, ...], RouteOption, float, LineString]] = []
+        routes: list[tuple[tuple[object, ...], RouteOption, float, str, float, str, float]] = []
         for start_node, start_snap in community_attachments[community_id]:
             for end_node, end_snap in targets:
                 if start_snap > MAX_COMMUNITY_ATTACHMENT_M or end_snap > MAX_SPINE_ATTACHMENT_M:
@@ -843,26 +830,28 @@ def _first_spine_access_connection(
                 option = graph.option(start_node, end_node, "direct")
                 if option is None or not option.bidirectional:
                     continue
-                geometry = _route_with_attachments(
-                    graph,
-                    option.geometry,
-                    start_node,
-                    community.geometry,
-                    end_node,
-                    spine.geometry,
-                )
-                if geometry is None:
-                    continue
                 total_distance_km = option.length_km + (start_snap + end_snap) / 1000
                 route_rank = (
                     round(total_distance_km, 9),
                     start_node,
                     end_node,
                 )
-                routes.append((route_rank, option, total_distance_km, geometry))
+                routes.append(
+                    (
+                        route_rank,
+                        option,
+                        total_distance_km,
+                        start_node,
+                        start_snap,
+                        end_node,
+                        end_snap,
+                    )
+                )
         if not routes:
             continue
-        _, option, total_distance_km, geometry = min(routes, key=lambda candidate: candidate[0])
+        _, option, total_distance_km, start_node, start_snap, end_node, end_snap = min(
+            routes, key=lambda candidate: candidate[0]
+        )
         source_ids = sorted(
             {
                 *option.edge_ids,
@@ -886,45 +875,26 @@ def _first_spine_access_connection(
             "intervention_archetype": "community link to a high-quality Strategic Spine",
             "selection_reason": (
                 "Nearest reachable governed Strategic Spine attachment selected over an "
-                "arbitrary Community pair."
+                "arbitrary Community pair; bounded source-to-network snaps are recorded as "
+                "canonical attachment evidence, not drawn routes."
             ),
             "geometry_semantics": (
-                "bounded Community and Spine attachment lines joined to a routed OSM "
-                "network alignment; indicative, not final design"
+                "routed OSM network alignment between canonical graph attachment points; "
+                "snap distances are evidence associations, not claimed paths or final design"
             ),
+            "community_attachment_node": start_node,
+            "community_attachment_distance_m": round(start_snap, 3),
+            "community_attachment_point": graph.node_points[start_node].wkt,
+            "spine_attachment_node": end_node,
+            "spine_attachment_distance_m": round(end_snap, 3),
+            "spine_attachment_point": graph.node_points[end_node].wkt,
             "source_ids": json.dumps(source_ids),
             "criterion_continuity": "green",
             "criterion_bidirectional": "green",
-            "geometry": geometry,
+            "geometry": option.geometry,
         }
         return gpd.GeoDataFrame([row], columns=columns, geometry="geometry", crs=communities.crs)
     return gpd.GeoDataFrame([], columns=columns, geometry="geometry", crs=communities.crs)
-
-
-def _route_with_attachments(
-    graph: RoadGraph,
-    route: LineString,
-    start_node: str,
-    community_geometry: object,
-    end_node: str,
-    spine_geometry: object,
-) -> LineString | None:
-    parts = [
-        part
-        for part in (
-            graph.attachment_line(start_node, community_geometry),
-            route,
-            graph.attachment_line(end_node, spine_geometry),
-        )
-        if part is not None and not part.is_empty
-    ]
-    unioned = unary_union(parts)
-    merged = unioned if isinstance(unioned, LineString) else linemerge(unioned)
-    if not isinstance(merged, LineString):
-        return None
-    if not merged.intersects(community_geometry) or not merged.intersects(spine_geometry):
-        return None
-    return merged
 
 
 def _access_obligations(

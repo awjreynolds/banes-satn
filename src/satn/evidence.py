@@ -86,7 +86,7 @@ def govern_network_scope(
             ]
         )
         for scope, scoped_geometry in scoped_parts:
-            for geometry in _continuous_lines(scoped_geometry):
+            for geometry in continuous_linework(scoped_geometry):
                 row = evidence.to_dict()
                 identity = hashlib.sha256(geometry.wkb).hexdigest()[:12]
                 row["evidence_id"] = f"{evidence['evidence_id']}-{scope.value}-{identity}"
@@ -282,7 +282,8 @@ def _frame(rows: list[dict[str, object]], crs: object) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, columns=CONTEXT_COLUMNS, geometry="geometry", crs=crs)
 
 
-def _continuous_lines(geometry: object) -> list[LineString]:
+def continuous_linework(geometry: object) -> list[LineString]:
+    """Return deterministic, separately continuous LineStrings from line-like geometry."""
     if geometry is None or geometry.is_empty:
         return []
     if isinstance(geometry, LineString):
@@ -294,7 +295,7 @@ def _continuous_lines(geometry: object) -> list[LineString]:
         return sorted(list(merged.geoms), key=lambda line: line.wkb_hex)
     if hasattr(geometry, "geoms"):
         return sorted(
-            [line for part in geometry.geoms for line in _continuous_lines(part)],
+            [line for part in geometry.geoms for line in continuous_linework(part)],
             key=lambda line: line.wkb_hex,
         )
     return []

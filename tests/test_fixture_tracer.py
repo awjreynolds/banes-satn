@@ -82,6 +82,10 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert spine_access.iloc[0]["community_id"] in {"westfield", "eastfield"}
     assert spine_access.iloc[0]["spine_id"] in set(strategic_spines["spine_id"])
     assert spine_access.iloc[0]["network_role"] == "spine-access-connection"
+    assert spine_access.iloc[0]["community_attachment_node"]
+    assert spine_access.iloc[0]["community_attachment_distance_m"] >= 0
+    assert spine_access.iloc[0]["spine_attachment_node"]
+    assert spine_access.iloc[0]["spine_attachment_distance_m"] <= 20
     assert json.loads(spine_access.iloc[0]["source_ids"])
     target_spine = strategic_spines[
         strategic_spines["spine_id"] == spine_access.iloc[0]["spine_id"]
@@ -92,28 +96,30 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert result.metadata["spine_access_connections"] == 1
     obligation = gpd.read_file(result.artifacts["geopackage"], layer="access_obligations")
     assert list(obligation["network_role"]) == ["community-access-obligation"]
-    assert obligation.iloc[0]["access_connection_id"] == spine_access.iloc[0][
-        "access_connection_id"
-    ]
+    assert (
+        obligation.iloc[0]["access_connection_id"] == spine_access.iloc[0]["access_connection_id"]
+    )
     assert spine_access.iloc[0].geometry.intersects(obligation.iloc[0].geometry)
     assert result.metadata["strategic_spine_records"][0]["spine_id"] in set(
         strategic_spines["spine_id"]
     )
-    assert json.loads(result.metadata["strategic_spine_records"][0]["provenance"])[
-        "evidence_id"
-    ]
-    assert result.metadata["spine_access_connection_records"][0][
-        "access_connection_id"
-    ] in set(spine_access["access_connection_id"])
-    assert json.loads(
-        result.metadata["spine_access_connection_records"][0]["source_ids"]
+    assert json.loads(result.metadata["strategic_spine_records"][0]["provenance"])["evidence_id"]
+    assert result.metadata["spine_access_connection_records"][0]["access_connection_id"] in set(
+        spine_access["access_connection_id"]
     )
-    assert result.metadata["access_obligation_records"][0]["obligation_id"] == obligation.iloc[
-        0
-    ]["obligation_id"]
-    assert json.loads(result.metadata["access_obligation_records"][0]["provenance"])[
-        "community_id"
-    ] == obligation.iloc[0]["community_id"]
+    assert json.loads(result.metadata["spine_access_connection_records"][0]["source_ids"])
+    assert (
+        result.metadata["spine_access_connection_records"][0]["community_attachment_node"]
+        == spine_access.iloc[0]["community_attachment_node"]
+    )
+    assert (
+        result.metadata["access_obligation_records"][0]["obligation_id"]
+        == obligation.iloc[0]["obligation_id"]
+    )
+    assert (
+        json.loads(result.metadata["access_obligation_records"][0]["provenance"])["community_id"]
+        == obligation.iloc[0]["community_id"]
+    )
     geojson = json.loads(result.artifacts["geojson"].read_text())
     assert geojson["disclaimer"] == DISCLAIMER
     geojson_ids = {feature["id"] for feature in geojson["features"]}
