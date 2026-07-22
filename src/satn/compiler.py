@@ -20,6 +20,8 @@ from satn.backbone import assemble_backbone_outward
 from satn.cache import ConnectionCache
 from satn.evidence import continuous_linework, empty_context, mark_ncn_edges
 from satn.models import (
+    AccessPointStatus,
+    AccessServiceStatus,
     AgentRecord,
     CouncilConfig,
     DivergenceRecord,
@@ -29,6 +31,7 @@ from satn.models import (
 )
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
 from satn.urban import derive_urban_structure
+from satn.urban_school import assess_urban_school_access
 
 
 @dataclass
@@ -232,6 +235,22 @@ def compile_network(
     urban_classification_unknowns = urban.classification_unknowns
     low_traffic_areas = urban.low_traffic_areas
     low_traffic_area_portals = urban.low_traffic_area_portals
+    urban_school_access = assess_urban_school_access(
+        _urban_schools(context),
+        source["network"],
+        low_traffic_areas,
+        low_traffic_area_portals,
+    )
+    if not urban_school_access.empty:
+        access_obligations = gpd.GeoDataFrame(
+            pd.concat(
+                [access_obligations, urban_school_access],
+                ignore_index=True,
+                sort=False,
+            ),
+            geometry="geometry",
+            crs=crs,
+        )
     urban_classification_status = (
         UrbanClassificationStatus.GOVERNED_OFFICIAL
         if official_road_classification is not None
@@ -392,6 +411,9 @@ def compile_network(
                 if set(low_traffic_areas.get("permeability_representation", []))
                 <= {"area-no-internal-centreline"}
                 else TrafficLight.RED
+            ),
+            "urban_school_area_access": _access_obligation_status(
+                urban_school_access
             ),
         },
         "atm_comparison": {"compared": TrafficLight.GREY},
@@ -829,6 +851,17 @@ def _rural_communities(
 
 
 def _rural_schools(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    return _scoped_schools(context, NetworkScope.RURAL)
+
+
+def _urban_schools(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    return _scoped_schools(context, NetworkScope.URBAN)
+
+
+def _scoped_schools(
+    context: gpd.GeoDataFrame,
+    scope_kind: NetworkScope,
+) -> gpd.GeoDataFrame:
     schools = context[context["feature_type"] == "school"].copy()
     if schools.empty:
         return gpd.GeoDataFrame(
@@ -855,14 +888,14 @@ def _rural_schools(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     scope = schools.get(
         "network_scope", pd.Series("unresolved", index=schools.index, dtype=object)
     )
-    schools = schools[eligible & scope.eq(NetworkScope.RURAL.value)].copy()
+    schools = schools[eligible & scope.eq(scope_kind.value)].copy()
     access_status = schools.get(
         "access_point_status",
         pd.Series("unresolved", index=schools.index, dtype=object),
     )
     schools["access_point_status"] = access_status.where(
-        access_status.isin(["mapped", "inferred", "unresolved"]),
-        "unresolved",
+        access_status.isin([status.value for status in AccessPointStatus]),
+        AccessPointStatus.UNRESOLVED.value,
     )
     schools["access_point_source_id"] = schools.get(
         "access_point_source_id", pd.Series(None, index=schools.index, dtype=object)
@@ -908,11 +941,15 @@ def _access_obligation_status(obligations: gpd.GeoDataFrame) -> TrafficLight:
     if obligations.empty:
         return TrafficLight.GREY
     statuses = set(obligations["service_status"])
-    if "network-gap" in statuses:
+    if AccessServiceStatus.NETWORK_GAP.value in statuses:
         return TrafficLight.RED
-    if "served-provisional" in statuses:
+    if AccessServiceStatus.SERVED_PROVISIONAL.value in statuses:
         return TrafficLight.AMBER
-    return TrafficLight.GREEN if statuses == {"served"} else TrafficLight.RED
+    return (
+        TrafficLight.GREEN
+        if statuses == {AccessServiceStatus.SERVED.value}
+        else TrafficLight.RED
+    )
 
 
 def _intervention_coverage_complete(*frames: gpd.GeoDataFrame) -> bool:

@@ -14,6 +14,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import polygonize, unary_union
 
 from satn.evidence import continuous_linework
+from satn.identifiers import coordinate_key as _coordinate
 from satn.models import OfficialRoadClassification, UrbanClassificationStatus
 from satn.routing import LOW_TRAFFIC, _tag_values
 
@@ -535,10 +536,6 @@ def _network_source_id(row: pd.Series, fallback: object) -> str:
 
 def _has_observed_through_traffic(value: object) -> bool:
     return value is True or str(value).strip().lower() in {"yes", "true", "1"}
-
-
-def _coordinate(value: tuple[float, ...]) -> str:
-    return f"{value[0]:.3f}:{value[1]:.3f}"
 
 
 def _effective_date(value: object) -> str:

@@ -120,6 +120,13 @@ into a through-traffic spine.
 For reproducibility, a river, canal or surface railway segment must provide at least
 250 metres of continuous physical boundary evidence before it can close a candidate.
 
+Urban School Access Obligations are assessed against this same topology. A mapped or
+inferred usable entrance is served only when it shares continuous low-traffic street
+or path fabric with a named portal on an Urban Main-Road Spine. The published point
+record cites the candidate area, portal and supporting source identifiers; it never
+draws a preferred route through residential streets. Unresolved entrances, missing
+main-road portals and discontinuous fabric remain visible findings.
+
 Configure a council-governed classification dataset as follows. The source must be
 line geometry with an `official_classification`, `road_classification` or
 `classification` field; common A, B, C/Classified Unnumbered and Unclassified values
