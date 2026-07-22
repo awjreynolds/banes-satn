@@ -16,7 +16,11 @@ PROJECT = Path(__file__).parents[1]
 
 def prepared_config(tmp_path: Path) -> CouncilConfig:
     fixture = tmp_path / "fixture"
-    shutil.copytree(PROJECT / "examples" / "fixture", fixture)
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
     config = CouncilConfig.from_yaml(fixture / "council.yaml")
     snapshot(config)
     return config

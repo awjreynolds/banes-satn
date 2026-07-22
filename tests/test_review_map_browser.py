@@ -17,7 +17,11 @@ PROJECT = Path(__file__).parents[1]
 @pytest.mark.browser
 def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
     fixture = tmp_path / "fixture"
-    shutil.copytree(PROJECT / "examples" / "fixture", fixture)
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
     config = CouncilConfig.from_yaml(fixture / "council.yaml")
     snapshot(config)
     result = compile(config)

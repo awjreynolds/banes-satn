@@ -18,7 +18,11 @@ PROJECT = Path(__file__).parents[1]
 
 def fixture_config(tmp_path: Path) -> Path:
     fixture = tmp_path / "fixture"
-    shutil.copytree(PROJECT / "examples" / "fixture", fixture)
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
     return fixture / "council.yaml"
 
 
@@ -54,14 +58,37 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert list(connections["status"]) == ["validated"]
     assert list(connections["classification"]) == ["low-traffic"]
     assert {
+        "strategic_spines",
+        "spine_access_connections",
         "a_road_spines",
         "ncn_routes",
         "schools",
         "retail_centres",
         "healthcare",
     } <= set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
+    strategic_spines = gpd.read_file(result.artifacts["geopackage"], layer="strategic_spines")
+    assert set(strategic_spines["spine_kind"]) == {"a-road", "ncn"}
+    assert set(strategic_spines["network_role"]) == {"strategic-spine"}
+    assert "b2" not in set(strategic_spines["source_id"])
+    a_road = strategic_spines[strategic_spines["spine_kind"] == "a-road"].iloc[0]
+    assert a_road["intervention_assumption"] == (
+        "Major engineering required to provide high-quality protected or shared provision"
+    )
+    assert a_road["design_status"] == "strategic assumption; not a carriageway or final design"
+    spine_access = gpd.read_file(result.artifacts["geopackage"], layer="spine_access_connections")
+    assert len(spine_access) == 1
+    assert spine_access.iloc[0]["access_connection_id"].startswith("spine-access-")
+    assert spine_access.iloc[0]["community_id"] in {"westfield", "eastfield"}
+    assert spine_access.iloc[0]["spine_id"] in set(strategic_spines["spine_id"])
+    assert spine_access.iloc[0]["network_role"] == "spine-access-connection"
+    assert json.loads(spine_access.iloc[0]["source_ids"])
+    assert result.metadata["strategic_spines"] == 2
+    assert result.metadata["spine_access_connections"] == 1
     geojson = json.loads(result.artifacts["geojson"].read_text())
     assert geojson["disclaimer"] == DISCLAIMER
+    geojson_ids = {feature["id"] for feature in geojson["features"]}
+    assert set(strategic_spines["spine_id"]) <= geojson_ids
+    assert set(spine_access["access_connection_id"]) <= geojson_ids
     assert result.artifacts["pdf"].read_bytes().startswith(b"%PDF")
     html = result.artifacts["review_map"].read_text()
     assert DISCLAIMER in html
@@ -69,6 +96,11 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert 'id="layer-a-road-spines"' in html
     assert 'id="layer-community-connections"' in html
     assert 'id="layer-ncn-routes"' in html
+    assert 'id="layer-strategic-spines"' in html
+    assert 'id="layer-spine-access-connections"' in html
+    assert "A-road Strategic Spine — major engineering required" in html
+    assert "Established NCN Strategic Spine" in html
+    assert "Spine Access Connection" in html
     assert 'id="layer-schools"' in html
     assert 'id="layer-retail-centres"' in html
     assert 'id="layer-healthcare"' in html

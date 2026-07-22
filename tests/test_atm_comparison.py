@@ -22,7 +22,11 @@ PROJECT = Path(__file__).parents[1]
 
 def prepared(tmp_path: Path) -> tuple[CouncilConfig, Path]:
     fixture = tmp_path / "fixture"
-    shutil.copytree(PROJECT / "examples" / "fixture", fixture)
+    shutil.copytree(
+        PROJECT / "examples" / "fixture",
+        fixture,
+        ignore=shutil.ignore_patterns("work", ".satn-cache"),
+    )
     config = CouncilConfig.from_yaml(fixture / "council.yaml")
     atm_path = fixture / "atm.geojson"
     gpd.GeoDataFrame(

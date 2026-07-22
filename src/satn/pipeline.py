@@ -75,6 +75,16 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for evidence_id in frame.get("evidence_id", [])
             ),
+            "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
+            "spine_access_connections": sorted(
+                (
+                    row.access_connection_id,
+                    row.community_id,
+                    row.spine_id,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.spine_access_connections.itertuples()
+            ),
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
         },
         sort_keys=True,
@@ -92,6 +102,8 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         agent_records=compiled.agent_records,
         metadata={
             "network_units": compiled.network_units,
+            "strategic_spines": len(compiled.strategic_spines),
+            "spine_access_connections": len(compiled.spine_access_connections),
             "superseded_hypotheses": compiled.superseded_hypotheses,
             "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
