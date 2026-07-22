@@ -72,7 +72,6 @@ class RoadGraph:
         self.graph = nx.DiGraph()
         self.node_points: dict[str, Point] = {}
         self._shortest_lengths: dict[str, dict[str, float]] = {}
-        self._shortest_paths: dict[str, dict[str, list[str]]] = {}
         for index, row in sorted(edges.iterrows(), key=_edge_row_sort_key):
             geometry = row.geometry
             if not isinstance(geometry, LineString) or len(geometry.coords) < 2:
@@ -190,7 +189,7 @@ class RoadGraph:
     ) -> float:
         best = float("inf")
         for start, start_snap in starts:
-            self._cache_direct_routes(start)
+            self._cache_direct_lengths(start)
             lengths = self._shortest_lengths[start]
             for end, end_snap in ends:
                 if end in lengths:
@@ -204,35 +203,39 @@ class RoadGraph:
         *,
         allow_stationary: bool = True,
     ) -> RoutedAttachment | None:
-        """Select the shortest bidirectional routed attachment over bounded candidates."""
-        ranked: list[tuple[float, str, str, float, float]] = []
+        """Select one attachment with a bounded multi-source/multi-target search."""
         end_components = {
             self._strong_component_by_node[end]
             for end, _ in ends
             if end in self._strong_component_by_node
         }
-        for start, start_snap in starts:
-            if self._strong_component_by_node.get(start) not in end_components:
-                continue
-            self._cache_direct_routes(start)
-            lengths = self._shortest_lengths[start]
-            for end, end_snap in ends:
-                if end in lengths:
-                    ranked.append(
-                        (
-                            float(lengths[end]) + start_snap + end_snap,
-                            start,
-                            end,
-                            start_snap,
-                            end_snap,
-                        )
-                    )
-        for total_m, start, end, start_snap, end_snap in sorted(ranked):
-            option = (
-                _stationary_route_option(self.node_points[start])
-                if allow_stationary and start == end
-                else self.option(start, end, "direct")
+        eligible_starts = [
+            (start, start_snap)
+            for start, start_snap in starts
+            if self._strong_component_by_node.get(start) in end_components
+        ]
+        if not eligible_starts or not ends:
+            return None
+        excluded_stationary_starts: set[str] = set()
+        while True:
+            routed = self._attachment_path(
+                [
+                    attachment
+                    for attachment in eligible_starts
+                    if attachment[0] not in excluded_stationary_starts
+                ],
+                ends,
             )
+            if routed is None:
+                return None
+            total_m, nodes, start, start_snap, end, end_snap = routed
+            if start == end:
+                if not allow_stationary:
+                    excluded_stationary_starts.add(start)
+                    continue
+                option = _stationary_route_option(self.node_points[start])
+            else:
+                option = self._option_from_nodes(nodes, "direct")
             if option is not None and option.bidirectional:
                 return RoutedAttachment(
                     option=option,
@@ -242,29 +245,60 @@ class RoadGraph:
                     end_snap_m=end_snap,
                     total_distance_km=total_m / 1000,
                 )
-        return None
+            return None
 
-    def _cache_direct_routes(self, source: str) -> None:
-        if source in self._shortest_lengths:
-            return
-        lengths, paths = nx.single_source_dijkstra(
-            self.graph, source, weight="length_m"
-        )
-        self._shortest_lengths[source] = lengths
-        self._shortest_paths[source] = paths
-
-    def option(self, start: str, end: str, role: str) -> RouteOption | None:
-        weight = _weight_for(role)
+    def _attachment_path(
+        self,
+        starts: list[tuple[str, float]],
+        ends: list[tuple[str, float]],
+    ) -> tuple[float, list[str], str, float, str, float] | None:
+        if not starts or not ends:
+            return None
+        source = object()
+        sink = object()
+        start_connectors: dict[object, tuple[str, float]] = {}
+        end_connectors: dict[object, tuple[str, float]] = {}
+        temporary_nodes: list[object] = [source, sink]
         try:
-            if role == "direct":
-                self._cache_direct_routes(start)
-                nodes = self._shortest_paths[start][end]
-            else:
-                nodes = nx.shortest_path(self.graph, start, end, weight=weight)
+            for start, snap_m in starts:
+                connector = object()
+                start_connectors[connector] = (start, snap_m)
+                temporary_nodes.append(connector)
+                self.graph.add_edge(source, connector, length_m=0.0)
+                self.graph.add_edge(connector, start, length_m=snap_m)
+            for end, snap_m in ends:
+                connector = object()
+                end_connectors[connector] = (end, snap_m)
+                temporary_nodes.append(connector)
+                self.graph.add_edge(end, connector, length_m=snap_m)
+                self.graph.add_edge(connector, sink, length_m=0.0)
+            total_m, path = nx.single_source_dijkstra(
+                self.graph, source, target=sink, weight="length_m"
+            )
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
-        except KeyError:
+        finally:
+            self.graph.remove_nodes_from(temporary_nodes)
+        start, start_snap = start_connectors[path[1]]
+        end, end_snap = end_connectors[path[-2]]
+        return float(total_m), path[2:-2], start, start_snap, end, end_snap
+
+    def _cache_direct_lengths(self, source: str) -> None:
+        if source in self._shortest_lengths:
+            return
+        self._shortest_lengths[source] = nx.single_source_dijkstra_path_length(
+            self.graph, source, weight="length_m"
+        )
+
+    def option(self, start: str, end: str, role: str) -> RouteOption | None:
+        try:
+            nodes = nx.shortest_path(self.graph, start, end, weight=_weight_for(role))
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
+        return self._option_from_nodes(nodes, role)
+
+    def _option_from_nodes(self, nodes: list[str], role: str) -> RouteOption | None:
+        weight = _weight_for(role)
         edge_data = [self.graph[a][b] for a, b in pairwise(nodes)]
         if not edge_data:
             return None
@@ -275,14 +309,14 @@ class RoadGraph:
         a_length = sum(float(edge["length_m"]) for edge in edge_data if _is_a_road(edge["ref"]))
         ncn_length = sum(float(edge["length_m"]) for edge in edge_data if edge["ncn"])
         try:
-            if role == "direct":
-                self._cache_direct_routes(end)
-                reverse_nodes = self._shortest_paths[end][start]
-            else:
-                reverse_nodes = nx.shortest_path(self.graph, end, start, weight=weight)
+            reverse_nodes = list(reversed(nodes))
+            if not all(self.graph.has_edge(left, right) for left, right in pairwise(reverse_nodes)):
+                reverse_nodes = nx.shortest_path(
+                    self.graph, nodes[-1], nodes[0], weight=weight
+                )
             reverse_edges = [self.graph[left][right] for left, right in pairwise(reverse_nodes)]
             reverse_geometry = _merge_route([edge["geometry"] for edge in reverse_edges])
-        except (KeyError, nx.NetworkXNoPath, nx.NodeNotFound):
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
             reverse_edges = []
             reverse_geometry = None
         reverse_corridor_share = (
