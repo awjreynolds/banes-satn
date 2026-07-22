@@ -74,10 +74,9 @@ def test_agent_review_policy_change_invalidates_publication_reuse(tmp_path: Path
 
     assert "publication_reused" not in changed.metadata
     assert changed.run_id != original.run_id
-    assert all(record.review_policy == (TrafficLight.GREEN,) for record in changed.agent_records)
-    assert all(record.governing_status == TrafficLight.GREEN for record in changed.agent_records)
-    assert all(record.review_required is True for record in changed.agent_records)
-    assert all(record.usage["requests"] > 0 for record in changed.agent_records)
+    assert changed.status == "decision-required"
+    assert changed.artifacts == {}
+    assert changed.decision_requests[0].status == TrafficLight.GREEN
 
 
 def test_invalid_divergence_audit_prevents_publication_reuse(tmp_path: Path) -> None:

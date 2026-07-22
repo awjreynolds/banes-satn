@@ -9,11 +9,17 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from satn.agents import AgentRuntimeProvider, runtime_for
+from satn.agents import AgentDecisionRequired
 from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
 from satn.constants import SCHEMA_VERSION
-from satn.models import AgentRecord, CompilationResult, CouncilConfig, TrafficLight
+from satn.models import (
+    AgentDecisionRequest,
+    AgentRecord,
+    CompilationResult,
+    CouncilConfig,
+    TrafficLight,
+)
 from satn.publisher import (
     publication_artifacts,
     publish,
@@ -25,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def compile(config: CouncilConfig | str | Path) -> CompilationResult:
-    """Compile a council configuration into a complete current publication."""
+    """Compile into a complete publication or a non-publishing decision request."""
     started = time.perf_counter()
     council = config if isinstance(config, CouncilConfig) else CouncilConfig.from_yaml(config)
     input_fingerprint = _compilation_input_fingerprint(council)
@@ -45,15 +51,23 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         len(source["network"]),
         len(source.get("context", [])),
     )
-    runtime = (
-        AgentRuntimeProvider(lambda: runtime_for(council.compilation.agent))
-        if council.compilation.agent.review_statuses
-        else None
-    )
+    runtime = None
     atm_reference = None
     if council.atm.enabled and council.atm.mode == "seeded":
         atm_reference = load_atm(council).to_crs(source["network"].crs)
-    compiled = compile_network(council, source, runtime)
+    try:
+        compiled = compile_network(
+            council,
+            source,
+            runtime,
+            governed_input_fingerprint=input_fingerprint,
+        )
+    except AgentDecisionRequired as required:
+        return _decision_required_result(
+            council,
+            input_fingerprint,
+            required.request,
+        )
     compiled.compilation_input_fingerprint = input_fingerprint
     LOGGER.info(
         "Network compiled connections=%d gaps=%d status=%s",
@@ -64,7 +78,16 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     if council.atm.enabled:
         if council.atm.mode == "blind":
             atm_reference = load_atm(council).to_crs(source["network"].crs)
-        compiled.divergence_records = compare_atm(compiled, atm_reference, runtime, council)
+        try:
+            compiled.divergence_records = compare_atm(
+                compiled, atm_reference, runtime, council
+            )
+        except AgentDecisionRequired as required:
+            return _decision_required_result(
+                council,
+                input_fingerprint,
+                required.request,
+            )
         if council.publication.audience == "local" or council.atm.redistribution_permitted:
             compiled.atm_reference = atm_reference
         unresolved = any(not record.resolved for record in compiled.divergence_records)
@@ -531,6 +554,26 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 Counter(record.status for record in compiled.divergence_records)
             ),
         },
+    )
+
+
+def _decision_required_result(
+    council: CouncilConfig,
+    input_fingerprint: str,
+    request: AgentDecisionRequest,
+) -> CompilationResult:
+    """Return a durable menu without publishing or retaining continuation state."""
+    return CompilationResult(
+        run_id=f"decision-{request.dependency_fingerprint[:12]}",
+        status="decision-required",
+        output_dir=council.publication.output_dir,
+        connections=0,
+        gaps=0,
+        artifacts={},
+        criteria={},
+        agent_records=[],
+        decision_requests=[request],
+        metadata={"compilation_input_fingerprint": input_fingerprint},
     )
 
 

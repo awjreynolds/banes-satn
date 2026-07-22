@@ -5,6 +5,7 @@ import os
 import pytest
 
 from satn.agents import (
+    AgentDecisionRequired,
     AgentRole,
     CompilationGate,
     FakeAgentRuntime,
@@ -142,7 +143,7 @@ def test_review_audit_records_reject_contradictory_execution_state() -> None:
 
 
 @pytest.mark.parametrize("status", tuple(TrafficLight))
-def test_selected_status_reaches_bounded_agent_review(status: TrafficLight) -> None:
+def test_selected_status_returns_a_bounded_caller_menu(status: TrafficLight) -> None:
     config = AgentConfig(
         review_statuses=(status,),
         max_attempts=1,
@@ -150,19 +151,49 @@ def test_selected_status_reaches_bounded_agent_review(status: TrafficLight) -> N
         max_tokens=100,
     )
 
-    outcome = CompilationGate(FakeAgentRuntime(), config).evaluate(
-        "connection-a-b",
-        facts(direct=status.value),
-        "direct",
-        ["direct"],
-        governing_criterion="continuity",
-        governing_status=status,
-    )
+    with pytest.raises(AgentDecisionRequired) as raised:
+        CompilationGate(None, config).evaluate(
+            "connection-a-b",
+            facts(direct=status.value),
+            "direct",
+            ["direct"],
+            governing_criterion="continuity",
+            governing_status=status,
+        )
 
-    assert outcome.record.governing_status == status
-    assert outcome.record.review_policy == (status,)
-    assert outcome.record.review_required is True
-    assert outcome.record.usage == {"requests": 4, "tokens": 4}
+    assert raised.value.request.status == status
+    assert raised.value.request.criterion == "continuity"
+    assert [choice.choice_id for choice in raised.value.request.choices] == [
+        "1",
+        "terminate",
+    ]
+    assert raised.value.request.deterministic_findings
+    finding = raised.value.request.deterministic_findings[0]
+    assert finding.message == f"Deterministic criterion continuity is {status.value}."
+    assert finding.evidence_ids == ["edge-1"]
+
+
+def test_caller_menu_preserves_choice_order_and_predefined_action_mapping() -> None:
+    config = AgentConfig(review_statuses=(TrafficLight.AMBER,))
+
+    with pytest.raises(AgentDecisionRequired) as raised:
+        CompilationGate(None, config).evaluate(
+            "connection-a-b",
+            facts(direct="amber"),
+            "direct",
+            ["direct", "low-traffic", "quietway"],
+            governing_criterion="continuity",
+            governing_status=TrafficLight.AMBER,
+        )
+
+    choices = raised.value.request.choices
+    assert [choice.choice_id for choice in choices] == ["1", "2", "3", "terminate"]
+    assert [choice.compiler_action for choice in choices] == [
+        "select-role:direct",
+        "select-role:low-traffic",
+        "select-role:quietway",
+        "terminate",
+    ]
 
 
 @pytest.mark.parametrize(

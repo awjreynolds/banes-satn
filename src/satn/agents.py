@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -16,6 +17,8 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from satn.models import (
     AgentAttempt,
     AgentConfig,
+    AgentDecisionChoice,
+    AgentDecisionRequest,
     AgentRecord,
     AgentReviewDecision,
     TrafficLight,
@@ -251,10 +254,96 @@ class GateOutcome:
     selected_role: str | None
 
 
+class AgentDecisionRequired(Exception):
+    """End this invocation with one compiler-authored bounded decision menu."""
+
+    def __init__(self, request: AgentDecisionRequest):
+        super().__init__(request.request_id)
+        self.request = request
+
+
+def build_agent_decision_request(
+    *,
+    compilation_scope: str,
+    affected_identifiers: list[str],
+    criterion: str,
+    status: TrafficLight,
+    evidence_references: list[str],
+    findings: list[ChallengeFinding],
+    choices: list[AgentDecisionChoice],
+    review_policy: tuple[TrafficLight, ...],
+    governed_input_fingerprint: str,
+) -> AgentDecisionRequest:
+    """Build a stable request only from governed dependencies and predefined actions."""
+    contract = "agent-decision-menu/v1"
+    affected = tuple(dict.fromkeys(value for value in affected_identifiers if value))
+    evidence = tuple(sorted(set(value for value in evidence_references if value)))
+    identity_payload = {
+        "decision_contract": contract,
+        "compilation_scope": compilation_scope,
+        "affected_identifiers": affected,
+        "criterion": criterion,
+    }
+    request_id = "agent-decision-" + hashlib.sha256(
+        json.dumps(identity_payload, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    dependency_payload = {
+        **identity_payload,
+        "governed_input_fingerprint": governed_input_fingerprint,
+        "status": status.value,
+        "evidence_references": evidence,
+        "findings": [finding.model_dump(mode="json") for finding in findings],
+        "choices": [choice.model_dump(mode="json") for choice in choices],
+        "review_policy": [value.value for value in review_policy],
+    }
+    dependency_fingerprint = hashlib.sha256(
+        json.dumps(dependency_payload, sort_keys=True).encode()
+    ).hexdigest()
+    return AgentDecisionRequest(
+        request_id=request_id,
+        dependency_fingerprint=dependency_fingerprint,
+        compilation_scope=compilation_scope,
+        affected_identifiers=affected,
+        criterion=criterion,
+        question=(
+            f"Which predefined compiler action should be applied for the {criterion} criterion?"
+        ),
+        status=status,
+        governed_evidence_references=evidence,
+        deterministic_findings=tuple(findings),
+        choices=tuple(choices),
+    )
+
+
+def termination_choice() -> AgentDecisionChoice:
+    """Return the one reserved stop-and-preserve action shared by every menu."""
+    return AgentDecisionChoice(
+        choice_id="terminate",
+        label="Terminate this compilation",
+        compiler_action="terminate",
+        expected_consequence=(
+            "Stop this run, preserve the previous valid publication, and require a fresh "
+            "compilation."
+        ),
+        mandatory_constraints=(
+            "No partial result from this invocation may be published.",
+            "A later attempt must start a fresh compilation.",
+        ),
+    )
+
+
 class CompilationGate:
-    def __init__(self, runtime: AgentRuntimeSource, config: AgentConfig):
+    def __init__(
+        self,
+        runtime: AgentRuntimeSource,
+        config: AgentConfig,
+        governed_input_fingerprint: str = "",
+    ):
         self.runtime_source = runtime
         self.config = config
+        self.governed_input_fingerprint = governed_input_fingerprint or hashlib.sha256(
+            config.model_dump_json().encode()
+        ).hexdigest()
 
     def evaluate(
         self,
@@ -292,6 +381,39 @@ class CompilationGate:
                     usage={"requests": 0, "tokens": 0},
                 ),
                 initial_role,
+            )
+
+        if self.runtime_source is None:
+            scope = {
+                "direct": "spine-access",
+                "cross-spine-connector": "branch-meeting",
+                "gap": "network-gap",
+                "school-access-gap": "urban-school-access-gap",
+            }.get(initial_role or "", "network-decision")
+            findings = _deterministic_findings(
+                facts,
+                initial_role,
+                governing_criterion=governing_criterion,
+                governing_status=governing_status,
+            )
+            raise AgentDecisionRequired(
+                build_agent_decision_request(
+                    compilation_scope=scope,
+                    affected_identifiers=[
+                        connection_id,
+                        str(facts.get("from_place") or ""),
+                        str(facts.get("to_place") or ""),
+                    ],
+                    criterion=governing_criterion,
+                    status=governing_status,
+                    evidence_references=[
+                        str(value) for value in facts.get("evidence_ids", ())
+                    ],
+                    findings=findings,
+                    choices=_route_decision_choices(available_roles),
+                    review_policy=review.review_policy,
+                    governed_input_fingerprint=self.governed_input_fingerprint,
+                )
             )
 
         runtime = self._runtime()
@@ -498,18 +620,64 @@ def runtime_for(config: AgentConfig) -> AgentRuntime:
 def _deterministic_findings(
     facts: dict[str, Any],
     role: str | None,
+    *,
+    governing_criterion: str | None = None,
+    governing_status: TrafficLight | None = None,
 ) -> list[ChallengeFinding]:
     checks = facts.get("checks_by_role", {}).get(role, {}) if role else {}
-    return [
+    evidence_ids = [str(value) for value in facts.get("evidence_ids", ()) if value]
+    findings = [
         ChallengeFinding(
             code=f"deterministic-{name}",
             severity="blocking" if status == "red" else "advisory",
             message=f"Deterministic criterion {name} is {status}.",
-            evidence_ids=["osm-network"],
+            evidence_ids=evidence_ids,
         )
         for name, status in checks.items()
         if status in {"red", "amber"}
     ]
+    if governing_criterion is not None and governing_status is not None:
+        governing_code = f"deterministic-{governing_criterion}"
+        findings = [finding for finding in findings if finding.code != governing_code]
+        findings.insert(
+            0,
+            ChallengeFinding(
+                code=governing_code,
+                severity=(
+                    "blocking" if governing_status == TrafficLight.RED else "advisory"
+                ),
+                message=(
+                    f"Deterministic criterion {governing_criterion} is "
+                    f"{governing_status.value}."
+                ),
+                evidence_ids=evidence_ids,
+            ),
+        )
+    return findings
+
+
+def _route_decision_choices(available_roles: list[str]) -> list[AgentDecisionChoice]:
+    constraints = (
+        "The choice must remain one of the compiler-authored actions in this request.",
+        "The compiler will revalidate all deterministic invariants before changing state.",
+        "A mandatory Red invariant cannot be waived by this choice.",
+    )
+    choices = [
+        AgentDecisionChoice(
+            choice_id=str(index),
+            label=f"Select {role.replace('-', ' ')}",
+            compiler_action=f"select-role:{role}",
+            expected_consequence=(
+                "Retain the visible Network Gap and do not add an invalid connection."
+                if role in {"gap", "school-access-gap"}
+                else f"Validate and apply the {role} network role if its invariants pass."
+            ),
+            mandatory_constraints=constraints,
+        )
+        for index, role in enumerate(available_roles, start=1)
+    ]
+    choices.append(termination_choice())
+    return choices
 
 
 def _record(

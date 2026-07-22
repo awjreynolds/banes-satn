@@ -297,19 +297,13 @@ def test_public_compilation_routes_a_configured_red_gap_to_review(tmp_path: Path
     snapshot(config)
 
     result = compile(config)
-    red_records = [
-        record for record in result.agent_records if record.governing_status == TrafficLight.RED
-    ]
+    request = result.decision_requests[0]
 
-    assert red_records
-    assert all(record.review_required is True for record in red_records)
-    assert all(record.usage["requests"] > 0 for record in red_records)
-    assert all(record.decision == "gap" for record in red_records)
-    assert all(
-        record.review_required is False
-        for record in result.agent_records
-        if record.governing_status == TrafficLight.GREEN
-    )
+    assert result.status == "decision-required"
+    assert result.artifacts == {}
+    assert request.status == TrafficLight.RED
+    assert request.criterion == "availability"
+    assert request.compilation_scope == "network-gap"
 
 
 def test_public_compilation_routes_a_configured_grey_gap_to_review(tmp_path: Path) -> None:
@@ -328,19 +322,13 @@ def test_public_compilation_routes_a_configured_grey_gap_to_review(tmp_path: Pat
     snapshot(config)
 
     result = compile(config)
-    grey_records = [
-        record for record in result.agent_records if record.governing_status == TrafficLight.GREY
-    ]
+    request = result.decision_requests[0]
 
-    assert grey_records
-    assert all(record.review_required is True for record in grey_records)
-    assert all(record.usage["requests"] > 0 for record in grey_records)
-    assert all(record.decision == "gap" for record in grey_records)
-    assert all(
-        record.review_required is False
-        for record in result.agent_records
-        if record.governing_status == TrafficLight.GREEN
-    )
+    assert result.status == "decision-required"
+    assert result.artifacts == {}
+    assert request.status == TrafficLight.GREY
+    assert request.criterion == "availability"
+    assert request.compilation_scope == "network-gap"
 
 
 def test_public_route_compilation_reviews_only_configured_amber_decisions(
@@ -368,34 +356,13 @@ def test_public_route_compilation_reviews_only_configured_amber_decisions(
     snapshot(config)
 
     reviewed = compile(config)
-    amber_records = [
-        record
-        for record in reviewed.agent_records
-        if record.governing_status == TrafficLight.AMBER
-    ]
+    request = reviewed.decision_requests[0]
 
-    assert amber_records
-    assert all(record.governing_criterion == "distance" for record in amber_records)
-    assert all(record.review_required is True for record in amber_records)
-    assert all(record.usage["requests"] > 0 for record in amber_records)
-    assert all(
-        record.review_required is False
-        for record in reviewed.agent_records
-        if record.governing_status == TrafficLight.GREEN
-    )
-    run = json.loads(reviewed.artifacts["run"].read_text())
-    assert run["agent_review"]["decisions_by_status"]["amber"] == {
-        "reviewed": len(amber_records),
-        "skipped": 0,
-    }
-    published_records = json.loads(reviewed.artifacts["agents"].read_text())["records"]
-    published_amber = [
-        record for record in published_records if record["governing_status"] == "amber"
-    ]
-    assert all(record["governing_criterion"] == "distance" for record in published_amber)
-    assert all(isinstance(record["proposal"], dict) for record in published_amber)
-    assert all(isinstance(record["critique"], dict) for record in published_amber)
-    assert all(isinstance(record["revision"], dict) for record in published_amber)
+    assert reviewed.status == "decision-required"
+    assert reviewed.artifacts == {}
+    assert request.status == TrafficLight.AMBER
+    assert request.criterion == "distance"
+    assert request.compilation_scope == "branch-meeting"
 
     config.compilation.agent.review_statuses = ()
     config.compilation.agent.provider = "provider-that-must-not-be-constructed"

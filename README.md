@@ -253,8 +253,9 @@ source:
 
 Council Configuration selects exactly which Criterion Statuses require agent review.
 The default is Amber and Red; Green is deterministic and Grey can be selected
-independently. A selected status passes through the bounded typed sequence of
-Proposer, deterministic checks, Evidence Critic, Network Red Team and Synthesiser.
+independently. A selected status returns a
+typed, fingerprinted Agent Decision Request containing the exact criterion, governed
+evidence, deterministic findings and finite compiler-authored choices.
 An unselected Green, Amber or Grey decision is applied deterministically, while an
 unselected Red still becomes an explicit Network Gap. No Criteria Section aggregate
 is used to choose review.
@@ -266,13 +267,14 @@ compilation:
     review_statuses: [amber, red]
 ```
 
-The Agent Runtime is materialised lazily only when the first selected status is
-encountered; an empty `review_statuses` list therefore guarantees that none is
-constructed or called. Every decision record still publishes its governing status,
-effective policy, and whether review was required, so deterministic skips remain
-visible. Agents cannot mutate compiled state or override a Red mandatory criterion.
-Repeated output, request/token limits or exhausted revisions terminate as an explicit
-Network Gap.
+The public library returns `decision-required` with the currently actionable menu and
+no partial artifacts. The CLI prints the equivalent JSON and exits immediately; it
+does not read stdin, poll, sleep, maintain a heartbeat or retain a live continuation.
+Each choice is a simple identifier such as `1`, `2` or `terminate`, and already states
+the action, consequence and constraints the compiler will enforce. An empty
+`review_statuses` list guarantees that no Agent Runtime is constructed or called.
+Agents cannot invent actions, mutate compiled state or override a Red mandatory
+criterion.
 
 Routine unresolved refinements remain typed findings and visible gaps. A
 `human-intervention-requests.json` record is emitted only when a material blocking

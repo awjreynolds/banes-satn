@@ -110,6 +110,8 @@ def compile_network(
     config: CouncilConfig,
     source: dict[str, gpd.GeoDataFrame],
     runtime: AgentRuntimeSource,
+    *,
+    governed_input_fingerprint: str = "",
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
     context = source.get("context", empty_context(source["network"].crs)).copy()
@@ -140,7 +142,11 @@ def compile_network(
     gateways = places[places["kind"] == "cross_boundary_gateway"].copy()
     routable_network = mark_ncn_edges(source["network"], context)
     road_graph = RoadGraph(routable_network)
-    gate = CompilationGate(runtime, config.compilation.agent)
+    gate = CompilationGate(
+        runtime,
+        config.compilation.agent,
+        governed_input_fingerprint,
+    )
     strategic_spines = _strategic_spines(context)
     rural_communities = _rural_communities(communities)
     rural_schools = _rural_schools(context)

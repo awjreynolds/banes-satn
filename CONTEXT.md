@@ -237,8 +237,16 @@ A schema-valid audit record for a compilation decision, stating its governing Cr
 _Avoid_: free-form answer, silent edit, unrecorded deterministic skip
 
 **Agent Review Policy**:
-The exact set of Green, Amber, Red and Grey Criterion Statuses in Council Configuration that require a bounded Agent Runtime review. It applies to the status governing an individual decision, never a Criteria Section aggregate; an empty set means no Agent Runtime is constructed or called.
+The exact set of Green, Amber, Red and Grey Criterion Statuses in Council Configuration that require an Agent Decision Request. It applies to the status governing an individual decision, never a Criteria Section aggregate; an empty set means no Agent Runtime is constructed or called.
 _Avoid_: always-on agent, worst-section rollup, open-ended escalation
+
+**Agent Decision Request**:
+A stable, dependency-fingerprinted and schema-valid decision menu that names one exact criterion and question, its governed evidence and deterministic findings, and a finite ordered set of compiler-actionable choices. Returning it ends the current compilation invocation without publishing or retaining continuation state.
+_Avoid_: blocked message, open-ended prompt, live continuation, heartbeat
+
+**Agent Decision Choice**:
+One compiler-authored item in an Agent Decision Request, identified by a simple stable identifier and declaring its concise meaning, predefined compiler action, expected consequence and mandatory constraints. `terminate` has the reserved meaning of stopping the run, preserving the previous valid publication and requiring a fresh compilation.
+_Avoid_: free-form answer, agent-supplied parameter, validation waiver
 
 **Challenge Finding**:
 A critic's evidence-backed challenge to a proposal, classified as blocking, revision-required or advisory and displayed through a traffic-light status.
@@ -269,8 +277,8 @@ The typed result of compiling one Community Connection, including its selected A
 _Avoid_: drawn route, agent response
 
 **Compilation Gate**:
-The deterministic decision boundary that applies the Agent Review Policy and, only for a selected Criterion Status, enters a bounded propose, deterministic-check, agent-critique, red-team and revise loop before a Community Connection can enter compiled network state. An unresolved or deterministic Red failure becomes an explicit Network Gap.
-_Avoid_: approval screen, silent acceptance, unbounded retry
+The deterministic decision boundary that applies the Agent Review Policy to one explicitly governing criterion. An unselected status follows deterministic semantics; a selected status returns an Agent Decision Request through the caller-mediated interface before any partial result can be published.
+_Avoid_: approval screen, silent acceptance, traffic-light rollup, suspended process
 
 **Network Compilation Unit**:
 A recursively compiled subgraph assembled from Compiled Connections or smaller Network Compilation Units and assessed through the same proposal, critique, synthesis and validation protocol.
