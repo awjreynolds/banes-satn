@@ -851,6 +851,7 @@ def _first_spine_access_connection(
         source_ids = sorted(
             {
                 *option.edge_ids,
+                *option.reverse_edge_ids,
                 str(spine["evidence_id"]),
                 str(spine["source_id"]),
             }
