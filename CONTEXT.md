@@ -233,8 +233,12 @@ An immutable, versioned collection of governed evidence and rules supplied to an
 _Avoid_: prompt context, live web research
 
 **Agent Decision Record**:
-A schema-valid, evidence-citing proposal, critique, synthesis or refinement emitted by an agent role without directly changing compiled state.
-_Avoid_: free-form answer, silent edit
+A schema-valid audit record for a compilation decision, stating its governing Criterion Status, effective Agent Review Policy, whether review was required, and either the typed agent proposal, critique and synthesis or the deterministic outcome. It never directly changes compiled state.
+_Avoid_: free-form answer, silent edit, unrecorded deterministic skip
+
+**Agent Review Policy**:
+The exact set of Green, Amber, Red and Grey Criterion Statuses in Council Configuration that require a bounded Agent Runtime review. It applies to the status governing an individual decision, never a Criteria Section aggregate; an empty set means no Agent Runtime is constructed or called.
+_Avoid_: always-on agent, worst-section rollup, open-ended escalation
 
 **Challenge Finding**:
 A critic's evidence-backed challenge to a proposal, classified as blocking, revision-required or advisory and displayed through a traffic-light status.
@@ -265,7 +269,7 @@ The typed result of compiling one Community Connection, including its selected A
 _Avoid_: drawn route, agent response
 
 **Compilation Gate**:
-The bounded propose, deterministic-check, agent-critique, red-team and revise loop that a Community Connection must pass before entering compiled network state. An unresolved failure becomes an explicit Network Gap.
+The deterministic decision boundary that applies the Agent Review Policy and, only for a selected Criterion Status, enters a bounded propose, deterministic-check, agent-critique, red-team and revise loop before a Community Connection can enter compiled network state. An unresolved or deterministic Red failure becomes an explicit Network Gap.
 _Avoid_: approval screen, silent acceptance, unbounded retry
 
 **Network Compilation Unit**:
@@ -281,7 +285,7 @@ A versioned collection of connection-level and network-level assessment criteria
 _Avoid_: mutable scorecard, hidden rubric
 
 **Criterion Status**:
-The visible result of applying one criterion: Green when satisfied, Amber when agentic refinement or challenge is required, Red when a mandatory network invariant fails, and Grey when unevaluated or evidence is unavailable.
+The visible result of applying one criterion: Green when satisfied, Amber when refinement or challenge may be useful, Red when a mandatory network invariant fails, and Grey when unevaluated or evidence is unavailable. Whether it invokes an agent is controlled separately by the Agent Review Policy.
 _Avoid_: aggregate score, implicit confidence, hidden failure
 
 **Criteria Section**:

@@ -377,14 +377,15 @@ def assemble_backbone_outward(
 
     for place_id in sorted(unserved):
         rejected = rejected_by_place.get(place_id, [])
-        gap_rows.append(
-            _gap_row(
-                unserved[place_id],
-                graph,
-                obligation_kind="community",
-                gate_reason=rejected[-1].outcome_reason if rejected else None,
-            )
+        gap_row = _gap_row(
+            unserved[place_id],
+            graph,
+            obligation_kind="community",
+            gate_reason=rejected[-1].outcome_reason if rejected else None,
         )
+        if not rejected:
+            agent_records.append(_evaluate_gap(gap_row, gate, TrafficLight.RED))
+        gap_rows.append(gap_row)
     if unserved:
         LOGGER.warning("Unserved communities emitted as Network Gaps count=%d", len(unserved))
 
@@ -415,7 +416,9 @@ def assemble_backbone_outward(
     )
     for school_index, (_, school) in enumerate(schools.sort_values("place_id").iterrows(), start=1):
         if str(school.get("access_point_status")) == "unresolved":
-            gap_rows.append(_gap_row(school, graph, obligation_kind="school"))
+            gap_row = _gap_row(school, graph, obligation_kind="school")
+            agent_records.append(_evaluate_gap(gap_row, gate, TrafficLight.GREY))
+            gap_rows.append(gap_row)
             continue
         rejected_school_records: list[AgentRecord] = []
         excluded_pairs: set[tuple[str, str]] = set()
@@ -443,18 +446,19 @@ def assemble_backbone_outward(
             rows.append(row)
             break
         else:
-            gap_rows.append(
-                _gap_row(
-                    school,
-                    graph,
-                    obligation_kind="school",
-                    gate_reason=(
-                        rejected_school_records[-1].outcome_reason
-                        if rejected_school_records
-                        else None
-                    ),
-                )
+            gap_row = _gap_row(
+                school,
+                graph,
+                obligation_kind="school",
+                gate_reason=(
+                    rejected_school_records[-1].outcome_reason
+                    if rejected_school_records
+                    else None
+                ),
             )
+            if not rejected_school_records:
+                agent_records.append(_evaluate_gap(gap_row, gate, TrafficLight.RED))
+            gap_rows.append(gap_row)
         if school_index == 1 or school_index % 10 == 0 or school_index == len(schools):
             LOGGER.info(
                 "School access progress assessed=%d/%d",
@@ -484,7 +488,9 @@ def assemble_backbone_outward(
             is not None
         ]
         if not candidates:
-            gap_rows.append(_gap_row(gateway, graph, obligation_kind="gateway"))
+            gap_row = _gap_row(gateway, graph, obligation_kind="gateway")
+            agent_records.append(_evaluate_gap(gap_row, gate, TrafficLight.RED))
+            gap_rows.append(gap_row)
             continue
         for selected in sorted(candidates, key=lambda candidate: candidate.rank):
             selected = _with_topography(
@@ -1046,8 +1052,30 @@ def _evaluate(row: dict[str, object], gate: CompilationGate) -> AgentRecord:
     ).record
 
 
-def _record_gate_acceptance(row: dict[str, object], record: AgentRecord) -> None:
-    row["status"] = "validated"
+def _evaluate_gap(
+    row: dict[str, object],
+    gate: CompilationGate,
+    governing_status: TrafficLight,
+) -> AgentRecord:
+    record = gate.evaluate(
+        str(row["connection_id"]),
+        {
+            "from_place": str(row["from_place"]),
+            "to_place": str(row["to_place"]),
+            "selection_reason": str(row["selection_reason"]),
+            "evidence_ids": (),
+            "governing_status": governing_status,
+            "checks_by_role": {"gap": {"availability": governing_status.value}},
+        },
+        "gap",
+        ["gap"],
+        deterministic_decision="gap",
+    ).record
+    _project_agent_record(row, record)
+    return record
+
+
+def _project_agent_record(row: dict[str, object], record: AgentRecord) -> None:
     record.network_role = str(row["network_role"])
     row["agent_outcome"] = record.outcome_reason
     row["agent_attempt_count"] = len(record.attempts)
@@ -1060,6 +1088,11 @@ def _record_gate_acceptance(row: dict[str, object], record: AgentRecord) -> None
         ],
         sort_keys=True,
     )
+
+
+def _record_gate_acceptance(row: dict[str, object], record: AgentRecord) -> None:
+    row["status"] = "validated"
+    _project_agent_record(row, record)
 
 
 def _connection_row(
@@ -1784,18 +1817,7 @@ def _evaluate_meeting(row: dict[str, object], gate: CompilationGate) -> AgentRec
 
 def _record_meeting_acceptance(row: dict[str, object], record: AgentRecord) -> None:
     row["status"] = "validated"
-    record.network_role = str(row["network_role"])
-    row["agent_outcome"] = record.outcome_reason
-    row["agent_attempt_count"] = len(record.attempts)
-    latest = record.attempts[-1] if record.attempts else {}
-    row["agent_findings"] = json.dumps(
-        [
-            *latest.get("deterministic_findings", []),
-            *latest.get("critique", {}).get("findings", []),
-            *latest.get("red_team", {}).get("findings", []),
-        ],
-        sort_keys=True,
-    )
+    _project_agent_record(row, record)
 
 
 def _cross_spine_connectors(

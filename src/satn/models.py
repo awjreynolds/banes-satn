@@ -154,13 +154,51 @@ class SourceConfig(BaseModel):
     national_elevation: NationalElevationConfig | None = None
 
 
+class AgentReviewDecision(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    governing_status: TrafficLight
+    review_policy: tuple[TrafficLight, ...]
+    review_required: bool
+
+
 class AgentConfig(BaseModel):
     provider: str = "fake"
     model: str | None = None
-    enabled: bool = True
+    review_statuses: tuple[TrafficLight, ...] = (
+        TrafficLight.AMBER,
+        TrafficLight.RED,
+    )
     max_attempts: int = Field(default=3, ge=1, le=10)
     max_requests: int = Field(default=12, ge=1)
     max_tokens: int = Field(default=4000, ge=100)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_enabled(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or "enabled" not in value:
+            return value
+        migrated = dict(value)
+        enabled = bool(migrated.pop("enabled"))
+        if not enabled:
+            configured = migrated.get("review_statuses")
+            if configured:
+                raise ValueError("enabled: false conflicts with non-empty review_statuses")
+            migrated["review_statuses"] = ()
+        return migrated
+
+    @model_validator(mode="after")
+    def canonicalise_review_statuses(self) -> AgentConfig:
+        selected = set(self.review_statuses)
+        self.review_statuses = tuple(status for status in TrafficLight if status in selected)
+        return self
+
+    def review_decision(self, governing_status: TrafficLight) -> AgentReviewDecision:
+        return AgentReviewDecision(
+            governing_status=governing_status,
+            review_policy=self.review_statuses,
+            review_required=governing_status in self.review_statuses,
+        )
 
 
 class TopographyConfig(BaseModel):
@@ -277,6 +315,9 @@ class PublishedFeatureReference(BaseModel):
 class AgentRecord(BaseModel):
     connection_id: str
     network_role: str | None = None
+    governing_status: TrafficLight
+    review_policy: tuple[TrafficLight, ...]
+    review_required: bool
     runtime: str
     model: str
     proposal: str
@@ -294,6 +335,9 @@ class AgentRecord(BaseModel):
 class DivergenceRecord(BaseModel):
     connection_id: str
     status: Literal["match", "omission", "deviation", "addition"]
+    governing_status: TrafficLight
+    review_policy: tuple[TrafficLight, ...]
+    review_required: bool
     atm_feature_ids: list[str] = Field(default_factory=list)
     overlap_ratio: float = Field(ge=0, le=1)
     explanation: str

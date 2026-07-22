@@ -11,7 +11,7 @@ from shapely.geometry import LineString, Point, Polygon
 import satn.backbone as backbone_module
 from satn.agents import AgentRole, FakeAgentRuntime
 from satn.compiler import compile_network
-from satn.models import CouncilConfig
+from satn.models import CouncilConfig, TrafficLight
 from satn.publisher import publish
 from satn.routing import RouteOption
 
@@ -398,7 +398,9 @@ def test_rejected_first_meeting_falls_through_to_next_adjacency() -> None:
         }
     )
 
-    compiled = compile_network(config(), parallel_spine_source(), runtime)
+    council = config()
+    council.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+    compiled = compile_network(council, parallel_spine_source(), runtime)
 
     assert len(compiled.branch_meeting_connections) == 1
     meeting_records = [
@@ -436,7 +438,9 @@ def test_rejected_meetings_superseded_when_other_tree_edges_connect_the_roots() 
         }
     )
 
-    compiled = compile_network(config(), three_spine_source(), runtime)
+    council = config()
+    council.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+    compiled = compile_network(council, three_spine_source(), runtime)
 
     meeting_records = [
         record
@@ -617,7 +621,9 @@ def test_agent_gate_rejection_cannot_enter_validated_backbone_state() -> None:
         {AgentRole.SYNTHESISER: [rejected.copy() for _ in range(6)]}
     )
 
-    compiled = compile_network(config(), parallel_spine_source(), runtime)
+    council = config()
+    council.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+    compiled = compile_network(council, parallel_spine_source(), runtime)
 
     assert compiled.spine_access_connections.empty
     assert set(compiled.access_obligations["service_status"]) == {"network-gap"}

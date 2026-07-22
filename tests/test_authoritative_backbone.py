@@ -7,7 +7,7 @@ from test_backbone_assembly import parallel_spine_source
 
 from satn.agents import FakeAgentRuntime
 from satn.compiler import _human_intervention_requests, compile_network
-from satn.models import AgentRecord, CouncilConfig
+from satn.models import AgentRecord, CouncilConfig, TrafficLight
 from satn.publisher import _write_backbone_comparison
 
 PROJECT = Path(__file__).parents[1]
@@ -58,6 +58,9 @@ def test_only_exhausted_material_ambiguity_requests_human_intervention() -> None
     ]
     record = AgentRecord(
         connection_id="spine-access-ambiguous",
+        governing_status=TrafficLight.AMBER,
+        review_policy=(TrafficLight.AMBER, TrafficLight.RED),
+        review_required=True,
         runtime="fake",
         model="fake",
         proposal="direct",

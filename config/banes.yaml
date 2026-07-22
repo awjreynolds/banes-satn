@@ -29,6 +29,9 @@ compilation:
   criteria_version: "1"
   agent:
     provider: fake
+    review_statuses:
+      - amber
+      - red
 atm:
   enabled: false
   mode: blind

@@ -249,12 +249,28 @@ source:
 
 ## Agent compilation gate
 
-Every candidate passes a bounded typed sequence: Proposer, deterministic checks,
-Evidence Critic, Network Red Team and Synthesiser. Findings feed a subsequent
-revision attempt, but agents cannot mutate compiled state or override a Red mandatory
-criterion. Repeated output, request/token limits or exhausted revisions terminate as
-an explicit Network Gap. The full Pydantic records are published as JSON; the review
-map shows their concise rationale.
+Council Configuration selects exactly which Criterion Statuses require agent review.
+The default is Amber and Red; Green is deterministic and Grey can be selected
+independently. A selected status passes through the bounded typed sequence of
+Proposer, deterministic checks, Evidence Critic, Network Red Team and Synthesiser.
+An unselected Green, Amber or Grey decision is applied deterministically, while an
+unselected Red still becomes an explicit Network Gap. No Criteria Section aggregate
+is used to choose review.
+
+```yaml
+compilation:
+  agent:
+    provider: fake
+    review_statuses: [amber, red]
+```
+
+The Agent Runtime is materialised lazily only when the first selected status is
+encountered; an empty `review_statuses` list therefore guarantees that none is
+constructed or called. Every decision record still publishes its governing status,
+effective policy, and whether review was required, so deterministic skips remain
+visible. Agents cannot mutate compiled state or override a Red mandatory criterion.
+Repeated output, request/token limits or exhausted revisions terminate as an explicit
+Network Gap.
 
 Routine unresolved refinements remain typed findings and visible gaps. A
 `human-intervention-requests.json` record is emitted only when a material blocking
@@ -358,8 +374,9 @@ authoritative answer. Put the locally governed file at
   does not permit it to replace or steer the authoritative Backbone-Outward result.
 
 The typed divergence output distinguishes matches, deviations, additions and
-omissions. Each receives a bounded agent review, but there is no aggregate agreement
-score and a match does not prove correctness.
+omissions. Each uses its own governing Criterion Status and the same configured agent
+review policy; there is no aggregate agreement score and a match does not prove
+correctness.
 
 For `publication.audience: public`, ATM geometry is omitted unless
 `atm.redistribution_permitted: true`. A `local` review may include the overlay. The
