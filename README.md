@@ -141,9 +141,13 @@ sampled throughout the edge records distance, cumulative ascent and descent in b
 directions, steepest sustained gradient and stable Gradient Sections. The adjustable
 display bands are Gentle (up to 3%), Noticeable (above 3% to 5%), Steep (above 5% to
 8%), Very Steep (above 8% to 12.5%) and Severe (above 12.5%). These sections are
-informational in this stage and do not change route selection. Missing or unusable
-Elevation Evidence is published as an explicit Grey evidence-unavailable Topography
-Profile; it never implies flat terrain.
+always visible. A bounded Topography Alternative comparison is triggered by 100 m of
+Steep, 50 m of Very Steep, 30 m of Severe, or repeated shorter climbs with material
+cumulative ascent. It may select a longer materially easier plausible Alignment Option,
+but it keeps and visibly flags the original when none is easier. Gradient never removes
+a Strategic Spine. Missing or unusable Elevation Evidence is published as an explicit
+Grey evidence-unavailable Topography Profile and unresolved comparison; it never implies
+flat terrain.
 
 The display bands and evidence-spacing rules are governed trial configuration. The
 maximum spacing prevents sparse endpoint-only evidence from being mistaken for a
@@ -161,7 +165,21 @@ compilation:
     very_steep_max_pct: 12.5
     maximum_sample_spacing_m: 250
     minimum_sustained_spacing_m: 10
+    steep_trigger_length_m: 100
+    very_steep_trigger_length_m: 50
+    severe_trigger_length_m: 30
+    repeated_climb_count: 2
+    cumulative_ascent_trigger_m: 40
+    maximum_alternative_detour_ratio: 1.5
+    material_ascent_reduction_m: 20
+    material_ascent_reduction_ratio: 0.25
 ```
+
+Each compiled Community Connection records whether comparison triggered, the original
+and selected roles, the reason for selection or retention, and an Elevation Evidence
+summary for every candidate Alignment Option. These are deterministic bounded
+refinements before the existing agent Compilation Gate; routine choices do not require
+per-edge human approval.
 
 Offline fixtures can supply `source/elevation-evidence.geojson` containing Point
 samples with `evidence_id`, `source_id`, `effective_date`, `licence` and

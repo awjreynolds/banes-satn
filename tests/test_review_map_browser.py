@@ -36,6 +36,10 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         card.hover()
         assert "Route role" in page.locator("#feature-details").inner_text()
         assert "Source identifiers" in page.locator("#feature-details").inner_text()
+        assert "Topography comparison" in page.locator("#feature-details").inner_text()
+        assert "Topography comparison rationale" in page.locator(
+            "#feature-details"
+        ).inner_text()
         card.click()
         assert card.get_attribute("aria-pressed") == "true"
         page.locator("h1").hover()

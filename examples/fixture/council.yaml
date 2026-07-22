@@ -21,6 +21,14 @@ compilation:
     very_steep_max_pct: 12.5
     maximum_sample_spacing_m: 250
     minimum_sustained_spacing_m: 10
+    steep_trigger_length_m: 100
+    very_steep_trigger_length_m: 50
+    severe_trigger_length_m: 30
+    repeated_climb_count: 2
+    cumulative_ascent_trigger_m: 40
+    maximum_alternative_detour_ratio: 1.5
+    material_ascent_reduction_m: 20
+    material_ascent_reduction_ratio: 0.25
   agent:
     provider: fake
 publication:
