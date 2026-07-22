@@ -147,9 +147,7 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         {"feature_id": feature_id, "network_role": role}
         for feature_id, role in sorted(authoritative_roles.items())
     ]
-    agent_roles = {
-        record["connection_id"]: record["network_role"] for record in agents["records"]
-    }
+    agent_roles = {record["connection_id"]: record["network_role"] for record in agents["records"]}
     agent_roles.update(
         {
             reference["feature_id"]: reference["network_role"]
@@ -251,9 +249,11 @@ def test_failed_final_install_rolls_back_the_previous_complete_output(
     original_replace = Path.replace
 
     def fail_temporary_install(path: Path, target: Path) -> Path:
-        if path.name.startswith(f".{config.publication.output_dir.name}-") and target == (
-            config.publication.output_dir
-        ) and path.name != f".{config.publication.output_dir.name}-previous":
+        if (
+            path.name.startswith(f".{config.publication.output_dir.name}-")
+            and target == (config.publication.output_dir)
+            and path.name != f".{config.publication.output_dir.name}-previous"
+        ):
             raise OSError("simulated final install failure")
         return original_replace(path, target)
 

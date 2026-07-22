@@ -469,25 +469,29 @@ def _write_json_records(
 def _authoritative_feature_records(
     compiled: CompiledNetwork,
 ) -> list[dict[str, str]]:
-    records = [
-        {
-            "feature_id": str(row.access_connection_id),
-            "network_role": str(row.network_role),
-        }
-        for row in compiled.spine_access_connections.itertuples()
-    ] + [
-        {
-            "feature_id": str(row.meeting_connection_id),
-            "network_role": str(row.network_role),
-        }
-        for row in compiled.branch_meeting_connections.itertuples()
-    ] + [
-        {
-            "feature_id": str(row.cross_spine_connector_id),
-            "network_role": str(row.network_role),
-        }
-        for row in compiled.cross_spine_connectors.itertuples()
-    ]
+    records = (
+        [
+            {
+                "feature_id": str(row.access_connection_id),
+                "network_role": str(row.network_role),
+            }
+            for row in compiled.spine_access_connections.itertuples()
+        ]
+        + [
+            {
+                "feature_id": str(row.meeting_connection_id),
+                "network_role": str(row.network_role),
+            }
+            for row in compiled.branch_meeting_connections.itertuples()
+        ]
+        + [
+            {
+                "feature_id": str(row.cross_spine_connector_id),
+                "network_role": str(row.network_role),
+            }
+            for row in compiled.cross_spine_connectors.itertuples()
+        ]
+    )
     return sorted(records, key=lambda record: record["feature_id"])
 
 
@@ -524,12 +528,9 @@ def _write_backbone_comparison(
             previous_connection_count = int(previous["connection_count"])
             previous_gap_count = int(previous["network_gap_count"])
             previous_length_m = float(previous["linework_length_m"])
-            previous_topology = {
-                key: int(value) for key, value in previous["topology"].items()
-            }
+            previous_topology = {key: int(value) for key, value in previous["topology"].items()}
             previous_role_counts = {
-                str(key): int(value)
-                for key, value in previous["feature_role_counts"].items()
+                str(key): int(value) for key, value in previous["feature_role_counts"].items()
             }
         else:
             previous_types = {
@@ -562,8 +563,7 @@ def _write_backbone_comparison(
             previous_gaps = [
                 feature
                 for feature in previous.get("features", [])
-                if feature.get("properties", {}).get("feature_type")
-                in {"gap", "school-access-gap"}
+                if feature.get("properties", {}).get("feature_type") in {"gap", "school-access-gap"}
             ]
             previous_lines = [
                 shape(feature["geometry"])
@@ -583,9 +583,7 @@ def _write_backbone_comparison(
                 sorted(
                     pd.Series(
                         [
-                            feature.get("properties", {}).get(
-                                "feature_type", "unknown"
-                            )
+                            feature.get("properties", {}).get("feature_type", "unknown")
                             for feature in previous_features
                         ],
                         dtype=object,
@@ -662,9 +660,7 @@ def _write_backbone_comparison(
             "linework_length_m": round(previous_length_m, 1),
         },
         "visual_noise": {
-            "connection_count_delta": (
-                compiled.connection_count - previous_connection_count
-            ),
+            "connection_count_delta": (compiled.connection_count - previous_connection_count),
             "linework_length_m_delta": round(current_length_m - previous_length_m, 1),
         },
         "explainability": {
@@ -1030,28 +1026,32 @@ def _draw_edge_register(
     compiled: CompiledNetwork,
 ) -> None:
     """Append the stable identifiers and authoritative roles represented on the map."""
-    entries = [
-        (
-            str(row.access_connection_id),
-            str(row.network_role),
-            f"{row.place_name} -> {row.parent_target_name}",
-        )
-        for row in compiled.spine_access_connections.itertuples()
-    ] + [
-        (
-            str(row.meeting_connection_id),
-            str(row.network_role),
-            f"{row.from_place_name} -> {row.to_place_name}",
-        )
-        for row in compiled.branch_meeting_connections.itertuples()
-    ] + [
-        (
-            str(row.cross_spine_connector_id),
-            str(row.network_role),
-            f"{row.from_root_spine_name} -> {row.to_root_spine_name}",
-        )
-        for row in compiled.cross_spine_connectors.itertuples()
-    ]
+    entries = (
+        [
+            (
+                str(row.access_connection_id),
+                str(row.network_role),
+                f"{row.place_name} -> {row.parent_target_name}",
+            )
+            for row in compiled.spine_access_connections.itertuples()
+        ]
+        + [
+            (
+                str(row.meeting_connection_id),
+                str(row.network_role),
+                f"{row.from_place_name} -> {row.to_place_name}",
+            )
+            for row in compiled.branch_meeting_connections.itertuples()
+        ]
+        + [
+            (
+                str(row.cross_spine_connector_id),
+                str(row.network_role),
+                f"{row.from_root_spine_name} -> {row.to_root_spine_name}",
+            )
+            for row in compiled.cross_spine_connectors.itertuples()
+        ]
+    )
     if not entries:
         return
     entries.sort()
@@ -1408,9 +1408,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
     geopackage_registry: dict[str, str] = {}
     if "spine_access_connections" in spatial_layer_names:
-        access_rows = gpd.read_file(
-            output / "network.gpkg", layer="spine_access_connections"
-        )
+        access_rows = gpd.read_file(output / "network.gpkg", layer="spine_access_connections")
         geopackage_registry.update(
             zip(
                 access_rows["access_connection_id"].astype(str),
@@ -1419,9 +1417,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             )
         )
     if "branch_meeting_connections" in spatial_layer_names:
-        meeting_rows = gpd.read_file(
-            output / "network.gpkg", layer="branch_meeting_connections"
-        )
+        meeting_rows = gpd.read_file(output / "network.gpkg", layer="branch_meeting_connections")
         geopackage_registry.update(
             zip(
                 meeting_rows["meeting_connection_id"].astype(str),
@@ -1430,9 +1426,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             )
         )
     if "cross_spine_connectors" in spatial_layer_names:
-        connector_rows = gpd.read_file(
-            output / "network.gpkg", layer="cross_spine_connectors"
-        )
+        connector_rows = gpd.read_file(output / "network.gpkg", layer="cross_spine_connectors")
         geopackage_registry.update(
             zip(
                 connector_rows["cross_spine_connector_id"].astype(str),
@@ -1442,9 +1436,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         )
     if geopackage_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in GeoPackage")
-    agent_payload = json.loads(
-        (output / "agent-records.json").read_text(encoding="utf-8")
-    )
+    agent_payload = json.loads((output / "agent-records.json").read_text(encoding="utf-8"))
     accepted_agent_records = [
         record for record in agent_payload["records"] if record["decision"] == "accept"
     ]

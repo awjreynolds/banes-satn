@@ -165,7 +165,5 @@ def test_comparison_accepts_the_immutable_banes_pairwise_summary(tmp_path: Path)
         "connection_count": 163,
         "linework_length_m": 319649.0,
     }
-    assert report["topology"]["previous"]["feature_role_counts"] == {
-        "connection": 163
-    }
+    assert report["topology"]["previous"]["feature_role_counts"] == {"connection": 163}
     assert report["topology"]["previous"]["component_count"] == 1

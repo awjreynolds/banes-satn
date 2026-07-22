@@ -428,9 +428,11 @@ def _urban_school_gaps(
 ) -> gpd.GeoDataFrame:
     """Materialise every unserved urban School obligation as a visible Network Gap."""
     rows: list[dict[str, object]] = []
-    for _, obligation in obligations[
-        obligations["service_status"] == AccessServiceStatus.NETWORK_GAP.value
-    ].sort_values("obligation_id").iterrows():
+    for _, obligation in (
+        obligations[obligations["service_status"] == AccessServiceStatus.NETWORK_GAP.value]
+        .sort_values("obligation_id")
+        .iterrows()
+    ):
         school_id = str(obligation["school_id"])
         reason = str(obligation["service_rationale"])
         source_ids = json.loads(str(obligation.get("fabric_source_ids") or "[]"))
@@ -439,9 +441,7 @@ def _urban_school_gaps(
             source_ids.append(str(access_source))
         rows.append(
             {
-                "connection_id": _stable_id(
-                    "urban-school-access-gap", obligation["obligation_id"]
-                ),
+                "connection_id": _stable_id("urban-school-access-gap", obligation["obligation_id"]),
                 "network_role": "school-access-gap",
                 "from_place": school_id,
                 "to_place": None,

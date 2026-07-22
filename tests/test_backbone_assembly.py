@@ -320,12 +320,16 @@ def test_cross_spine_roles_publish_consistently_to_spatial_and_review_artifacts(
     connector = gpd.read_file(artifacts["geopackage"], layer="cross_spine_connectors")
     network = json.loads(artifacts["geojson"].read_text())
     feature_by_id = {feature["id"]: feature for feature in network["features"]}
-    assert feature_by_id[meeting.iloc[0]["meeting_connection_id"]]["properties"][
-        "network_role"
-    ] == "branch-meeting-connection"
-    assert feature_by_id[connector.iloc[0]["cross_spine_connector_id"]]["properties"][
-        "selection_reason"
-    ] == connector.iloc[0]["selection_reason"]
+    assert (
+        feature_by_id[meeting.iloc[0]["meeting_connection_id"]]["properties"]["network_role"]
+        == "branch-meeting-connection"
+    )
+    assert (
+        feature_by_id[connector.iloc[0]["cross_spine_connector_id"]]["properties"][
+            "selection_reason"
+        ]
+        == connector.iloc[0]["selection_reason"]
+    )
     connector_id = connector.iloc[0]["cross_spine_connector_id"]
     run = json.loads(artifacts["run"].read_text())
     assert {
@@ -349,10 +353,7 @@ def test_cross_spine_roles_publish_consistently_to_spatial_and_review_artifacts(
 
 def test_first_meetings_connect_three_roots_without_forming_a_mesh() -> None:
     source = three_spine_source()
-    reordered = {
-        name: value.iloc[::-1].reset_index(drop=True)
-        for name, value in source.items()
-    }
+    reordered = {name: value.iloc[::-1].reset_index(drop=True) for name, value in source.items()}
 
     compiled = compile_network(config(), source, FakeAgentRuntime())
     repeated = compile_network(config(), reordered, FakeAgentRuntime())
@@ -365,9 +366,9 @@ def test_first_meetings_connect_three_roots_without_forming_a_mesh() -> None:
     root_graph = nx.Graph()
     root_graph.add_nodes_from(roots)
     root_graph.add_edges_from(
-        compiled.branch_meeting_connections[
-            ["from_root_spine_id", "to_root_spine_id"]
-        ].itertuples(index=False, name=None)
+        compiled.branch_meeting_connections[["from_root_spine_id", "to_root_spine_id"]].itertuples(
+            index=False, name=None
+        )
     )
     assert nx.is_tree(root_graph)
 
@@ -613,9 +614,7 @@ def test_agent_gate_rejection_cannot_enter_validated_backbone_state() -> None:
         "selected_role": None,
         "rationale": "Evidence review rejected this candidate.",
     }
-    runtime = FakeAgentRuntime(
-        {AgentRole.SYNTHESISER: [rejected.copy() for _ in range(6)]}
-    )
+    runtime = FakeAgentRuntime({AgentRole.SYNTHESISER: [rejected.copy() for _ in range(6)]})
 
     compiled = compile_network(config(), parallel_spine_source(), runtime)
 

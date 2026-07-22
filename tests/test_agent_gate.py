@@ -73,9 +73,7 @@ def test_schema_rejection_retries_then_accepts() -> None:
         }
     )
 
-    outcome = gate(runtime).evaluate(
-        "connection-a-b", facts(), "direct", ["direct", "low-traffic"]
-    )
+    outcome = gate(runtime).evaluate("connection-a-b", facts(), "direct", ["direct", "low-traffic"])
 
     assert outcome.record.decision == "accept"
     assert len(outcome.record.attempts) == 2
@@ -100,9 +98,7 @@ def test_structured_revision_changes_alignment_before_acceptance() -> None:
         }
     )
 
-    outcome = gate(runtime).evaluate(
-        "connection-a-b", facts(), "direct", ["direct", "low-traffic"]
-    )
+    outcome = gate(runtime).evaluate("connection-a-b", facts(), "direct", ["direct", "low-traffic"])
 
     assert outcome.record.decision == "accept"
     assert outcome.selected_role == "low-traffic"
@@ -117,9 +113,7 @@ def test_no_progress_revision_terminates_as_gap() -> None:
     }
     runtime = FakeAgentRuntime({AgentRole.SYNTHESISER: [repeated, repeated]})
 
-    outcome = gate(runtime).evaluate(
-        "connection-a-b", facts(), "direct", ["direct", "low-traffic"]
-    )
+    outcome = gate(runtime).evaluate("connection-a-b", facts(), "direct", ["direct", "low-traffic"])
 
     assert outcome.record.decision == "gap"
     assert len(outcome.record.attempts) == 2
