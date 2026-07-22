@@ -31,6 +31,9 @@ compilation:
     material_ascent_reduction_ratio: 0.25
   agent:
     provider: fake
+    review_statuses:
+      - amber
+      - red
 publication:
   output_dir: work/output
   title: Tiny Council SATN Review

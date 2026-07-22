@@ -10,7 +10,7 @@ from shapely.geometry import LineString, Point, Polygon
 
 from satn.agents import AgentRole, FakeAgentRuntime
 from satn.compiler import compile_network
-from satn.models import CouncilConfig
+from satn.models import CouncilConfig, TrafficLight
 from satn.publisher import publish
 
 PROJECT = Path(__file__).parents[1]
@@ -251,6 +251,7 @@ def test_gate_rejection_publishes_no_authoritative_alignment_selection() -> None
     easier = LineString([(0, 0), (0, 200), (1000, 200), (1000, 0)])
     source = _two_route_source(direct, easier)
     config = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    config.compilation.agent.review_statuses = (TrafficLight.GREEN,)
     runtime = FakeAgentRuntime(
         {
             AgentRole.SYNTHESISER: [

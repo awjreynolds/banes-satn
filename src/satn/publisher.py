@@ -26,7 +26,7 @@ from shapely.geometry import MultiLineString, mapping, shape
 
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
-from satn.models import CouncilConfig
+from satn.models import AgentRecord, CouncilConfig, DivergenceRecord, TrafficLight
 from satn.sources import NCN_ATTRIBUTION, OSM_ATTRIBUTION
 
 LOGGER = logging.getLogger(__name__)
@@ -385,6 +385,7 @@ def _write_json_records(
         ignore_index=True,
         sort=False,
     )
+    review_records = [*compiled.agent_records, *compiled.divergence_records]
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
@@ -396,6 +397,7 @@ def _write_json_records(
         },
         "network_model": "backbone-outward",
         "authoritative_features": _authoritative_feature_records(compiled),
+        "agent_review": _agent_review_summary(config, review_records),
         "compilation_input_fingerprint": compiled.compilation_input_fingerprint,
         "compilation_diagnostics": compiled.compilation_diagnostics,
         "connection_count": compiled.connection_count,
@@ -471,6 +473,30 @@ def _write_json_records(
     (output / "human-intervention-requests.json").write_text(
         json.dumps(intervention_requests, indent=2), encoding="utf-8"
     )
+
+
+def _agent_review_summary(
+    config: CouncilConfig,
+    records: list[AgentRecord | DivergenceRecord],
+) -> dict[str, object]:
+    return {
+        "statuses": [status.value for status in config.compilation.agent.review_statuses],
+        "reviewed_decisions": sum(record.review_required for record in records),
+        "skipped_decisions": sum(not record.review_required for record in records),
+        "decisions_by_status": {
+            status.value: {
+                "reviewed": sum(
+                    record.governing_status == status and record.review_required
+                    for record in records
+                ),
+                "skipped": sum(
+                    record.governing_status == status and not record.review_required
+                    for record in records
+                ),
+            }
+            for status in TrafficLight
+        },
+    }
 
 
 def _authoritative_feature_records(
@@ -1443,7 +1469,25 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         )
     if geopackage_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in GeoPackage")
-    agent_payload = json.loads((output / "agent-records.json").read_text(encoding="utf-8"))
+    agent_payload = json.loads(
+        (output / "agent-records.json").read_text(encoding="utf-8")
+    )
+    agent_records = [
+        AgentRecord.model_validate(record) for record in agent_payload["records"]
+    ]
+    divergence_payload = json.loads(
+        (output / "divergence-records.json").read_text(encoding="utf-8")
+    )
+    divergence_records = [
+        DivergenceRecord.model_validate(record)
+        for record in divergence_payload["records"]
+    ]
+    expected_review_summary = _agent_review_summary(
+        config,
+        [*agent_records, *divergence_records],
+    )
+    if run.get("agent_review") != expected_review_summary:
+        raise ValueError("agent review summary differs from decision records")
     accepted_agent_records = [
         record for record in agent_payload["records"] if record["decision"] == "accept"
     ]

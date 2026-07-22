@@ -8,7 +8,7 @@ from pathlib import Path
 import geopandas as gpd
 
 from satn import compile
-from satn.models import CouncilConfig
+from satn.models import CouncilConfig, TrafficLight
 from satn.sources import snapshot
 
 PROJECT = Path(__file__).parents[1]
@@ -63,6 +63,50 @@ def test_criteria_change_invalidates_all_reuse(tmp_path: Path) -> None:
 
     assert "cache" not in changed.metadata
     assert changed.run_id != original.run_id
+
+
+def test_agent_review_policy_change_invalidates_publication_reuse(tmp_path: Path) -> None:
+    config = prepared_config(tmp_path)
+    original = compile(config)
+    config.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+
+    changed = compile(config)
+
+    assert "publication_reused" not in changed.metadata
+    assert changed.run_id != original.run_id
+    assert all(record.review_policy == (TrafficLight.GREEN,) for record in changed.agent_records)
+    assert all(record.governing_status == TrafficLight.GREEN for record in changed.agent_records)
+    assert all(record.review_required is True for record in changed.agent_records)
+    assert all(record.usage["requests"] > 0 for record in changed.agent_records)
+
+
+def test_invalid_divergence_audit_prevents_publication_reuse(tmp_path: Path) -> None:
+    config = prepared_config(tmp_path)
+    first = compile(config)
+    divergences_path = first.artifacts["divergences"]
+    divergences = json.loads(divergences_path.read_text())
+    divergences["records"] = [{"connection_id": "invalid-divergence"}]
+    divergences_path.write_text(json.dumps(divergences))
+
+    recompiled = compile(config)
+
+    assert "publication_reused" not in recompiled.metadata
+    restored = json.loads(recompiled.artifacts["divergences"].read_text())
+    assert restored["records"] == []
+
+
+def test_stale_agent_review_summary_prevents_publication_reuse(tmp_path: Path) -> None:
+    config = prepared_config(tmp_path)
+    first = compile(config)
+    run = json.loads(first.artifacts["run"].read_text())
+    run["agent_review"]["reviewed_decisions"] += 1
+    first.artifacts["run"].write_text(json.dumps(run))
+
+    recompiled = compile(config)
+
+    assert "publication_reused" not in recompiled.metadata
+    restored = json.loads(recompiled.artifacts["run"].read_text())
+    assert restored["agent_review"]["reviewed_decisions"] == 0
 
 
 def test_changed_elevation_evidence_changes_run_fingerprint(

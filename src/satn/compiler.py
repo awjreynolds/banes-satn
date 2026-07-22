@@ -13,7 +13,7 @@ import networkx as nx
 import pandas as pd
 from shapely.geometry import MultiPoint
 
-from satn.agents import AgentRuntime, CompilationGate
+from satn.agents import AgentRuntimeSource, CompilationGate
 from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
 from satn.evidence import (
     continuous_linework,
@@ -25,6 +25,7 @@ from satn.identifiers import stable_id as _stable_id
 from satn.models import (
     AccessPointStatus,
     AccessServiceStatus,
+    AgentFinding,
     AgentRecord,
     CouncilConfig,
     DivergenceRecord,
@@ -108,7 +109,7 @@ class CompiledNetwork:
 def compile_network(
     config: CouncilConfig,
     source: dict[str, gpd.GeoDataFrame],
-    runtime: AgentRuntime,
+    runtime: AgentRuntimeSource,
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
     context = source.get("context", empty_context(source["network"].crs)).copy()
@@ -163,6 +164,7 @@ def compile_network(
     branch_meeting_connections = backbone.meeting_connections
     cross_spine_connectors = backbone.cross_spine_connectors
     gaps = backbone.gaps.copy()
+    agent_records = list(backbone.agent_records)
     crs = source["network"].crs
     official_road_classification = source.get("official_road_classification")
     urban = derive_urban_structure(
@@ -221,6 +223,7 @@ def compile_network(
         )
         urban_school_gaps = _urban_school_gaps(urban_school_access, crs)
         if not urban_school_gaps.empty:
+            agent_records.extend(_review_urban_school_gaps(urban_school_gaps, gate))
             gaps = gpd.GeoDataFrame(
                 pd.concat([gaps, urban_school_gaps], ignore_index=True, sort=False),
                 columns=GAP_COLUMNS,
@@ -483,16 +486,16 @@ def compile_network(
         ),
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
-        agent_records=backbone.agent_records,
+        agent_records=agent_records,
         criteria=criteria,
         network_units=network_units,
         atm_reference=None,
         divergence_records=[],
         superseded_hypotheses=sum(
-            record.decision == "superseded" for record in backbone.agent_records
+            record.decision == "superseded" for record in agent_records
         ),
         human_intervention_requests=_human_intervention_requests(
-            backbone.agent_records, config.compilation.agent.max_attempts
+            agent_records, config.compilation.agent.max_attempts
         ),
         compilation_diagnostics={
             **backbone.compilation_diagnostics,
@@ -576,6 +579,76 @@ def _urban_school_gaps(
     return gpd.GeoDataFrame(rows, columns=GAP_COLUMNS, geometry="geometry", crs=crs)
 
 
+def _review_urban_school_gaps(
+    gaps: gpd.GeoDataFrame,
+    gate: CompilationGate,
+) -> list[AgentRecord]:
+    """Apply the configured review policy to each deterministic urban School gap."""
+    records: list[AgentRecord] = []
+    criterion_columns = {
+        "endpoints": "criterion_endpoints",
+        "continuity": "criterion_continuity",
+        "bidirectional": "criterion_bidirectional",
+        "distance": "criterion_distance",
+    }
+    for index, row in gaps.sort_values("connection_id").iterrows():
+        checks = {
+            criterion: TrafficLight(str(row[column]))
+            for criterion, column in criterion_columns.items()
+        }
+        governing_criterion = (
+            "endpoints"
+            if str(row.get("access_point_status")) == AccessPointStatus.UNRESOLVED.value
+            else "continuity"
+        )
+        governing_status = checks[governing_criterion]
+        evidence_ids = tuple(json.loads(str(row.get("source_ids") or "[]")))
+        record = gate.evaluate(
+            str(row["connection_id"]),
+            {
+                "from_place": str(row["from_place"]),
+                "to_place": str(row.get("to_place") or ""),
+                "selection_reason": str(row["selection_reason"]),
+                "evidence_ids": evidence_ids,
+                "checks_by_role": {
+                    "school-access-gap": {
+                        criterion: status.value for criterion, status in checks.items()
+                    }
+                },
+            },
+            "school-access-gap",
+            ["school-access-gap"],
+            governing_criterion=governing_criterion,
+            governing_status=governing_status,
+            deterministic_decision="gap",
+        ).record
+        record.network_role = str(row["network_role"])
+        latest = record.attempts[-1] if record.attempts else None
+        reviewed_findings = [
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.deterministic_findings if latest else [])
+            ),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.critique.findings if latest and latest.critique else [])
+            ),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.red_team.findings if latest and latest.red_team else [])
+            ),
+        ]
+        existing_findings = json.loads(str(row.get("agent_findings") or "[]"))
+        gaps.at[index, "agent_outcome"] = record.outcome_reason
+        gaps.at[index, "agent_attempt_count"] = len(record.attempts)
+        gaps.at[index, "agent_findings"] = json.dumps(
+            [*existing_findings, *reviewed_findings],
+            sort_keys=True,
+        )
+        records.append(record)
+    return records
+
+
 def _human_intervention_requests(
     records: list[AgentRecord],
     maximum_attempts: int,
@@ -590,23 +663,23 @@ def _human_intervention_requests(
             continue
         latest = record.attempts[-1]
         findings = [
-            *latest.get("findings", []),
-            *latest.get("deterministic_findings", []),
-            *latest.get("critique", {}).get("findings", []),
-            *latest.get("red_team", {}).get("findings", []),
+            *latest.findings,
+            *latest.deterministic_findings,
+            *(latest.critique.findings if latest.critique else []),
+            *(latest.red_team.findings if latest.red_team else []),
         ]
         blocking = [
             finding
             for finding in findings
-            if finding.get("severity") == "blocking" and _is_material_ambiguity(finding)
+            if finding.severity == "blocking" and _is_material_ambiguity(finding)
         ]
         if not blocking:
             continue
         choices = sorted(
             {
-                str(attempt.get("proposal", {}).get("selected_role"))
+                str(attempt.proposal.selected_role)
                 for attempt in record.attempts
-                if attempt.get("proposal", {}).get("selected_role")
+                if attempt.proposal and attempt.proposal.selected_role
             }
         )
         requests.append(
@@ -614,13 +687,17 @@ def _human_intervention_requests(
                 request_id=f"human-intervention-{hashlib.sha256(record.connection_id.encode()).hexdigest()[:12]}",
                 connection_id=record.connection_id,
                 reason=record.outcome_reason,
-                attempted_revisions=record.attempts,
-                unresolved_findings=blocking,
+                attempted_revisions=[
+                    attempt.model_dump(mode="json") for attempt in record.attempts
+                ],
+                unresolved_findings=[
+                    finding.model_dump(mode="json") for finding in blocking
+                ],
                 missing_evidence=sorted(
                     {
                         str(evidence_id)
                         for finding in blocking
-                        for evidence_id in finding.get("evidence_ids", [])
+                        for evidence_id in finding.evidence_ids
                     }
                 ),
                 choices=choices,
@@ -633,9 +710,9 @@ def _human_intervention_requests(
     return requests
 
 
-def _is_material_ambiguity(finding: dict[str, object]) -> bool:
+def _is_material_ambiguity(finding: AgentFinding) -> bool:
     """Distinguish a missing human fact from an ordinary failed route criterion."""
-    text = " ".join(str(finding.get(field, "")).lower() for field in ("code", "message"))
+    text = f"{finding.code} {finding.message}".lower()
     return any(
         marker in text
         for marker in ("ambiguous", "ambiguity", "missing-evidence", "missing evidence")

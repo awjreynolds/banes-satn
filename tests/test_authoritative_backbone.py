@@ -7,7 +7,7 @@ from test_backbone_assembly import parallel_spine_source
 
 from satn.agents import FakeAgentRuntime
 from satn.compiler import _human_intervention_requests, compile_network
-from satn.models import AgentRecord, CouncilConfig
+from satn.models import AgentRecord, CouncilConfig, TrafficLight
 from satn.publisher import _write_backbone_comparison
 
 PROJECT = Path(__file__).parents[1]
@@ -44,7 +44,7 @@ def test_only_exhausted_material_ambiguity_requests_human_intervention() -> None
     attempts = [
         {
             "attempt": attempt,
-            "proposal": {"selected_role": "direct"},
+            "proposal": {"selected_role": "direct", "rationale": "Candidate route."},
             "deterministic_findings": [
                 {
                     "code": "missing-evidence",
@@ -58,11 +58,19 @@ def test_only_exhausted_material_ambiguity_requests_human_intervention() -> None
     ]
     record = AgentRecord(
         connection_id="spine-access-ambiguous",
+        governing_criterion="continuity",
+        governing_status=TrafficLight.AMBER,
+        review_policy=(TrafficLight.AMBER, TrafficLight.RED),
+        review_required=True,
         runtime="fake",
         model="fake",
-        proposal="direct",
-        critique="blocking",
-        revision="exhausted",
+        proposal={"selected_role": "direct", "rationale": "Candidate route."},
+        critique={"summary": "Blocking ambiguity."},
+        revision={
+            "decision": "gap",
+            "selected_role": "direct",
+            "rationale": "Attempts exhausted.",
+        },
         decision="gap",
         outcome_reason="Compilation gate exhausted its bounded attempts.",
         attempts=attempts,
@@ -74,7 +82,9 @@ def test_only_exhausted_material_ambiguity_requests_human_intervention() -> None
     assert requests[0].connection_id == record.connection_id
     assert requests[0].missing_evidence == ["evidence-needed"]
     assert requests[0].smallest_human_input
-    partial = record.model_copy(update={"attempts": attempts[:2]})
+    partial = AgentRecord.model_validate(
+        {**record.model_dump(), "attempts": attempts[:2]}
+    )
     assert _human_intervention_requests([partial], 3) == []
 
     no_progress = partial.model_copy(
@@ -82,8 +92,9 @@ def test_only_exhausted_material_ambiguity_requests_human_intervention() -> None
     )
     assert len(_human_intervention_requests([no_progress], 3)) == 1
 
-    routine_failure = record.model_copy(
-        update={
+    routine_failure = AgentRecord.model_validate(
+        {
+            **record.model_dump(),
             "attempts": [
                 {
                     **attempt,
@@ -98,7 +109,7 @@ def test_only_exhausted_material_ambiguity_requests_human_intervention() -> None
                 }
                 for attempt in attempts
             ]
-        }
+        },
     )
     assert _human_intervention_requests([routine_failure], 3) == []
 

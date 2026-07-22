@@ -11,11 +11,12 @@ import pandas as pd
 
 from satn.agents import (
     AgentRole,
-    AgentRuntime,
+    AgentRuntimeSource,
     DivergenceAssessment,
     DivergenceInput,
+    materialize_agent_runtime,
 )
-from satn.models import CouncilConfig, DivergenceRecord
+from satn.models import AgentConfig, CouncilConfig, DivergenceRecord, TrafficLight
 from satn.routing import RouteOption
 
 if TYPE_CHECKING:
@@ -70,7 +71,7 @@ def choose_seeded_alignment(
 def compare_atm(
     compiled: CompiledNetwork,
     atm: gpd.GeoDataFrame,
-    runtime: AgentRuntime,
+    runtime: AgentRuntimeSource,
     config: CouncilConfig,
 ) -> list[DivergenceRecord]:
     connections = _authoritative_connections(compiled).to_crs(27700)
@@ -100,6 +101,7 @@ def compare_atm(
                 status,
                 atm_ids,
                 min(float(overlap), 1.0),
+                config.compilation.agent,
             )
         )
 
@@ -107,7 +109,16 @@ def compare_atm(
         atm_id = feature["_atm_id"]
         if atm_id in matched_atm_ids:
             continue
-        records.append(_assess(runtime, f"atm:{atm_id}", "omission", [atm_id], 0.0))
+        records.append(
+            _assess(
+                runtime,
+                f"atm:{atm_id}",
+                "omission",
+                [atm_id],
+                0.0,
+                config.compilation.agent,
+            )
+        )
     return records
 
 
@@ -126,12 +137,29 @@ def _authoritative_connections(compiled: CompiledNetwork) -> gpd.GeoDataFrame:
 
 
 def _assess(
-    runtime: AgentRuntime,
+    runtime: AgentRuntimeSource,
     connection_id: str,
     status: str,
     atm_ids: list[str],
     overlap: float,
+    agent_config: AgentConfig,
 ) -> DivergenceRecord:
+    governing_status = TrafficLight.GREEN if status == "match" else TrafficLight.AMBER
+    review = agent_config.review_decision(governing_status)
+    if not review.review_required:
+        return DivergenceRecord(
+            connection_id=connection_id,
+            status=status,
+            **review.model_dump(),
+            atm_feature_ids=atm_ids,
+            overlap_ratio=overlap,
+            explanation=(
+                f"Agent review skipped by policy; governed geometry comparison is {status}."
+            ),
+            resolution_attempts=[],
+            resolved=status == "match",
+        )
+    active_runtime = materialize_agent_runtime(runtime)
     payload = DivergenceInput(
         connection_id=connection_id,
         status=status,
@@ -139,12 +167,13 @@ def _assess(
         overlap_ratio=overlap,
     )
     try:
-        reply = runtime.run(AgentRole.DIVERGENCE, payload, DivergenceAssessment)
+        reply = active_runtime.run(AgentRole.DIVERGENCE, payload, DivergenceAssessment)
         assessment = DivergenceAssessment.model_validate(reply.output)
         attempts = [assessment.model_dump() | {"attempt": 1, "tokens": reply.tokens}]
         return DivergenceRecord(
             connection_id=connection_id,
             status=status,
+            **review.model_dump(),
             atm_feature_ids=atm_ids,
             overlap_ratio=overlap,
             explanation=assessment.explanation,
@@ -155,6 +184,7 @@ def _assess(
         return DivergenceRecord(
             connection_id=connection_id,
             status=status,
+            **review.model_dump(),
             atm_feature_ids=atm_ids,
             overlap_ratio=overlap,
             explanation=f"Divergence review failed: {error}",
