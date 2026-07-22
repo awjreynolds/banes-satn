@@ -12,7 +12,7 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString, MultiLineString, MultiPoint
-from shapely.ops import unary_union
+from shapely.ops import linemerge
 
 from satn.agents import AgentRuntime, CompilationGate
 from satn.atm import choose_seeded_alignment
@@ -89,7 +89,7 @@ def compile_network(
     road_graph = RoadGraph(routable_network)
     gate = CompilationGate(runtime, config.compilation.agent)
     attachments = _network_place_attachments(places, participants, road_graph)
-    strategic_spines = _strategic_spines(context, places)
+    strategic_spines = _strategic_spines(context)
     spine_access_connections = _first_spine_access_connection(
         communities, strategic_spines, road_graph, attachments
     )
@@ -676,11 +676,8 @@ def _stable_role_id(prefix: str, *parts: object) -> str:
     return f"{prefix}-{hashlib.sha256(value.encode()).hexdigest()[:12]}"
 
 
-def _strategic_spines(
-    context: gpd.GeoDataFrame,
-    places: gpd.GeoDataFrame,
-) -> gpd.GeoDataFrame:
-    """Promote only rural portions of governed A-road and established NCN evidence."""
+def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Promote explicitly rural, governed A-road and established NCN evidence."""
     columns = [
         "spine_id",
         "network_role",
@@ -689,95 +686,91 @@ def _strategic_spines(
         "category",
         "evidence_id",
         "source_id",
+        "network_scope",
         "intervention_assumption",
         "design_status",
         "provenance",
         "geometry",
     ]
+    network_scope = context.get(
+        "network_scope", pd.Series("unresolved", index=context.index, dtype=object)
+    )
     candidates = context[
         context["feature_type"].isin(["a-road-spine", "ncn-route"])
-    ].to_crs(27700)
-    place_class = places.get("place_class", pd.Series(index=places.index, dtype=object))
-    urban = places[
-        (places["kind"] == "community")
-        & pd.Series(place_class, index=places.index).isin(
-            ["suburb", "quarter", "neighbourhood"]
-        )
+        & network_scope.eq("rural")
     ]
-    urban_zone = (
-        urban.to_crs(27700).geometry.buffer(2000).union_all()
-        if not urban.empty
-        else None
-    )
     rows: list[dict[str, object]] = []
     for feature_type, spine_kind in (
         ("a-road-spine", "a-road"),
         ("ncn-route", "ncn"),
     ):
         for _, evidence in candidates[candidates["feature_type"] == feature_type].iterrows():
-            geometry = (
-                evidence.geometry.difference(urban_zone)
-                if urban_zone is not None
-                else evidence.geometry
-            )
-            geometry = _linework(geometry)
-            if geometry is None or geometry.is_empty:
-                continue
             evidence_id = str(evidence.get("evidence_id", evidence.get("source_id", "")))
             source_id = str(evidence.get("source_id", evidence_id))
             is_a_road = spine_kind == "a-road"
-            rows.append(
-                {
-                    "spine_id": _stable_role_id(
-                        "strategic-spine", spine_kind, evidence_id, source_id
-                    ),
-                    "network_role": "strategic-spine",
-                    "spine_kind": spine_kind,
-                    "name": evidence.get("name"),
-                    "category": evidence.get("category"),
-                    "evidence_id": evidence_id,
-                    "source_id": source_id,
-                    "intervention_assumption": (
-                        "Major engineering required to provide high-quality protected or "
-                        "shared provision"
-                        if is_a_road
-                        else (
-                            "Established National Cycle Network route retained as governed evidence"
-                        )
-                    ),
-                    "design_status": (
-                        "strategic assumption; not a carriageway or final design"
-                        if is_a_road
-                        else "established route evidence; not a final design"
-                    ),
-                    "provenance": json.dumps(
-                        {
-                            "evidence_id": evidence_id,
-                            "source_id": source_id,
-                            "source_feature_type": feature_type,
-                        },
-                        sort_keys=True,
-                    ),
-                    "geometry": geometry,
-                }
-            )
-    frame = gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=27700)
-    return frame.to_crs(context.crs)
+            for geometry in _continuous_linework(evidence.geometry):
+                segment_key = hashlib.sha256(geometry.wkb).hexdigest()[:12]
+                rows.append(
+                    {
+                        "spine_id": _stable_role_id(
+                            "strategic-spine",
+                            spine_kind,
+                            evidence_id,
+                            source_id,
+                            segment_key,
+                        ),
+                        "network_role": "strategic-spine",
+                        "spine_kind": spine_kind,
+                        "name": evidence.get("name"),
+                        "category": evidence.get("category"),
+                        "evidence_id": evidence_id,
+                        "source_id": source_id,
+                        "network_scope": "rural",
+                        "intervention_assumption": (
+                            "Major engineering required to provide high-quality protected or "
+                            "shared provision"
+                            if is_a_road
+                            else (
+                                "Established National Cycle Network route retained as governed "
+                                "evidence"
+                            )
+                        ),
+                        "design_status": (
+                            "strategic assumption; not a carriageway or final design"
+                            if is_a_road
+                            else "established route evidence; not a final design"
+                        ),
+                        "provenance": json.dumps(
+                            {
+                                "evidence_id": evidence_id,
+                                "source_id": source_id,
+                                "source_feature_type": feature_type,
+                                "network_scope": "rural",
+                            },
+                            sort_keys=True,
+                        ),
+                        "geometry": geometry,
+                    }
+                )
+    return gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=context.crs)
 
 
-def _linework(geometry: object) -> object | None:
+def _continuous_linework(geometry: object) -> list[LineString]:
     if geometry is None or geometry.is_empty:
-        return None
-    if isinstance(geometry, (LineString, MultiLineString)):
-        return geometry
+        return []
+    if isinstance(geometry, LineString):
+        return [geometry]
+    if isinstance(geometry, MultiLineString):
+        merged = linemerge(geometry)
+        if isinstance(merged, LineString):
+            return [merged]
+        return sorted(list(merged.geoms), key=lambda line: line.wkb_hex)
     if hasattr(geometry, "geoms"):
-        lines = [
-            part
-            for part in geometry.geoms
-            if isinstance(part, (LineString, MultiLineString)) and not part.is_empty
-        ]
-        return unary_union(lines) if lines else None
-    return None
+        return sorted(
+            [line for part in geometry.geoms for line in _continuous_linework(part)],
+            key=lambda line: line.wkb_hex,
+        )
+    return []
 
 
 def _first_spine_access_connection(
@@ -837,6 +830,10 @@ def _first_spine_access_connection(
             for end_node, end_snap in targets:
                 option = graph.option(start_node, end_node, "direct")
                 if option is None or not option.bidirectional:
+                    continue
+                if not option.geometry.intersects(community.geometry):
+                    continue
+                if not option.geometry.intersects(spine.geometry):
                     continue
                 total_distance_km = option.length_km + (start_snap + end_snap) / 1000
                 route_rank = (

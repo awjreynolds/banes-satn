@@ -18,6 +18,7 @@ CONTEXT_COLUMNS = [
     "category",
     "source_id",
     "feature_count",
+    "network_scope",
     "geometry",
 ]
 
@@ -203,6 +204,7 @@ def _row(
     geometry: object,
     *,
     feature_count: int = 1,
+    network_scope: str = "unresolved",
 ) -> dict[str, object]:
     digest = hashlib.sha256(f"{feature_type}:{identity}".encode()).hexdigest()[:12]
     return {
@@ -212,6 +214,7 @@ def _row(
         "category": category,
         "source_id": source_id,
         "feature_count": feature_count,
+        "network_scope": network_scope,
         "geometry": geometry,
     }
 

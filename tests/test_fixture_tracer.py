@@ -83,6 +83,10 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert spine_access.iloc[0]["spine_id"] in set(strategic_spines["spine_id"])
     assert spine_access.iloc[0]["network_role"] == "spine-access-connection"
     assert json.loads(spine_access.iloc[0]["source_ids"])
+    target_spine = strategic_spines[
+        strategic_spines["spine_id"] == spine_access.iloc[0]["spine_id"]
+    ].iloc[0]
+    assert spine_access.iloc[0].geometry.intersects(target_spine.geometry)
     assert result.metadata["strategic_spines"] == 2
     assert result.metadata["access_obligations"] == 1
     assert result.metadata["spine_access_connections"] == 1
@@ -91,6 +95,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert obligation.iloc[0]["access_connection_id"] == spine_access.iloc[0][
         "access_connection_id"
     ]
+    assert spine_access.iloc[0].geometry.intersects(obligation.iloc[0].geometry)
     assert result.metadata["strategic_spine_records"][0]["spine_id"] in set(
         strategic_spines["spine_id"]
     )

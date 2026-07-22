@@ -90,6 +90,12 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
     assert list(context.loc[context["feature_type"] == "ncn-route", "source_id"]) == [
         "relation-24"
     ]
+    assert set(
+        context.loc[
+            context["feature_type"].isin(["a-road-spine", "ncn-route"]),
+            "network_scope",
+        ]
+    ) == {"unresolved"}
 
 
 def test_ncn_evidence_informs_alignment_without_overriding_an_a_road_spine() -> None:

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import geopandas as gpd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiLineString, Point
 
 from satn.agents import FakeAgentRuntime
 from satn.compiler import compile_network
@@ -294,6 +294,7 @@ def test_disconnected_spine_evidence_cannot_become_a_validated_access() -> None:
                 "category": "National Cycle Network",
                 "source_id": "far-ncn",
                 "feature_count": 1,
+                "network_scope": "rural",
                 "geometry": LineString([(1, 1), (1.1, 1)]),
             }
         ],
@@ -317,6 +318,68 @@ def test_disconnected_spine_evidence_cannot_become_a_validated_access() -> None:
     assert compiled.criteria["spine_network"]["first_reachable_access"] == "red"
 
 
+def test_distant_community_snap_cannot_become_a_served_access_obligation() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0.01),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0.01),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges(
+        [
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A1",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "rural-a1",
+                "feature_type": "a-road-spine",
+                "name": "A1",
+                "category": "A-road strategic spine",
+                "source_id": "a1",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": LineString([(0, 0), (0.1, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert len(compiled.strategic_spines) == 1
+    assert compiled.spine_access_connections.empty
+    assert compiled.access_obligations.empty
+
+
 def test_urban_a_road_evidence_is_not_promoted_to_a_rural_strategic_spine() -> None:
     places = gpd.GeoDataFrame(
         [
@@ -324,14 +387,14 @@ def test_urban_a_road_evidence_is_not_promoted_to_a_rural_strategic_spine() -> N
                 "place_id": "west",
                 "name": "West",
                 "kind": "community",
-                "place_class": "neighbourhood",
+                "place_class": "town",
                 "geometry": Point(0, 0),
             },
             {
                 "place_id": "east",
                 "name": "East",
                 "kind": "community",
-                "place_class": "neighbourhood",
+                "place_class": "town",
                 "geometry": Point(0.01, 0),
             },
         ],
@@ -356,6 +419,7 @@ def test_urban_a_road_evidence_is_not_promoted_to_a_rural_strategic_spine() -> N
                 "category": "A-road strategic spine",
                 "source_id": "a1",
                 "feature_count": 1,
+                "network_scope": "urban",
                 "geometry": LineString([(0, 0), (0.01, 0)]),
             }
         ],
@@ -374,3 +438,66 @@ def test_urban_a_road_evidence_is_not_promoted_to_a_rural_strategic_spine() -> N
     )
 
     assert compiled.strategic_spines.empty
+
+
+def test_disconnected_rural_evidence_becomes_separately_identified_continuous_spines() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0),
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.3, 0),
+            },
+        ],
+        crs=4326,
+    )
+    network = edges(
+        [
+            {
+                "osmid": "whole-route",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (0.3, 0)]),
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "split-ncn",
+                "feature_type": "ncn-route",
+                "name": "NCN 1",
+                "category": "National Cycle Network",
+                "source_id": "split-ncn",
+                "feature_count": 2,
+                "network_scope": "rural",
+                "geometry": MultiLineString(
+                    [[(0, 0), (0.1, 0)], [(0.2, 0), (0.3, 0)]]
+                ),
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert len(compiled.strategic_spines) == 2
+    assert len(set(compiled.strategic_spines["spine_id"])) == 2
+    assert set(compiled.strategic_spines.geometry.geom_type) == {"LineString"}
