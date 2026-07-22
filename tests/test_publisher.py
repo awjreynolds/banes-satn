@@ -421,5 +421,7 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert "School Street Candidate Assessments" in review_html
     assert "Green — Promising" in review_html
     assert "Grey — Not Evaluated" in review_html
-    assert '"network_scope"], "urban"' in review_js
+    assert '"network_scope"], "urban"' not in review_js
+    assert 'id: "ncn-route-evidence"' in review_js
+    assert 'id: "ncn-link-evidence"' in review_js
     assert '"low-traffic-area-portal"].includes' in review_js

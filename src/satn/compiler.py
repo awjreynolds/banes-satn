@@ -36,7 +36,10 @@ from satn.topography import (
     empty_elevation_evidence,
 )
 from satn.urban import derive_urban_structure
+from satn.urban_community import assess_urban_community_access, urban_community_gaps
 from satn.urban_school import assess_urban_school_access
+
+URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M = 100.0
 
 
 @dataclass
@@ -140,6 +143,34 @@ def compile_network(
     urban_classification_unknowns = urban.classification_unknowns
     low_traffic_areas = urban.low_traffic_areas
     low_traffic_area_portals = urban.low_traffic_area_portals
+    urban_communities = _urban_communities(communities, config)
+    urban_community_access = assess_urban_community_access(
+        urban_communities,
+        source["network"],
+        low_traffic_areas,
+        low_traffic_area_portals,
+        urban_spines,
+        road_graph,
+        attachment_maximum_m=config.source.urban_scope_buffer_km * 1000.0,
+    )
+    if not urban_community_access.empty:
+        access_obligations = gpd.GeoDataFrame(
+            pd.concat(
+                [access_obligations, urban_community_access],
+                ignore_index=True,
+                sort=False,
+            ),
+            geometry="geometry",
+            crs=crs,
+        )
+        urban_gaps = urban_community_gaps(urban_community_access, crs)
+        if not urban_gaps.empty:
+            gaps = gpd.GeoDataFrame(
+                pd.concat([gaps, urban_gaps], ignore_index=True, sort=False),
+                columns=GAP_COLUMNS,
+                geometry="geometry",
+                crs=crs,
+            ).sort_values("connection_id")
     urban_school_access = assess_urban_school_access(
         _urban_schools(context),
         source["network"],
@@ -210,8 +241,16 @@ def compile_network(
     crossing_warnings = _backbone_crossing_warnings(
         spine_access_connections, branch_meeting_connections
     )
-    obligation_status = _access_obligation_status(access_obligations)
-    covered = obligation_status in {TrafficLight.GREEN, TrafficLight.AMBER}
+    community_coverage, community_accounting = _community_coverage(
+        communities,
+        rural_communities,
+        urban_communities,
+        access_obligations,
+    )
+    urban_a_road_coverage, urban_a_road_coverage_status = _urban_a_road_spine_coverage(
+        context,
+        urban_spines,
+    )
     network_units = _backbone_network_units(
         spine_access_branches,
         branch_meeting_connections,
@@ -227,7 +266,10 @@ def compile_network(
             ),
         },
         "network": {
-            "community_coverage": (TrafficLight.GREEN if covered else TrafficLight.RED),
+            "community_coverage": community_accounting["total"],
+            "rural_community_accounting": community_accounting["rural"],
+            "urban_community_accounting": community_accounting["urban"],
+            "community_accounting": community_accounting["total"],
             "authoritative_model": TrafficLight.GREEN,
             "legacy_pairwise_absent": TrafficLight.GREEN,
             "intervention_coverage": (
@@ -305,6 +347,7 @@ def compile_network(
                 if urban_classification_status == UrbanClassificationStatus.EXPLICIT_UNKNOWN
                 else TrafficLight.RED
             ),
+            "urban_a_road_evidence_coverage": urban_a_road_coverage_status,
             "ncn_kept_as_permeability_evidence": TrafficLight.GREEN,
             "candidate_low_traffic_areas": (
                 TrafficLight.GREEN if not low_traffic_areas.empty else TrafficLight.GREY
@@ -323,6 +366,7 @@ def compile_network(
                 else TrafficLight.RED
             ),
             "urban_school_area_access": _access_obligation_status(urban_school_access),
+            "urban_community_area_access": _access_obligation_status(urban_community_access),
         },
         "school_street_candidate_assessments": {
             "all_in_scope_schools_assessed": (
@@ -379,7 +423,7 @@ def compile_network(
         branch_meeting_connections=branch_meeting_connections,
         cross_spine_connectors=cross_spine_connectors,
         a_road_spines=_context_frame(context, "a-road-spine"),
-        ncn_routes=_context_frame(context, "ncn-route"),
+        ncn_routes=context[context["feature_type"].isin(["ncn-route", "ncn-link"])].copy(),
         schools=_context_frame(context, "school"),
         school_street_assessments=school_street_assessments,
         topography_profiles=topography_profiles,
@@ -418,7 +462,11 @@ def compile_network(
         human_intervention_requests=_human_intervention_requests(
             backbone.agent_records, config.compilation.agent.max_attempts
         ),
-        compilation_diagnostics=backbone.compilation_diagnostics,
+        compilation_diagnostics={
+            **backbone.compilation_diagnostics,
+            "community_coverage": community_coverage,
+            "urban_a_road_spine_coverage": urban_a_road_coverage,
+        },
     )
 
 
@@ -661,6 +709,56 @@ def _context_frame(context: gpd.GeoDataFrame, feature_type: str) -> gpd.GeoDataF
     return context[context["feature_type"] == feature_type].copy()
 
 
+def _urban_a_road_spine_coverage(
+    context: gpd.GeoDataFrame,
+    urban_spines: gpd.GeoDataFrame,
+) -> tuple[dict[str, int | float], TrafficLight]:
+    """Measure governed urban A-road evidence represented by official A-road spines."""
+    feature_type = context.get("feature_type", pd.Series("", index=context.index, dtype=object))
+    network_scope = context.get("network_scope", pd.Series("", index=context.index, dtype=object))
+    evidence = context[
+        feature_type.eq("a-road-spine") & network_scope.eq(NetworkScope.URBAN.value)
+    ].copy()
+    evidence = evidence[evidence.geometry.notna() & ~evidence.geometry.is_empty]
+    if evidence.empty:
+        return (
+            {
+                "source_alignment_tolerance_m": (URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M),
+                "evidence_segment_count": 0,
+                "total_km": 0.0,
+                "unmatched_km": 0.0,
+            },
+            TrafficLight.GREY,
+        )
+
+    source_geometry = evidence.to_crs(27700).geometry.union_all()
+    official_a_roads = urban_spines[
+        urban_spines.get(
+            "official_classification",
+            pd.Series("", index=urban_spines.index, dtype=object),
+        ).eq("a-road")
+    ]
+    unmatched_geometry = source_geometry
+    if not official_a_roads.empty:
+        represented_corridor = (
+            official_a_roads.to_crs(27700)
+            .geometry.buffer(URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M)
+            .union_all()
+        )
+        unmatched_geometry = source_geometry.difference(represented_corridor)
+    unmatched_length_m = float(unmatched_geometry.length)
+    diagnostics: dict[str, int | float] = {
+        "source_alignment_tolerance_m": URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M,
+        "evidence_segment_count": len(evidence),
+        "total_km": round(float(source_geometry.length) / 1000.0, 3),
+        "unmatched_km": round(unmatched_length_m / 1000.0, 3),
+    }
+    return (
+        diagnostics,
+        TrafficLight.GREEN if unmatched_length_m <= 0.01 else TrafficLight.RED,
+    )
+
+
 def _rural_communities(
     communities: gpd.GeoDataFrame,
     config: CouncilConfig,
@@ -669,6 +767,71 @@ def _rural_communities(
         "place_class", pd.Series("", index=communities.index, dtype=object)
     )
     return communities[~place_class.isin(config.source.urban_place_types)].copy()
+
+
+def _urban_communities(
+    communities: gpd.GeoDataFrame,
+    config: CouncilConfig,
+) -> gpd.GeoDataFrame:
+    """Return every identified Community governed as urban by council configuration."""
+    place_class = communities.get(
+        "place_class", pd.Series("", index=communities.index, dtype=object)
+    )
+    return communities[place_class.isin(config.source.urban_place_types)].copy()
+
+
+def _community_coverage(
+    communities: gpd.GeoDataFrame,
+    rural_communities: gpd.GeoDataFrame,
+    urban_communities: gpd.GeoDataFrame,
+    obligations: gpd.GeoDataFrame,
+) -> tuple[dict[str, int], dict[str, TrafficLight]]:
+    """Prove identified Communities equal served Communities plus visible gaps."""
+    community_obligations = obligations[obligations["obligation_kind"] == "community"].copy()
+
+    def account(
+        identified: gpd.GeoDataFrame,
+    ) -> tuple[int, int, int, TrafficLight]:
+        expected = set(identified["place_id"].astype(str))
+        selected = community_obligations[
+            community_obligations["community_id"].astype(str).isin(expected)
+        ]
+        served = int(
+            selected["service_status"]
+            .isin(
+                [
+                    AccessServiceStatus.SERVED.value,
+                    AccessServiceStatus.SERVED_PROVISIONAL.value,
+                ]
+            )
+            .sum()
+        )
+        gaps = int((selected["service_status"] == AccessServiceStatus.NETWORK_GAP.value).sum())
+        actual = selected["community_id"].astype(str)
+        valid = (
+            len(expected) == served + gaps
+            and not actual.duplicated().any()
+            and set(actual) == expected
+        )
+        return len(expected), served, gaps, TrafficLight.GREEN if valid else TrafficLight.RED
+
+    rural = account(rural_communities)
+    urban = account(urban_communities)
+    total = account(communities)
+    return (
+        {
+            "identified_rural": rural[0],
+            "served_rural": rural[1],
+            "gaps_rural": rural[2],
+            "identified_urban": urban[0],
+            "served_urban": urban[1],
+            "gaps_urban": urban[2],
+            "identified_total": total[0],
+            "served_total": total[1],
+            "gaps_total": total[2],
+        },
+        {"rural": rural[3], "urban": urban[3], "total": total[3]},
+    )
 
 
 def _rural_schools(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -802,10 +965,11 @@ def _degree_one_access_valid(
     obligations: gpd.GeoDataFrame,
     connections: gpd.GeoDataFrame,
 ) -> bool:
-    """Prove that every served Community is a valid leaf with one parent edge."""
+    """Prove that every served rural Community is a leaf with one parent edge."""
     served = obligations[
         (obligations["obligation_kind"] == "community")
         & (obligations["service_status"] == "served")
+        & (obligations["network_role"] == "community-access-obligation")
     ]
     community_connections = connections[connections["obligation_kind"] == "community"]
     if community_connections["place_id"].duplicated().any():

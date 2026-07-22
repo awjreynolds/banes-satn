@@ -9,9 +9,9 @@
     "spine_access_connection_count": 63,
     "branch_meeting_connection_count": 16,
     "cross_spine_connector_count": 16,
-    "served_obligation_count": 62,
-    "network_gap_count": 85,
-    "linework_length_m": 82678.4,
+    "served_obligation_count": 136,
+    "network_gap_count": 74,
+    "linework_length_m": 82939.8,
     "typed_role_count": 79,
     "selection_rationale_count": 79
   },
@@ -47,7 +47,7 @@
   },
   "visual_noise": {
     "connection_count_delta": -84,
-    "linework_length_m_delta": -236970.6
+    "linework_length_m_delta": -236709.2
   },
   "explainability": {
     "all_current_connections_have_typed_roles": true,

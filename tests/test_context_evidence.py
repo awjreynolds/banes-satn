@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import geopandas as gpd
+import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
 from satn.evidence import derive_context_layers, govern_network_scope, mark_ncn_edges
@@ -34,6 +35,12 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
                 "route": "bicycle",
                 "ref": "Local 4",
                 "geometry": LineString([(0, 0.01), (0.02, 0.01)]),
+            },
+            {
+                "SegmentID": "official-link-24",
+                "RouteType": "LINK",
+                "RouteNo": "24",
+                "geometry": LineString([(0.02, 0), (0.021, 0)]),
             },
         ],
         crs=4326,
@@ -80,6 +87,7 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
     assert counts == {
         "a-road-spine": 1,
         "healthcare": 1,
+        "ncn-link": 1,
         "ncn-route": 1,
         "retail-centre": 1,
         "school": 1,
@@ -88,12 +96,45 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
     assert retail["name"] == "High Street retail centre"
     assert retail["feature_count"] == 3
     assert list(context.loc[context["feature_type"] == "ncn-route", "source_id"]) == ["relation-24"]
+    ncn = context[context["feature_type"].isin(["ncn-route", "ncn-link"])].set_index("source_id")
+    assert ncn.loc["relation-24", "ncn_evidence_role"] == "established-route"
+    assert ncn.loc["official-link-24", "ncn_evidence_role"] == "connector-link"
+    assert ncn.loc["official-link-24", "category"] == "National Cycle Network connector link"
     assert set(
         context.loc[
             context["feature_type"].isin(["a-road-spine", "ncn-route"]),
             "network_scope",
         ]
     ) == {"unresolved"}
+
+
+def test_geojson_array_tags_remain_a_road_and_ncn_evidence() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "shared-a-roads",
+                "ref": np.array(["A4", "A46"], dtype=object),
+                "geometry": LineString([(0, 0), (0.02, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+    ncn = gpd.GeoDataFrame(
+        [
+            {
+                "SegmentID": "ncn-array",
+                "network": np.array(["ncn"], dtype=object),
+                "RouteNo": np.array(["4", "410"], dtype=object),
+                "geometry": LineString([(0, 0), (0.02, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    context = derive_context_layers(network, ncn)
+
+    assert list(context.loc[context["feature_type"] == "a-road-spine", "name"]) == ["A4 / A46"]
+    assert list(context.loc[context["feature_type"] == "ncn-route", "name"]) == ["NCN 4 / 410"]
 
 
 def test_governed_urban_extent_splits_strategic_evidence_into_typed_parts() -> None:

@@ -5,6 +5,8 @@ Network (SATN), with Bath and North East Somerset as the reference implementatio
 
 > Experimental SATN POC — not an adopted B&NES plan.
 
+**[Open the interactive network map](https://awjreynolds.github.io/banes-satn/)** — inspect Strategic Spines, access connections, National Cycle Network evidence, Candidate Low-Traffic Areas, Schools and visible Network Gaps. The map links back here for source, methodology and issue tracking.
+
 The compiler grows a rural Backbone-and-Access Network outward from governed A-road
 and established NCN Strategic Spines. Communities and Schools attach to that shared
 backbone or remain visible Network Gaps; it does not generate a nearest-neighbour

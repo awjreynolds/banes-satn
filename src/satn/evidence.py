@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import hashlib
 from collections import Counter
 
@@ -13,6 +12,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 from shapely.ops import linemerge
 
 from satn.models import NetworkScope
+from satn.tags import tag_values as _tag_values
 
 SUBSTANTIAL_CIRCULATION_BOUNDARY_M = 250.0
 
@@ -24,6 +24,7 @@ CONTEXT_COLUMNS = [
     "source_id",
     "feature_count",
     "network_scope",
+    "ncn_evidence_role",
     "school_kind",
     "school_obligation_eligible",
     "access_point_status",
@@ -79,7 +80,7 @@ def govern_network_scope(
     if not urban.empty:
         urban_extent = urban.to_crs(27700).geometry.buffer(urban_scope_buffer_km * 1000).union_all()
 
-    strategic_types = {"a-road-spine", "ncn-route"}
+    strategic_types = {"a-road-spine", "ncn-route", "ncn-link"}
     strategic = context[context["feature_type"].isin(strategic_types)]
     other = context[~context["feature_type"].isin(strategic_types)].copy()
     school_indexes = other.index[other["feature_type"] == "school"]
@@ -160,13 +161,38 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
             continue
         network_tags = {value.lower() for value in _tag_values(feature.get("network"))}
         route_type = (_text(feature.get("RouteType")) or "").lower()
-        if "ncn" not in network_tags and route_type != "ncn":
+        if route_type == "link":
+            feature_type = "ncn-link"
+            evidence_role = "connector-link"
+            category = "National Cycle Network connector link"
+        elif "ncn" in network_tags or route_type == "ncn":
+            feature_type = "ncn-route"
+            evidence_role = "established-route"
+            category = "National Cycle Network"
+        else:
             continue
         source_id = _source_id(feature, index)
         ref = " / ".join(_tag_values(feature.get("ref")) or _tag_values(feature.get("RouteNo")))
-        name = _text(feature.get("name")) or (f"NCN {ref}" if ref else "National Cycle Network")
+        default_name = (
+            f"NCN {ref} connector link"
+            if evidence_role == "connector-link" and ref
+            else "National Cycle Network connector link"
+            if evidence_role == "connector-link"
+            else f"NCN {ref}"
+            if ref
+            else "National Cycle Network"
+        )
+        name = _text(feature.get("name")) or default_name
         rows.append(
-            _row("ncn-route", source_id, name, "National Cycle Network", source_id, geometry)
+            _row(
+                feature_type,
+                source_id,
+                name,
+                category,
+                source_id,
+                geometry,
+                ncn_evidence_role=evidence_role,
+            )
         )
     return _frame(rows, target_crs)
 
@@ -573,21 +599,6 @@ def _source_id(row: pd.Series, fallback: object) -> str:
         if _text(value):
             return str(value)
     return str(fallback)
-
-
-def _tag_values(value: object) -> list[str]:
-    if value is None or (not isinstance(value, (str, list, tuple)) and bool(pd.isna(value))):
-        return []
-    if isinstance(value, (list, tuple)):
-        return [str(item) for item in value]
-    if isinstance(value, str) and value.startswith("["):
-        try:
-            parsed = ast.literal_eval(value)
-            if isinstance(parsed, list):
-                return [str(item) for item in parsed]
-        except (SyntaxError, ValueError):
-            pass
-    return [str(value)] if str(value).strip() else []
 
 
 def _text(value: object) -> str | None:

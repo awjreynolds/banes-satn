@@ -16,10 +16,13 @@ from shapely.ops import polygonize, unary_union
 from satn.evidence import continuous_linework
 from satn.identifiers import coordinate_key as _coordinate
 from satn.models import OfficialRoadClassification, UrbanClassificationStatus
-from satn.routing import LOW_TRAFFIC, _tag_values
+from satn.routing import LOW_TRAFFIC
+from satn.tags import tag_values as _tag_values
 
 URBAN_PLACE_CLASSES = {"city", "town", "suburb", "quarter", "neighbourhood"}
 TOPOLOGY_PRECISION_GRID_M = 0.01
+# Absorb normal centreline/source topology offsets without annexing nearby rural corridors.
+URBAN_A_ROAD_EVIDENCE_TOLERANCE_M = 50.0
 URBAN_SPINE_CLASSES = {
     OfficialRoadClassification.A_ROAD.value,
     OfficialRoadClassification.B_ROAD.value,
@@ -114,6 +117,19 @@ def derive_urban_structure(
         )
     projected_network = network.to_crs(27700).copy()
     urban_zone = urban.to_crs(27700).geometry.buffer(2000).union_all()
+    if context is not None and not context.empty:
+        feature_type = context.get("feature_type", pd.Series("", index=context.index, dtype=object))
+        network_scope = context.get(
+            "network_scope", pd.Series("", index=context.index, dtype=object)
+        )
+        urban_a_roads = context[feature_type.eq("a-road-spine") & network_scope.eq("urban")]
+        if not urban_a_roads.empty:
+            urban_a_road_zone = (
+                urban_a_roads.to_crs(27700)
+                .geometry.buffer(URBAN_A_ROAD_EVIDENCE_TOLERANCE_M)
+                .union_all()
+            )
+            urban_zone = unary_union([urban_zone, urban_a_road_zone])
     projected_network = projected_network[projected_network.intersects(urban_zone)].copy()
     highway = projected_network.get("highway")
     if highway is None:

@@ -286,6 +286,12 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
     )
     school_gaps = compiled.gaps[gap_roles == "school-access-gap"]
     other_gaps = compiled.gaps[gap_roles != "school-access-gap"]
+    ncn_feature_types = compiled.ncn_routes.get(
+        "feature_type",
+        pd.Series("ncn-route", index=compiled.ncn_routes.index, dtype=object),
+    )
+    established_ncn = compiled.ncn_routes[ncn_feature_types != "ncn-link"]
+    ncn_links = compiled.ncn_routes[ncn_feature_types == "ncn-link"]
     return {
         "type": "FeatureCollection",
         "name": "SATN compiled network",
@@ -312,7 +318,8 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.low_traffic_area_portals, "low-traffic-area-portal")
             + _features(compiled.crossing_warnings, "crossing-warning")
             + _features(compiled.a_road_spines, "a-road-spine")
-            + _features(compiled.ncn_routes, "ncn-route")
+            + _features(established_ncn, "ncn-route")
+            + _features(ncn_links, "ncn-link")
             + _features(compiled.schools, "school")
             + _features(
                 compiled.school_street_assessments,
@@ -1475,7 +1482,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "cross_spine_connectors": ("cross-spine-connector",),
         "gaps": ("gap", "school-access-gap"),
         "a_road_spines": ("a-road-spine",),
-        "ncn_routes": ("ncn-route",),
+        "ncn_routes": ("ncn-route", "ncn-link"),
         "urban_spines": ("urban-spine",),
         "urban_classification_unknowns": ("urban-classification-unknown",),
         "candidate_low_traffic_areas": ("low-traffic-area",),

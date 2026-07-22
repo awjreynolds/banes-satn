@@ -695,28 +695,60 @@ def _load_ncn_features(
     boundary: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
     min_x, min_y, max_x, max_y = boundary.to_crs(4326).total_bounds
-    parameters = urllib.parse.urlencode(
-        {
-            "f": "geojson",
-            "where": "RouteType = 'NCN'",
-            "geometry": f"{min_x},{min_y},{max_x},{max_y}",
-            "geometryType": "esriGeometryEnvelope",
-            "inSR": "4326",
-            "outSR": "4326",
-            "spatialRel": "esriSpatialRelIntersects",
-            "outFields": "*",
-            "returnGeometry": "true",
-        }
-    )
-    request = urllib.request.Request(
-        f"{service_url.rstrip('/')}/0/query?{parameters}",
-        headers={"User-Agent": "banes-satn/0.1 NCN snapshot"},
-    )
-    with urllib.request.urlopen(request, timeout=90) as response:
-        payload = json.load(response)
-    if "error" in payload:
-        raise ValueError(f"NCN feature service failed: {payload['error']}")
-    return gpd.GeoDataFrame.from_features(payload.get("features", []), crs=4326)
+    page_size = 2000
+    offset = 0
+    features: list[dict[str, object]] = []
+    page_fingerprints: set[str] = set()
+    while True:
+        parameters = urllib.parse.urlencode(
+            {
+                "f": "geojson",
+                "where": "RouteType IN ('NCN','LINK')",
+                "geometry": f"{min_x},{min_y},{max_x},{max_y}",
+                "geometryType": "esriGeometryEnvelope",
+                "inSR": "4326",
+                "outSR": "4326",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "*",
+                "returnGeometry": "true",
+                "resultOffset": offset,
+                "resultRecordCount": page_size,
+            }
+        )
+        request = urllib.request.Request(
+            f"{service_url.rstrip('/')}/0/query?{parameters}",
+            headers={"User-Agent": "banes-satn/0.1 NCN snapshot"},
+        )
+        with urllib.request.urlopen(request, timeout=90) as response:
+            payload = json.load(response)
+        if "error" in payload:
+            raise ValueError(f"NCN feature service failed: {payload['error']}")
+        page = payload.get("features", [])
+        if not isinstance(page, list):
+            raise ValueError("NCN feature service returned an invalid features collection")
+        fingerprint = hashlib.sha256(
+            json.dumps(page, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if page and fingerprint in page_fingerprints:
+            raise ValueError("NCN feature service repeated a page while paginating")
+        page_fingerprints.add(fingerprint)
+        features.extend(page)
+        properties = payload.get("properties")
+        transfer_limit = payload.get("exceededTransferLimit")
+        if transfer_limit is None and isinstance(properties, dict):
+            transfer_limit = properties.get("exceededTransferLimit")
+        exceeded = transfer_limit is True or str(transfer_limit).lower() == "true"
+        if exceeded and not page:
+            raise ValueError(
+                "NCN feature service reported a transfer limit without returning features"
+            )
+        if exceeded or (transfer_limit is None and len(page) == page_size):
+            offset += len(page)
+            continue
+        break
+    if not features:
+        return gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=4326)
+    return gpd.GeoDataFrame.from_features(features, crs=4326)
 
 
 def derive_network_places(

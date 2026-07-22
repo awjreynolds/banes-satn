@@ -21,7 +21,8 @@ from satn.models import (
     NetworkScope,
     TrafficLight,
 )
-from satn.routing import LOW_TRAFFIC, _tag_values
+from satn.routing import LOW_TRAFFIC
+from satn.tags import tag_values as _tag_values
 
 SCHOOL_FABRIC_CONTACT_TOLERANCE_M = 0.1
 PORTAL_CONTACT_TOLERANCE_M = 0.1

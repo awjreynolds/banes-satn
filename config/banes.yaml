@@ -24,6 +24,11 @@ source:
     - quarter
     - neighbourhood
   urban_scope_buffer_km: 2
+  official_road_classification:
+    path: ../data/governed/banes-os-open-roads-2026-04-07.geojson
+    source_id: os-open-roads-2026-04-07
+    effective_date: 2026-04-07
+    licence: Open Government Licence v3.0
 compilation:
   max_connection_km: 15
   criteria_version: "1"
