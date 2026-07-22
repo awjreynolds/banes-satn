@@ -87,18 +87,16 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.spine_access_connections.to_file(
             path, layer="spine_access_connections", driver="GPKG"
         )
+    if not compiled.spine_access_branches.empty:
+        compiled.spine_access_branches.to_file(path, layer="spine_access_branches", driver="GPKG")
     if not compiled.gaps.empty:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
     if not compiled.urban_spines.empty:
         compiled.urban_spines.to_file(path, layer="urban_spines", driver="GPKG")
     if not compiled.low_traffic_areas.empty:
-        compiled.low_traffic_areas.to_file(
-            path, layer="candidate_low_traffic_areas", driver="GPKG"
-        )
+        compiled.low_traffic_areas.to_file(path, layer="candidate_low_traffic_areas", driver="GPKG")
     if not compiled.crossing_warnings.empty:
-        compiled.crossing_warnings.to_file(
-            path, layer="crossing_warnings", driver="GPKG"
-        )
+        compiled.crossing_warnings.to_file(path, layer="crossing_warnings", driver="GPKG")
     for layer_name, frame in (
         ("a_road_spines", compiled.a_road_spines),
         ("ncn_routes", compiled.ncn_routes),
@@ -109,9 +107,7 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         if not frame.empty:
             _geopackage_safe(frame).to_file(path, layer=layer_name, driver="GPKG")
     if compiled.atm_reference is not None:
-        _geopackage_safe(compiled.atm_reference).to_file(
-            path, layer="atm_reference", driver="GPKG"
-        )
+        _geopackage_safe(compiled.atm_reference).to_file(path, layer="atm_reference", driver="GPKG")
     _metadata_frame(compiled.places.crs).to_file(path, layer="metadata", driver="GPKG")
 
 
@@ -136,7 +132,7 @@ def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, obje
     return [
         {
             "type": "Feature",
-            "id": _feature_id(row),
+            "id": _feature_id(row, feature_type),
             "properties": {
                 key: _json_value(value)
                 for key, value in row.items()
@@ -149,11 +145,24 @@ def _features(frame: gpd.GeoDataFrame, feature_type: str) -> list[dict[str, obje
     ]
 
 
-def _feature_id(row: pd.Series) -> str:
+def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
+    preferred = {
+        "access-obligation": "obligation_id",
+        "spine-access-connection": "access_connection_id",
+        "spine-access-branch": "branch_id",
+        "strategic-spine": "spine_id",
+        "connection": "connection_id",
+        "gap": "connection_id",
+    }.get(feature_type)
+    if preferred:
+        value = _json_value(row.get(preferred))
+        if value is not None:
+            return str(value)
     for key in (
         "connection_id",
         "obligation_id",
         "access_connection_id",
+        "branch_id",
         "spine_id",
         "place_id",
         "structure_id",
@@ -192,6 +201,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.strategic_spines, "strategic-spine")
             + _features(compiled.access_obligations, "access-obligation")
             + _features(compiled.spine_access_connections, "spine-access-connection")
+            + _features(compiled.spine_access_branches, "spine-access-branch")
             + _features(compiled.gaps, "gap")
             + _features(compiled.urban_spines, "urban-spine")
             + _features(compiled.low_traffic_areas, "low-traffic-area")
@@ -214,6 +224,20 @@ def _write_geojson(path: Path, compiled: CompiledNetwork) -> None:
     path.write_text(json.dumps(_network_collection(compiled), indent=2), encoding="utf-8")
 
 
+def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
+    return {
+        "strategic_spines": len(compiled.strategic_spines),
+        "access_obligations": len(compiled.access_obligations),
+        "spine_access_connections": len(compiled.spine_access_connections),
+        "spine_access_branches": len(compiled.spine_access_branches),
+        "a_road_spines": len(compiled.a_road_spines),
+        "ncn_routes": len(compiled.ncn_routes),
+        "schools": len(compiled.schools),
+        "retail_centres": len(compiled.retail_centres),
+        "healthcare": len(compiled.healthcare),
+    }
+
+
 def _write_json_records(
     output: Path,
     config: CouncilConfig,
@@ -232,16 +256,7 @@ def _write_json_records(
         "connection_count": len(compiled.connections),
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
-        "layer_counts": {
-            "strategic_spines": len(compiled.strategic_spines),
-            "access_obligations": len(compiled.access_obligations),
-            "spine_access_connections": len(compiled.spine_access_connections),
-            "a_road_spines": len(compiled.a_road_spines),
-            "ncn_routes": len(compiled.ncn_routes),
-            "schools": len(compiled.schools),
-            "retail_centres": len(compiled.retail_centres),
-            "healthcare": len(compiled.healthcare),
-        },
+        "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
         "superseded_hypotheses": compiled.superseded_hypotheses,
         "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
@@ -255,15 +270,11 @@ def _write_json_records(
         "disclaimer": DISCLAIMER,
         "records": [record.model_dump(mode="json") for record in compiled.agent_records],
     }
-    (output / "agent-records.json").write_text(
-        json.dumps(records, indent=2), encoding="utf-8"
-    )
+    (output / "agent-records.json").write_text(json.dumps(records, indent=2), encoding="utf-8")
     divergences = {
         "schema_version": SCHEMA_VERSION,
         "disclaimer": DISCLAIMER,
-        "records": [
-            record.model_dump(mode="json") for record in compiled.divergence_records
-        ],
+        "records": [record.model_dump(mode="json") for record in compiled.divergence_records],
     }
     (output / "divergence-records.json").write_text(
         json.dumps(divergences, indent=2), encoding="utf-8"
@@ -311,16 +322,7 @@ def _write_review_map(
             for section, values in compiled.criteria.items()
         },
         "disclaimer": DISCLAIMER,
-        "layer_counts": {
-            "strategic_spines": len(compiled.strategic_spines),
-            "access_obligations": len(compiled.access_obligations),
-            "spine_access_connections": len(compiled.spine_access_connections),
-            "a_road_spines": len(compiled.a_road_spines),
-            "ncn_routes": len(compiled.ncn_routes),
-            "schools": len(compiled.schools),
-            "retail_centres": len(compiled.retail_centres),
-            "healthcare": len(compiled.healthcare),
-        },
+        "layer_counts": _layer_counts(compiled),
     }
     (review / "data.js").write_text(
         f"window.SATN_DATA = {json.dumps(data).replace('</', '<\\/')};\n",
@@ -334,9 +336,7 @@ def _write_review_map(
             {
                 "schema_version": SCHEMA_VERSION,
                 "disclaimer": DISCLAIMER,
-                "records": [
-                    record.model_dump(mode="json") for record in compiled.agent_records
-                ],
+                "records": [record.model_dump(mode="json") for record in compiled.agent_records],
             },
             indent=2,
         ),
@@ -348,8 +348,7 @@ def _write_review_map(
                 "schema_version": SCHEMA_VERSION,
                 "disclaimer": DISCLAIMER,
                 "records": [
-                    record.model_dump(mode="json")
-                    for record in compiled.divergence_records
+                    record.model_dump(mode="json") for record in compiled.divergence_records
                 ],
             },
             indent=2,
@@ -405,9 +404,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
         canvas.setFillColor(HexColor("#f5f3eb"))
         canvas.setStrokeColor(HexColor("#7b8794"))
         canvas.setLineWidth(0.9)
-        _draw_geometry(
-            canvas, boundary_shape, min_x, min_y, scale, origin_x, origin_y, fill=True
-        )
+        _draw_geometry(canvas, boundary_shape, min_x, min_y, scale, origin_x, origin_y, fill=True)
 
         roads = compiled.road_context.to_crs(3857)
         context_mask = roads.get("highway", pd.Series(index=roads.index, dtype=object)).map(
@@ -420,9 +417,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
         ]
         canvas.setStrokeColor(HexColor("#d2d5d8"))
         canvas.setLineWidth(0.32)
-        _draw_line_collection(
-            canvas, road_geometries, min_x, min_y, scale, origin_x, origin_y
-        )
+        _draw_line_collection(canvas, road_geometries, min_x, min_y, scale, origin_x, origin_y)
 
         canvas.setStrokeColor(HexColor("#c56a1a"))
         canvas.setLineWidth(2.4)
@@ -586,9 +581,7 @@ def _line_coordinate_sets(geometry: object) -> list[object]:
         return [part.coords for part in geometry.geoms]
     if hasattr(geometry, "geoms"):
         return [
-            coordinates
-            for part in geometry.geoms
-            for coordinates in _line_coordinate_sets(part)
+            coordinates for part in geometry.geoms for coordinates in _line_coordinate_sets(part)
         ]
     return []
 
@@ -697,11 +690,7 @@ def _draw_pdf_places(
         name = str(place["name"])
         place_class = str(place["place_class"])
         font_size = (
-            8.4
-            if place_class == "city"
-            else 7.2
-            if place_class in {"town", "gateway"}
-            else 5.8
+            8.4 if place_class == "city" else 7.2 if place_class in {"town", "gateway"} else 5.8
         )
         font_name = "Helvetica-Bold" if place_class in {"city", "town", "gateway"} else "Helvetica"
         width = stringWidth(name, font_name, font_size)
@@ -860,6 +849,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "strategic_spines": "strategic-spine",
         "access_obligations": "access-obligation",
         "spine_access_connections": "spine-access-connection",
+        "spine_access_branches": "spine-access-branch",
         "a_road_spines": "a-road-spine",
         "ncn_routes": "ncn-route",
         "schools": "school",

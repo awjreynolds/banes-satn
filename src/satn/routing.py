@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import heapq
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from itertools import pairwise
 
 import geopandas as gpd
 import networkx as nx
+import pandas as pd
 from shapely.geometry import LineString, Point
 from shapely.ops import linemerge, unary_union
 
@@ -55,13 +57,23 @@ class RouteOption:
         }
 
 
+@dataclass(frozen=True)
+class RoutedAttachment:
+    option: RouteOption
+    start_node: str
+    start_snap_m: float
+    end_node: str
+    end_snap_m: float
+    total_distance_km: float
+
+
 class RoadGraph:
     def __init__(self, edges: gpd.GeoDataFrame):
         self.crs = edges.crs
         self.graph = nx.DiGraph()
         self.node_points: dict[str, Point] = {}
         self._shortest_lengths: dict[str, dict[str, float]] = {}
-        for index, row in edges.iterrows():
+        for index, row in sorted(edges.iterrows(), key=_edge_row_sort_key):
             geometry = row.geometry
             if not isinstance(geometry, LineString) or len(geometry.coords) < 2:
                 continue
@@ -91,8 +103,14 @@ class RoadGraph:
                 self._add_best_edge(v, u, reverse)
         self._node_ids = list(self.node_points)
         strong_components = sorted(
-            nx.strongly_connected_components(self.graph), key=len, reverse=True
+            nx.strongly_connected_components(self.graph),
+            key=lambda component: (-len(component), tuple(sorted(component))),
         )
+        self._strong_component_by_node = {
+            node: component_index
+            for component_index, component in enumerate(strong_components)
+            for node in component
+        }
         dominant = strong_components[0] if strong_components else set()
         routable_share = len(dominant) / len(self.graph) if self.graph else 0
         if routable_share >= 0.9:
@@ -112,8 +130,33 @@ class RoadGraph:
             raise ValueError("source network has no routable LineString edges")
         target = gpd.GeoSeries([point], crs=self.crs).to_crs(27700).iloc[0]
         distances = self._projected_nodes.distance(target)
-        position = int(distances.argmin())
-        return self._node_ids[position], float(distances.iloc[position])
+        return min(
+            (
+                (self._node_ids[position], float(distance))
+                for position, distance in enumerate(distances)
+            ),
+            key=lambda match: (match[1], match[0]),
+        )
+
+    def nodes_near(self, point: Point, max_distance_m: float) -> list[tuple[str, float]]:
+        """Return every bounded attachment candidate with deterministic tie-breaking."""
+        if not self.node_points:
+            raise ValueError("source network has no routable LineString edges")
+        target = gpd.GeoSeries([point], crs=self.crs).to_crs(27700).iloc[0]
+        positions = self._projected_node_index.query(
+            target.buffer(max_distance_m), predicate="intersects"
+        )
+        matches = [
+            (
+                self._node_ids[int(position)],
+                float(self._projected_nodes.iloc[int(position)].distance(target)),
+            )
+            for position in positions
+        ]
+        return sorted(
+            (match for match in matches if match[1] <= max_distance_m),
+            key=lambda match: (match[1], match[0]),
+        )
 
     def nodes_on_geometry(
         self,
@@ -147,22 +190,152 @@ class RoadGraph:
     ) -> float:
         best = float("inf")
         for start, start_snap in starts:
-            if start not in self._shortest_lengths:
-                self._shortest_lengths[start] = nx.single_source_dijkstra_path_length(
-                    self.graph, start, weight="length_m"
-                )
+            self._cache_direct_lengths(start)
             lengths = self._shortest_lengths[start]
             for end, end_snap in ends:
                 if end in lengths:
                     best = min(best, float(lengths[end]) + start_snap + end_snap)
         return best
 
-    def option(self, start: str, end: str, role: str) -> RouteOption | None:
-        weight = _weight_for(role)
+    def best_attachment(
+        self,
+        starts: list[tuple[str, float]],
+        ends: list[tuple[str, float]],
+        *,
+        allow_stationary: bool = True,
+    ) -> RoutedAttachment | None:
+        """Select one attachment with a bounded multi-source/multi-target search."""
+        end_components = {
+            self._strong_component_by_node[end]
+            for end, _ in ends
+            if end in self._strong_component_by_node
+        }
+        eligible_starts = [
+            (start, start_snap)
+            for start, start_snap in starts
+            if self._strong_component_by_node.get(start) in end_components
+        ]
+        if not eligible_starts or not ends:
+            return None
+        search_heap: list[
+            tuple[
+                float,
+                str,
+                str,
+                int,
+                list[tuple[str, float]],
+                list[tuple[str, float]],
+                tuple[float, list[str], str, float, str, float],
+            ]
+        ] = []
+        sequence = 0
+
+        def add_search(
+            search_starts: list[tuple[str, float]],
+            search_ends: list[tuple[str, float]],
+        ) -> None:
+            nonlocal sequence
+            routed = self._attachment_path(search_starts, search_ends)
+            if routed is None:
+                return
+            total_m, _, start, _, end, _ = routed
+            heapq.heappush(
+                search_heap,
+                (
+                    total_m,
+                    start,
+                    end,
+                    sequence,
+                    search_starts,
+                    search_ends,
+                    routed,
+                ),
+            )
+            sequence += 1
+
+        add_search(eligible_starts, ends)
+        while search_heap:
+            _, _, _, _, search_starts, search_ends, routed = heapq.heappop(search_heap)
+            total_m, nodes, start, start_snap, end, end_snap = routed
+            if start == end:
+                option = (
+                    _stationary_route_option(self.node_points[start])
+                    if allow_stationary
+                    else None
+                )
+            else:
+                option = self._option_from_nodes(nodes, "direct")
+            if option is not None and option.bidirectional:
+                return RoutedAttachment(
+                    option=option,
+                    start_node=start,
+                    start_snap_m=start_snap,
+                    end_node=end,
+                    end_snap_m=end_snap,
+                    total_distance_km=total_m / 1000,
+                )
+            add_search(
+                [attachment for attachment in search_starts if attachment[0] != start],
+                search_ends,
+            )
+            add_search(
+                [attachment for attachment in search_starts if attachment[0] == start],
+                [attachment for attachment in search_ends if attachment[0] != end],
+            )
+        return None
+
+    def _attachment_path(
+        self,
+        starts: list[tuple[str, float]],
+        ends: list[tuple[str, float]],
+    ) -> tuple[float, list[str], str, float, str, float] | None:
+        if not starts or not ends:
+            return None
+        source = object()
+        sink = object()
+        start_connectors: dict[object, tuple[str, float]] = {}
+        end_connectors: dict[object, tuple[str, float]] = {}
+        temporary_nodes: list[object] = [source, sink]
         try:
-            nodes = nx.shortest_path(self.graph, start, end, weight=weight)
+            for start, snap_m in starts:
+                connector = object()
+                start_connectors[connector] = (start, snap_m)
+                temporary_nodes.append(connector)
+                self.graph.add_edge(source, connector, length_m=0.0)
+                self.graph.add_edge(connector, start, length_m=snap_m)
+            for end, snap_m in ends:
+                connector = object()
+                end_connectors[connector] = (end, snap_m)
+                temporary_nodes.append(connector)
+                self.graph.add_edge(end, connector, length_m=snap_m)
+                self.graph.add_edge(connector, sink, length_m=0.0)
+            total_m, path = nx.single_source_dijkstra(
+                self.graph, source, target=sink, weight="length_m"
+            )
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
+        finally:
+            self.graph.remove_nodes_from(temporary_nodes)
+        start, start_snap = start_connectors[path[1]]
+        end, end_snap = end_connectors[path[-2]]
+        return float(total_m), path[2:-2], start, start_snap, end, end_snap
+
+    def _cache_direct_lengths(self, source: str) -> None:
+        if source in self._shortest_lengths:
+            return
+        self._shortest_lengths[source] = nx.single_source_dijkstra_path_length(
+            self.graph, source, weight="length_m"
+        )
+
+    def option(self, start: str, end: str, role: str) -> RouteOption | None:
+        try:
+            nodes = nx.shortest_path(self.graph, start, end, weight=_weight_for(role))
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            return None
+        return self._option_from_nodes(nodes, role)
+
+    def _option_from_nodes(self, nodes: list[str], role: str) -> RouteOption | None:
+        weight = _weight_for(role)
         edge_data = [self.graph[a][b] for a, b in pairwise(nodes)]
         if not edge_data:
             return None
@@ -173,7 +346,11 @@ class RoadGraph:
         a_length = sum(float(edge["length_m"]) for edge in edge_data if _is_a_road(edge["ref"]))
         ncn_length = sum(float(edge["length_m"]) for edge in edge_data if edge["ncn"])
         try:
-            reverse_nodes = nx.shortest_path(self.graph, end, start, weight=weight)
+            reverse_nodes = list(reversed(nodes))
+            if not all(self.graph.has_edge(left, right) for left, right in pairwise(reverse_nodes)):
+                reverse_nodes = nx.shortest_path(
+                    self.graph, nodes[-1], nodes[0], weight=weight
+                )
             reverse_edges = [self.graph[left][right] for left, right in pairwise(reverse_nodes)]
             reverse_geometry = _merge_route([edge["geometry"] for edge in reverse_edges])
         except (nx.NetworkXNoPath, nx.NodeNotFound):
@@ -277,6 +454,22 @@ def _weight_for(role: str) -> Callable[[str, str, dict[str, object]], float]:
     return weight
 
 
+def _stationary_route_option(point: Point) -> RouteOption:
+    return RouteOption(
+        role="direct",
+        geometry=LineString([point, point]),
+        length_km=0.0,
+        edge_ids=[],
+        a_road_share=0.0,
+        ncn_share=0.0,
+        bidirectional=True,
+        reverse_length_km=0.0,
+        reverse_edge_ids=[],
+        reverse_corridor_share=1.0,
+        impracticable_alongside=False,
+    )
+
+
 def _merge_route(lines: list[LineString]) -> LineString | None:
     unioned = unary_union(lines)
     if isinstance(unioned, LineString):
@@ -333,6 +526,24 @@ def _truthy(value: object) -> bool:
 
 def _present(value: object) -> bool:
     return value is not None and str(value).lower() not in {"nan", "none", ""}
+
+
+def _edge_row_sort_key(item: tuple[object, pd.Series]) -> tuple[str, ...]:
+    index, row = item
+    geometry = row.geometry
+    if isinstance(geometry, LineString) and len(geometry.coords) >= 2:
+        u = str(row.get("u")) if _present(row.get("u")) else _coordinate_id(geometry.coords[0])
+        v = str(row.get("v")) if _present(row.get("v")) else _coordinate_id(geometry.coords[-1])
+        geometry_key = geometry.wkb_hex
+    else:
+        u = v = geometry_key = ""
+    return (
+        u,
+        v,
+        str(row.get("osmid", row.get("source_id", index))),
+        geometry_key,
+        str(index),
+    )
 
 
 def _coordinate_id(coordinate: tuple[float, ...]) -> str:
