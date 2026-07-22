@@ -1027,7 +1027,7 @@ def _evaluate_gap(
         str(row["connection_id"]),
         {
             "from_place": str(row["from_place"]),
-            "to_place": str(row["to_place"]),
+            "to_place": str(row.get("to_place") or ""),
             "selection_reason": str(row["selection_reason"]),
             "evidence_ids": (),
             "checks_by_role": {"gap": {"availability": governing_status.value}},

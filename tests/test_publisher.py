@@ -480,16 +480,9 @@ def test_public_compile_reviews_configured_grey_urban_school_gap(tmp_path: Path)
 
     result = compile(config)
 
-    record = next(
-        record for record in result.agent_records if record.network_role == "school-access-gap"
-    )
-    assert record.governing_status == TrafficLight.GREY
-    assert record.review_policy == (TrafficLight.GREY,)
-    assert record.review_required is True
-    assert record.decision == "gap"
-    assert record.usage == {"requests": 4, "tokens": 4}
-    run = json.loads(result.artifacts["run"].read_text())
-    assert run["agent_review"]["decisions_by_status"]["grey"] == {
-        "reviewed": 1,
-        "skipped": 0,
-    }
+    request = result.decision_requests[0]
+    assert result.status == "decision-required"
+    assert result.artifacts == {}
+    assert request.compilation_scope == "urban-school-access-gap"
+    assert request.criterion == "endpoints"
+    assert request.status == TrafficLight.GREY

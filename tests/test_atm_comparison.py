@@ -41,6 +41,7 @@ def prepared(tmp_path: Path) -> tuple[CouncilConfig, Path]:
         crs=4326,
     ).to_file(atm_path, driver="GeoJSON")
     config.atm.enabled = True
+    config.compilation.agent.review_statuses = ()
     config.atm.path = atm_path
     config.atm.mode = "blind"
     snapshot(config)
@@ -75,11 +76,7 @@ def test_blind_comparison_is_independent_and_publication_is_lawful(tmp_path: Pat
         for record in divergence["records"]
         if record["governing_status"] == "green"
     )
-    assert all(
-        record["review_required"] is True and record["resolution_attempts"]
-        for record in divergence["records"]
-        if record["governing_status"] == "amber"
-    )
+    assert all(record["review_required"] is False for record in divergence["records"])
     assert "connections" not in set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
 
 
@@ -122,6 +119,7 @@ def test_local_or_permitted_output_can_include_the_atm_overlay(tmp_path: Path) -
 
 def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> None:
     config, _ = prepared(tmp_path)
+    config.compilation.agent.review_statuses = ("amber",)
     source = load_snapshot(config)
     compiled = compile_network(config, source, FakeAgentRuntime())
     route = compiled.spine_access_connections.to_crs(27700)
@@ -167,3 +165,21 @@ def test_empty_review_policy_handles_atm_decisions_without_an_agent_runtime(
     assert all("skipped by policy" in record["explanation"] for record in records)
     assert run["agent_review"]["reviewed_decisions"] == 0
     assert run["agent_review"]["skipped_decisions"] == len(result.agent_records) + len(records)
+
+
+def test_caller_mediated_atm_review_returns_the_same_bounded_request_shape(
+    tmp_path: Path,
+) -> None:
+    config, _ = prepared(tmp_path)
+    config.compilation.agent.review_statuses = ("amber",)
+
+    result = compile(config)
+
+    assert result.status == "decision-required"
+    assert result.artifacts == {}
+    request = result.decision_requests[0]
+    assert request.compilation_scope == "atm-comparison"
+    assert request.criterion == "atm-geometry-comparison"
+    assert request.status == "amber"
+    assert request.deterministic_findings
+    assert [choice.choice_id for choice in request.choices] == ["1", "terminate"]

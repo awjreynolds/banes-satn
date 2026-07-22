@@ -10,13 +10,23 @@ import geopandas as gpd
 import pandas as pd
 
 from satn.agents import (
+    AgentDecisionRequired,
     AgentRole,
     AgentRuntimeSource,
     DivergenceAssessment,
     DivergenceInput,
+    build_agent_decision_request,
     materialize_agent_runtime,
+    termination_choice,
 )
-from satn.models import AgentConfig, CouncilConfig, DivergenceRecord, TrafficLight
+from satn.models import (
+    AgentConfig,
+    AgentDecisionChoice,
+    AgentFinding,
+    CouncilConfig,
+    DivergenceRecord,
+    TrafficLight,
+)
 from satn.routing import RouteOption
 
 if TYPE_CHECKING:
@@ -102,6 +112,7 @@ def compare_atm(
                 atm_ids,
                 min(float(overlap), 1.0),
                 config.compilation.agent,
+                compiled.compilation_input_fingerprint,
             )
         )
 
@@ -117,6 +128,7 @@ def compare_atm(
                 [atm_id],
                 0.0,
                 config.compilation.agent,
+                compiled.compilation_input_fingerprint,
             )
         )
     return records
@@ -143,6 +155,7 @@ def _assess(
     atm_ids: list[str],
     overlap: float,
     agent_config: AgentConfig,
+    governed_input_fingerprint: str,
 ) -> DivergenceRecord:
     governing_status = TrafficLight.GREEN if status == "match" else TrafficLight.AMBER
     review = agent_config.review_decision(governing_status)
@@ -158,6 +171,41 @@ def _assess(
             ),
             resolution_attempts=[],
             resolved=status == "match",
+        )
+    if runtime is None:
+        finding = AgentFinding(
+            code=f"atm-{status}",
+            severity="advisory",
+            message=f"The governed ATM geometry comparison is {status}.",
+            evidence_ids=atm_ids,
+        )
+        raise AgentDecisionRequired(
+            build_agent_decision_request(
+                compilation_scope="atm-comparison",
+                affected_identifiers=[connection_id, *atm_ids],
+                criterion="atm-geometry-comparison",
+                status=governing_status,
+                evidence_references=atm_ids,
+                findings=[finding],
+                choices=[
+                    AgentDecisionChoice(
+                        choice_id="1",
+                        label=f"Retain the {status} comparison",
+                        compiler_action=f"retain-atm-comparison:{status}",
+                        expected_consequence=(
+                            "Keep the governed comparison visible without changing compiled "
+                            "network geometry."
+                        ),
+                        mandatory_constraints=(
+                            "ATM geometry remains a non-truth comparison source.",
+                            "The choice cannot mutate authoritative compiled geometry.",
+                        ),
+                    ),
+                    termination_choice(),
+                ],
+                review_policy=review.review_policy,
+                governed_input_fingerprint=governed_input_fingerprint,
+            )
         )
     active_runtime = materialize_agent_runtime(runtime)
     payload = DivergenceInput(

@@ -61,6 +61,9 @@ def compile_command(
     except Exception:
         LOGGER.exception("Compile command failed config=%s", config)
         raise
+    if result.status == "decision-required":
+        typer.echo(result.model_dump_json(indent=2))
+        return
     typer.echo(f"{result.status}: {result.connections} connections, {result.gaps} gaps")
     typer.echo(result.output_dir)
 

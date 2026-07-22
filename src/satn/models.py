@@ -443,15 +443,55 @@ class HumanInterventionRequest(BaseModel):
     smallest_human_input: str
 
 
+class AgentDecisionChoice(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    choice_id: str = Field(pattern=r"^(?:[1-9][0-9]*|terminate)$")
+    label: str = Field(min_length=1)
+    compiler_action: str = Field(min_length=1)
+    expected_consequence: str = Field(min_length=1)
+    mandatory_constraints: tuple[str, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_reserved_terminate_action(self) -> AgentDecisionChoice:
+        if self.choice_id == "terminate" and self.compiler_action != "terminate":
+            raise ValueError("the terminate choice must use the reserved terminate action")
+        return self
+
+
+class AgentDecisionRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    request_id: str
+    dependency_fingerprint: str
+    decision_contract: Literal["agent-decision-menu/v1"] = "agent-decision-menu/v1"
+    compilation_scope: str
+    affected_identifiers: tuple[str, ...]
+    criterion: str
+    question: str
+    status: TrafficLight
+    governed_evidence_references: tuple[str, ...]
+    deterministic_findings: tuple[AgentFinding, ...]
+    choices: tuple[AgentDecisionChoice, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_bounded_choices(self) -> AgentDecisionRequest:
+        identifiers = [choice.choice_id for choice in self.choices]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("decision choice identifiers must be unique")
+        return self
+
+
 class CompilationResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     run_id: str
-    status: Literal["reviewable", "complete"]
+    status: Literal["reviewable", "complete", "decision-required"]
     output_dir: Path
     connections: int
     gaps: int
     artifacts: dict[str, Path]
     criteria: dict[str, dict[str, TrafficLight]]
     agent_records: list[AgentRecord]
+    decision_requests: list[AgentDecisionRequest] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
