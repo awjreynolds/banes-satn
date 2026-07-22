@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 
 import geopandas as gpd
+import pytest
 from shapely.geometry import LineString, Point
 
-from satn.agents import FakeAgentRuntime
+import satn.backbone as backbone_module
+from satn.agents import AgentRole, FakeAgentRuntime
 from satn.compiler import compile_network
 from satn.models import CouncilConfig
 
@@ -159,8 +161,112 @@ def test_all_spines_seed_order_independent_growth_and_hinterland_chaining() -> N
         assert "cycling-network cost" in row.selection_reason
 
     assert len(first.spine_access_branches) == 2
+    access_ids = set(first.spine_access_connections["access_connection_id"])
+    assert access_ids <= {record.connection_id for record in first.agent_records}
     assert first.criteria["spine_network"]["all_access_obligations_resolved"] == "green"
     assert first.criteria["spine_network"]["degree_one_access_valid"] == "green"
+
+
+def test_reachable_attachment_can_bypass_a_nearer_disconnected_fragment() -> None:
+    source = parallel_spine_source()
+    source["places"] = frame(
+        [
+            *source["places"].to_dict("records"),
+            {
+                "place_id": "near-island",
+                "name": "Near Island",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.05, 0.001),
+            },
+        ]
+    )
+    source["network"] = frame(
+        [
+            *source["network"].to_dict("records"),
+            {
+                "osmid": "near-island-fragment",
+                "highway": "unclassified",
+                "geometry": LineString([(0.05, 0.001), (0.051, 0.001)]),
+            },
+        ]
+    )
+
+    compiled = compile_network(config(), source, FakeAgentRuntime())
+
+    obligation = compiled.access_obligations.set_index("place_id").loc["near-island"]
+    assert obligation["service_status"] == "served"
+    access = compiled.spine_access_connections.set_index("place_id").loc["near-island"]
+    assert access["community_attachment_node"] != "xy:0.0500000:0.0010000"
+
+
+def test_equidistant_attachment_tie_is_stable_when_source_rows_reverse() -> None:
+    places = [
+        {
+            "place_id": "tie",
+            "name": "Tie",
+            "kind": "community",
+            "place_class": "village",
+            "geometry": Point(0, 0),
+        },
+        {
+            "place_id": "left-anchor",
+            "name": "Left Anchor",
+            "kind": "community",
+            "place_class": "village",
+            "geometry": Point(-0.01, 0),
+        },
+    ]
+    network = [
+        {
+            "osmid": "left",
+            "highway": "primary",
+            "ref": "A1",
+            "geometry": LineString([(-0.01, 0), (-0.001, 0)]),
+        },
+        {
+            "osmid": "right",
+            "highway": "primary",
+            "ref": "A2",
+            "geometry": LineString([(0.001, 0), (0.01, 0)]),
+        },
+    ]
+    context = [
+        {
+            "evidence_id": "left-spine",
+            "feature_type": "a-road-spine",
+            "name": "A1",
+            "category": "A-road strategic spine",
+            "source_id": "left",
+            "feature_count": 1,
+            "network_scope": "rural",
+            "geometry": network[0]["geometry"],
+        },
+        {
+            "evidence_id": "right-spine",
+            "feature_type": "a-road-spine",
+            "name": "A2",
+            "category": "A-road strategic spine",
+            "source_id": "right",
+            "feature_count": 1,
+            "network_scope": "rural",
+            "geometry": network[1]["geometry"],
+        },
+    ]
+
+    def compile_rows(reverse: bool) -> object:
+        return compile_network(
+            config(),
+            {
+                "places": frame(list(reversed(places)) if reverse else places),
+                "network": frame(list(reversed(network)) if reverse else network),
+                "context": frame(list(reversed(context)) if reverse else context),
+                "boundary": gpd.GeoDataFrame(geometry=[], crs=4326),
+            },
+            FakeAgentRuntime(),
+        )
+
+    assert topology(compile_rows(False)) == topology(compile_rows(True))
 
 
 def test_unreachable_community_becomes_a_gap_without_fabricated_linework() -> None:
@@ -200,6 +306,29 @@ def test_unreachable_community_becomes_a_gap_without_fabricated_linework() -> No
     assert len(gap.geometry.geoms) == 1
     assert gap["criterion_continuity"] == "red"
     assert compiled.criteria["spine_network"]["all_access_obligations_resolved"] == "red"
+
+
+def test_agent_gate_rejection_cannot_enter_validated_backbone_state() -> None:
+    rejected = {
+        "decision": "gap",
+        "selected_role": None,
+        "rationale": "Evidence review rejected this candidate.",
+    }
+    runtime = FakeAgentRuntime(
+        {AgentRole.SYNTHESISER: [rejected.copy() for _ in range(6)]}
+    )
+
+    compiled = compile_network(config(), parallel_spine_source(), runtime)
+
+    assert compiled.spine_access_connections.empty
+    assert set(compiled.access_obligations["service_status"]) == {"network-gap"}
+    access_records = [
+        record
+        for record in compiled.agent_records
+        if record.connection_id.startswith("spine-access-")
+    ]
+    assert len(access_records) == 6
+    assert {record.decision for record in access_records} == {"gap"}
 
 
 def test_meaningful_cross_boundary_gateway_attaches_to_the_assembled_frontier() -> None:
@@ -242,4 +371,93 @@ def test_meaningful_cross_boundary_gateway_attaches_to_the_assembled_frontier() 
     assert gateway["root_spine_id"] in set(compiled.strategic_spines["spine_id"])
     assert gateway["parent_role"] in {"strategic-spine", "spine-access-connection"}
     assert "gateway-east" not in set(compiled.access_obligations["place_id"])
+    branch_place_ids = {
+        place_id
+        for value in compiled.spine_access_branches["place_ids"]
+        for place_id in json.loads(value)
+    }
+    assert "gateway-east" not in branch_place_ids
     assert compiled.criteria["spine_network"]["gateway_coverage"] == "green"
+
+
+def test_colocated_gateway_is_already_connected_without_zero_length_linework() -> None:
+    source = parallel_spine_source()
+    source["places"] = frame(
+        [
+            *source["places"].to_dict("records"),
+            {
+                "place_id": "gateway-colocated",
+                "name": "Towards Nearby Town",
+                "kind": "cross_boundary_gateway",
+                "place_class": "road",
+                "geometry": Point(0.08, 0),
+            },
+        ]
+    )
+
+    compiled = compile_network(config(), source, FakeAgentRuntime())
+
+    gateway_rows = compiled.spine_access_connections[
+        compiled.spine_access_connections["place_id"] == "gateway-colocated"
+    ]
+    assert gateway_rows.empty
+    assert compiled.criteria["spine_network"]["gateway_coverage"] == "green"
+
+
+def test_growth_evaluates_each_new_frontier_once_at_representative_scale(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    community_count = 24
+    places = [
+        {
+            "place_id": f"community-{index:02d}",
+            "name": f"Community {index:02d}",
+            "kind": "community",
+            "place_class": "village",
+            "geometry": Point((index + 1) * 3000, 0),
+        }
+        for index in range(community_count)
+    ]
+    network = [
+        {
+            "osmid": f"edge-{index:02d}",
+            "highway": "primary" if index == 0 else "unclassified",
+            "ref": "A1" if index == 0 else None,
+            "geometry": LineString([(index * 3000, 0), ((index + 1) * 3000, 0)]),
+        }
+        for index in range(community_count)
+    ]
+    context = [
+        {
+            "evidence_id": "scale-spine",
+            "feature_type": "a-road-spine",
+            "name": "A1",
+            "category": "A-road strategic spine",
+            "source_id": "edge-00",
+            "feature_count": 1,
+            "network_scope": "rural",
+            "geometry": network[0]["geometry"],
+        }
+    ]
+    calls = 0
+    original = backbone_module._candidate
+
+    def counted_candidate(*args: object, **kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(backbone_module, "_candidate", counted_candidate)
+    compiled = compile_network(
+        config(),
+        {
+            "places": gpd.GeoDataFrame(places, geometry="geometry", crs=27700),
+            "network": gpd.GeoDataFrame(network, geometry="geometry", crs=27700),
+            "context": gpd.GeoDataFrame(context, geometry="geometry", crs=27700),
+            "boundary": gpd.GeoDataFrame(geometry=[], crs=27700),
+        },
+        FakeAgentRuntime(),
+    )
+
+    assert len(compiled.spine_access_connections) == community_count
+    assert calls == community_count + community_count * (community_count - 1) // 2

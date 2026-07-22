@@ -45,9 +45,16 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         for feature in network["features"]
         if feature["properties"]["feature_type"] == "connection"
     }
+    gated_access_ids = {
+        feature["id"]
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "spine-access-connection"
+    }
 
     assert geojson_ids == set(connections["connection_id"])
-    assert geojson_ids == {record["connection_id"] for record in agents["records"]}
+    assert geojson_ids | gated_access_ids == {
+        record["connection_id"] for record in agents["records"]
+    }
     assert run["connection_count"] == len(geojson_ids)
     assert run["criteria"] == {
         section: {criterion: status for criterion, status in values.items()}

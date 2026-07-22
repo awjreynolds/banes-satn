@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 from dataclasses import dataclass
 
 import geopandas as gpd
 import pandas as pd
-from shapely.geometry import LineString, MultiPoint
+from shapely.geometry import MultiPoint
 
+from satn.agents import CompilationGate
+from satn.models import AgentRecord
 from satn.routing import RoadGraph, RouteOption
 
 MAX_OBLIGATION_ATTACHMENT_M = 2000.0
@@ -37,6 +40,9 @@ ACCESS_COLUMNS = [
     "network_role",
     "distance_km",
     "status",
+    "agent_outcome",
+    "agent_attempt_count",
+    "agent_findings",
     "intervention_archetype",
     "selection_reason",
     "geometry_semantics",
@@ -118,6 +124,7 @@ class BackboneAssembly:
     gaps: gpd.GeoDataFrame
     gateway_count: int
     connected_gateway_count: int
+    agent_records: list[AgentRecord]
 
 
 @dataclass(frozen=True)
@@ -153,6 +160,7 @@ def assemble_backbone_outward(
     gateways: gpd.GeoDataFrame,
     strategic_spines: gpd.GeoDataFrame,
     graph: RoadGraph,
+    gate: CompilationGate,
 ) -> BackboneAssembly:
     """Grow one deterministic served frontier from every Strategic Spine concurrently."""
     crs = communities.crs or strategic_spines.crs or graph.crs
@@ -162,46 +170,97 @@ def assemble_backbone_outward(
     }
     rows: list[dict[str, object]] = []
     gap_rows: list[dict[str, object]] = []
+    agent_records: list[AgentRecord] = []
+    rejected_by_place: dict[str, list[AgentRecord]] = {}
+    candidate_heap: list[tuple[tuple[object, ...], int, _Candidate]] = []
+    sequence = 0
 
-    while unserved:
+    def add_frontier_candidates(frontier: _Frontier) -> None:
+        nonlocal sequence
+        for place_id in sorted(unserved):
+            candidate = _candidate(
+                unserved[place_id], frontier, graph, obligation_kind="community"
+            )
+            if candidate is not None:
+                heapq.heappush(candidate_heap, (candidate.rank, sequence, candidate))
+                sequence += 1
+
+    for frontier in frontiers:
+        add_frontier_candidates(frontier)
+
+    while candidate_heap:
+        _, _, selected = heapq.heappop(candidate_heap)
+        place_id = str(selected.place["place_id"])
+        if place_id not in unserved:
+            continue
+        row = _connection_row(selected, graph, obligation_kind="community")
+        record = _evaluate(row, gate)
+        agent_records.append(record)
+        if record.decision != "accept":
+            rejected_by_place.setdefault(place_id, []).append(record)
+            continue
+        _record_gate_acceptance(row, record)
+        for rejected in rejected_by_place.pop(place_id, []):
+            rejected.decision = "superseded"
+            rejected.outcome_reason = "A different governed frontier attachment was accepted."
+        rows.append(row)
+        del unserved[place_id]
+        served_frontier = _served_frontier(row)
+        frontiers.append(served_frontier)
+        frontiers.sort(key=_frontier_key)
+        add_frontier_candidates(served_frontier)
+
+    for place_id in sorted(unserved):
+        rejected = rejected_by_place.get(place_id, [])
+        gap_rows.append(
+            _gap_row(
+                unserved[place_id],
+                graph,
+                obligation_kind="community",
+                gate_reason=rejected[-1].outcome_reason if rejected else None,
+            )
+        )
+
+    connected_gateways = 0
+    for _, gateway in gateways.sort_values("place_id").iterrows():
+        if _already_connected_gateway(gateway, frontiers, graph):
+            connected_gateways += 1
+            continue
         candidates = [
             candidate
-            for place_id in sorted(unserved)
             for frontier in frontiers
             if (
                 candidate := _candidate(
-                    unserved[place_id], frontier, graph, obligation_kind="community"
+                    gateway,
+                    frontier,
+                    graph,
+                    obligation_kind="gateway",
+                    allow_stationary=False,
                 )
             )
             is not None
         ]
         if not candidates:
-            break
-        selected = min(candidates, key=lambda candidate: candidate.rank)
-        row = _connection_row(selected, graph, obligation_kind="community")
-        rows.append(row)
-        place_id = str(selected.place["place_id"])
-        del unserved[place_id]
-        frontiers.append(_served_frontier(row))
-        frontiers.sort(key=_frontier_key)
-
-    for place_id in sorted(unserved):
-        gap_rows.append(_gap_row(unserved[place_id], graph, obligation_kind="community"))
-
-    connected_gateways = 0
-    for _, gateway in gateways.sort_values("place_id").iterrows():
-        candidates = [
-            candidate
-            for frontier in frontiers
-            if (candidate := _candidate(gateway, frontier, graph, obligation_kind="gateway"))
-            is not None
-        ]
-        if not candidates:
             gap_rows.append(_gap_row(gateway, graph, obligation_kind="gateway"))
             continue
-        selected = min(candidates, key=lambda candidate: candidate.rank)
-        rows.append(_connection_row(selected, graph, obligation_kind="gateway"))
-        connected_gateways += 1
+        for selected in sorted(candidates, key=lambda candidate: candidate.rank):
+            row = _connection_row(selected, graph, obligation_kind="gateway")
+            record = _evaluate(row, gate)
+            agent_records.append(record)
+            if record.decision == "accept":
+                _record_gate_acceptance(row, record)
+                rows.append(row)
+                connected_gateways += 1
+                break
+        else:
+            gap_rows.append(
+                _gap_row(
+                    gateway,
+                    graph,
+                    obligation_kind="gateway",
+                    gate_reason=record.outcome_reason,
+                )
+            )
 
     connections = gpd.GeoDataFrame(
         rows, columns=ACCESS_COLUMNS, geometry="geometry", crs=crs
@@ -218,6 +277,7 @@ def assemble_backbone_outward(
         gaps=gaps,
         gateway_count=len(gateways),
         connected_gateway_count=connected_gateways,
+        agent_records=agent_records,
     )
 
 
@@ -278,61 +338,93 @@ def _candidate(
     graph: RoadGraph,
     *,
     obligation_kind: str,
+    allow_stationary: bool = True,
 ) -> _Candidate | None:
-    start_node, start_snap_m = graph.nearest_node(place.geometry)
-    if start_snap_m > MAX_OBLIGATION_ATTACHMENT_M:
+    starts = graph.nodes_near(place.geometry, MAX_OBLIGATION_ATTACHMENT_M)
+    if not starts:
         return None
-    routes: list[_Candidate] = []
-    for end_node, end_snap_m in frontier.attachments:
-        if end_snap_m > MAX_SPINE_ATTACHMENT_M:
-            continue
-        option = (
-            _stationary_option(graph, start_node)
-            if start_node == end_node
-            else graph.option(start_node, end_node, "direct")
-        )
-        if option is None or not option.bidirectional:
-            continue
-        total_distance_km = option.length_km + (start_snap_m + end_snap_m) / 1000
-        rank = (
-            round(total_distance_km, 9),
-            str(place["place_id"]),
-            0 if frontier.target_role == "strategic-spine" else 1,
-            frontier.root_spine_id,
-            frontier.target_id,
-            start_node,
-            end_node,
-            obligation_kind,
-        )
-        routes.append(
-            _Candidate(
-                rank=rank,
-                place=place,
-                frontier=frontier,
-                option=option,
-                start_node=start_node,
-                start_snap_m=start_snap_m,
-                end_node=end_node,
-                end_snap_m=end_snap_m,
-            )
-        )
-    return min(routes, key=lambda candidate: candidate.rank) if routes else None
+    choice = graph.best_attachment(
+        starts,
+        [
+            attachment
+            for attachment in frontier.attachments
+            if attachment[1] <= MAX_SPINE_ATTACHMENT_M
+        ],
+        allow_stationary=allow_stationary,
+    )
+    if choice is None:
+        return None
+    rank = (
+        round(choice.total_distance_km, 9),
+        str(place["place_id"]),
+        0 if frontier.target_role == "strategic-spine" else 1,
+        frontier.root_spine_id,
+        frontier.target_id,
+        choice.start_node,
+        choice.end_node,
+        obligation_kind,
+    )
+    return _Candidate(
+        rank=rank,
+        place=place,
+        frontier=frontier,
+        option=choice.option,
+        start_node=choice.start_node,
+        start_snap_m=choice.start_snap_m,
+        end_node=choice.end_node,
+        end_snap_m=choice.end_snap_m,
+    )
 
 
-def _stationary_option(graph: RoadGraph, node_id: str) -> RouteOption:
-    point = graph.node_points[node_id]
-    return RouteOption(
-        role="direct",
-        geometry=LineString([point, point]),
-        length_km=0.0,
-        edge_ids=[],
-        a_road_share=0.0,
-        ncn_share=0.0,
-        bidirectional=True,
-        reverse_length_km=0.0,
-        reverse_edge_ids=[],
-        reverse_corridor_share=1.0,
-        impracticable_alongside=False,
+def _already_connected_gateway(
+    gateway: pd.Series,
+    frontiers: list[_Frontier],
+    graph: RoadGraph,
+) -> bool:
+    nearby_nodes = {
+        node_id for node_id, _ in graph.nodes_near(gateway.geometry, MAX_SPINE_ATTACHMENT_M)
+    }
+    frontier_nodes = {
+        node_id
+        for frontier in frontiers
+        for node_id, snap_m in frontier.attachments
+        if snap_m <= MAX_SPINE_ATTACHMENT_M
+    }
+    return bool(nearby_nodes & frontier_nodes)
+
+
+def _evaluate(row: dict[str, object], gate: CompilationGate) -> AgentRecord:
+    return gate.evaluate(
+        str(row["access_connection_id"]),
+        {
+            "from_place": str(row["place_id"]),
+            "to_place": str(row["parent_place_id"] or row["root_spine_id"]),
+            "selection_reason": str(row["selection_reason"]),
+            "evidence_ids": tuple(json.loads(str(row["source_ids"]))),
+            "checks_by_role": {
+                "direct": {
+                    "continuity": row["criterion_continuity"],
+                    "bidirectional": row["criterion_bidirectional"],
+                }
+            },
+        },
+        "direct",
+        ["direct"],
+    ).record
+
+
+def _record_gate_acceptance(row: dict[str, object], record: AgentRecord) -> None:
+    row["status"] = "validated"
+    row["agent_outcome"] = record.outcome_reason
+    row["agent_attempt_count"] = len(record.attempts)
+    latest = record.attempts[-1] if record.attempts else {}
+    row["agent_findings"] = json.dumps(
+        [
+            *latest.get("deterministic_findings", []),
+            *latest.get("critique", {}).get("findings", []),
+            *latest.get("red_team", {}).get("findings", []),
+        ],
+        sort_keys=True,
     )
 
 
@@ -344,9 +436,9 @@ def _connection_row(
 ) -> dict[str, object]:
     place_id = str(candidate.place["place_id"])
     frontier = candidate.frontier
-    branch_id = frontier.branch_id or _stable_id(
-        "spine-access-branch", frontier.root_spine_id, place_id
-    )
+    branch_id = frontier.branch_id
+    if branch_id is None and obligation_kind == "community":
+        branch_id = _stable_id("spine-access-branch", frontier.root_spine_id, place_id)
     parent_id = frontier.parent_access_connection_id or frontier.root_spine_id
     connection_id = _stable_id("spine-access", place_id, frontier.root_spine_id, parent_id)
     source_ids = sorted(
@@ -402,7 +494,10 @@ def _connection_row(
             candidate.option.length_km + (candidate.start_snap_m + candidate.end_snap_m) / 1000,
             3,
         ),
-        "status": "validated",
+        "status": "candidate",
+        "agent_outcome": None,
+        "agent_attempt_count": 0,
+        "agent_findings": "[]",
         "intervention_archetype": "access link to a high-quality Strategic Spine branch",
         "selection_reason": (
             "Selected by minimum plausible cycling-network cost from all concurrent "
@@ -438,11 +533,12 @@ def _gap_row(
     graph: RoadGraph,
     *,
     obligation_kind: str,
+    gate_reason: str | None = None,
 ) -> dict[str, object]:
     place_id = str(place["place_id"])
     _, snap_distance_m = graph.nearest_node(place.geometry)
     bounded = snap_distance_m <= MAX_OBLIGATION_ATTACHMENT_M
-    reason = (
+    reason = gate_reason or (
         "No continuous bidirectional OSM cycling-network path reaches any Strategic Spine "
         "or served branch frontier."
         if bounded
@@ -537,7 +633,8 @@ def _branches(
 ) -> gpd.GeoDataFrame:
     rows: list[dict[str, object]] = []
     spine_names = strategic_spines.set_index("spine_id").get("name", pd.Series(dtype=object))
-    for branch_id, members in connections.groupby("branch_id", sort=True):
+    community_connections = connections[connections["obligation_kind"] == "community"]
+    for branch_id, members in community_connections.groupby("branch_id", sort=True):
         root_spine_id = str(members.iloc[0]["root_spine_id"])
         connection_ids = sorted(members["access_connection_id"].astype(str))
         place_ids = sorted(members["place_id"].astype(str))

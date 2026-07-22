@@ -31,3 +31,22 @@ def test_dominant_routable_component_avoids_nearby_isolated_fragment() -> None:
         "xy:0.0500000:0.0010000",
         "xy:0.0510000:0.0010000",
     }
+
+
+def test_nearest_node_breaks_exact_distance_ties_by_stable_node_id() -> None:
+    rows = [
+        {
+            "osmid": "left",
+            "highway": "unclassified",
+            "geometry": LineString([(-2, 0), (-1, 0)]),
+        },
+        {
+            "osmid": "right",
+            "highway": "unclassified",
+            "geometry": LineString([(1, 0), (2, 0)]),
+        },
+    ]
+    forward = RoadGraph(gpd.GeoDataFrame(rows, geometry="geometry", crs=27700))
+    reverse = RoadGraph(gpd.GeoDataFrame(list(reversed(rows)), geometry="geometry", crs=27700))
+
+    assert forward.nearest_node(Point(0, 0)) == reverse.nearest_node(Point(0, 0))

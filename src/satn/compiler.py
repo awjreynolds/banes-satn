@@ -104,6 +104,7 @@ def compile_network(
         gateways if assembly_enabled else gateways.iloc[0:0],
         strategic_spines,
         road_graph,
+        gate,
     )
     spine_access_connections = backbone.connections
     access_obligations = backbone.obligations
@@ -330,7 +331,7 @@ def compile_network(
         schools=_context_frame(context, "school"),
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
-        agent_records=records,
+        agent_records=[*records, *backbone.agent_records],
         criteria=criteria,
         network_units=network_units,
         atm_reference=None,
@@ -729,7 +730,10 @@ def _rural_communities(
 
 def _branch_provenance_complete(connections: gpd.GeoDataFrame) -> bool:
     required = {"root_spine_id", "branch_id", "parent_role", "source_ids"}
-    for provenance in connections.get("provenance", []):
+    community_connections = connections[
+        connections["obligation_kind"] == "community"
+    ]
+    for provenance in community_connections.get("provenance", []):
         parsed = json.loads(str(provenance))
         if not required <= set(parsed) or not parsed["source_ids"]:
             return False
