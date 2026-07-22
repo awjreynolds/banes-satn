@@ -37,6 +37,16 @@ class UrbanClassificationStatus(StrEnum):
     EXPLICIT_UNKNOWN = "explicit-unknown"
 
 
+class TopographyComparisonStatus(StrEnum):
+    EVIDENCE_UNAVAILABLE = "evidence-unavailable"
+    NOT_TRIGGERED = "not-triggered"
+    EASIER_ALTERNATIVE_SELECTED = "easier-alternative-selected"
+    ORIGINAL_RETAINED = "original-retained-no-easier-option"
+    STRATEGIC_SPINE_RETAINED = "strategic-spine-retained"
+    GATE_REVISED_SELECTION = "gate-revised-selection"
+    GATE_REJECTED_SELECTION = "gate-rejected-selection"
+
+
 class AccessPointStatus(StrEnum):
     MAPPED = "mapped"
     INFERRED = "inferred"
@@ -160,6 +170,14 @@ class TopographyConfig(BaseModel):
     very_steep_max_pct: float = Field(default=12.5, gt=0)
     maximum_sample_spacing_m: float = Field(default=250.0, gt=0)
     minimum_sustained_spacing_m: float = Field(default=10.0, gt=0)
+    steep_trigger_length_m: float = Field(default=100.0, gt=0)
+    very_steep_trigger_length_m: float = Field(default=50.0, gt=0)
+    severe_trigger_length_m: float = Field(default=30.0, gt=0)
+    repeated_climb_count: int = Field(default=2, ge=2)
+    cumulative_ascent_trigger_m: float = Field(default=40.0, gt=0)
+    maximum_alternative_detour_ratio: float = Field(default=1.5, ge=1)
+    material_ascent_reduction_m: float = Field(default=20.0, gt=0)
+    material_ascent_reduction_ratio: float = Field(default=0.25, gt=0, le=1)
 
     @model_validator(mode="after")
     def validate_gradient_bands(self) -> TopographyConfig:

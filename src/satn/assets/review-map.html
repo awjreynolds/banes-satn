@@ -31,7 +31,11 @@
           <p>Branch Meeting Connection — first justified meeting only</p>
         </div>
         <label><input id="layer-a-road-spines" type="checkbox"> Raw A-road evidence</label>
-        <label><input id="layer-community-connections" type="checkbox" checked> Community connections</label>
+        <label><input id="layer-community-connections" type="checkbox" checked aria-describedby="legend-community-connections"> Community connections</label>
+        <div id="legend-community-connections" class="layer-summary" role="note">
+          <p>Green line — selected Community Connection</p>
+          <p>Amber dashed warning — Elevation Challenge retained because no materially easier plausible option was found</p>
+        </div>
         <label><input id="layer-ncn-routes" type="checkbox" aria-describedby="legend-ncn-routes"> Urban NCN Evidence</label>
         <div id="legend-ncn-routes" class="layer-summary" role="note" hidden>
           <p>Established NCN geometry — permeability evidence, not automatically a Circulation Boundary</p>

@@ -60,6 +60,9 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 (
                     row.connection_id,
                     row.classification,
+                    row.topography_comparison_status,
+                    row.topography_comparison_rationale,
+                    row.alignment_options,
                     row.geometry.wkb_hex,
                 )
                 for row in compiled.connections.itertuples()
@@ -342,6 +345,18 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             ],
             "topography_profiles": len(compiled.topography_profiles),
             "gradient_sections": len(compiled.gradient_sections),
+            "topography_alternative_comparisons": [
+                {
+                    "connection_id": row.connection_id,
+                    "triggered": row.topography_alternative_trigger,
+                    "status": row.topography_comparison_status,
+                    "rationale": row.topography_comparison_rationale,
+                    "original_role": row.topography_original_role,
+                    "selected_role": row.topography_selected_role,
+                    "alignment_options": row.alignment_options,
+                }
+                for row in compiled.connections.itertuples()
+            ],
             "elevation_corroboration_count": len(
                 compiled.elevation_corroboration
             ),

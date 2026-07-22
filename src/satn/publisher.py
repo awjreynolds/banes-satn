@@ -373,6 +373,32 @@ def _write_json_records(
                 (compiled.topography_profiles["evidence_status"] == "evidence-unavailable").sum()
             ),
             "corroboration_count": len(compiled.elevation_corroboration),
+            "alternative_trigger_count": int(
+                compiled.connections.get(
+                    "topography_alternative_trigger",
+                    pd.Series(False, index=compiled.connections.index),
+                ).sum()
+            ),
+            "easier_alternative_selected_count": int(
+                (
+                    compiled.connections.get(
+                        "topography_comparison_status",
+                        pd.Series("", index=compiled.connections.index),
+                    )
+                    == "easier-alternative-selected"
+                ).sum()
+            ),
+            "original_retained_count": int(
+                compiled.connections.get(
+                    "topography_comparison_status",
+                    pd.Series("", index=compiled.connections.index),
+                ).isin(
+                    [
+                        "original-retained-no-easier-option",
+                        "strategic-spine-retained",
+                    ]
+                ).sum()
+            ),
         },
         "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
@@ -975,6 +1001,25 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     }
     if geojson_connection_ids != set(connections["connection_id"]):
         raise ValueError("connection identifiers differ between GeoPackage and GeoJSON")
+    connection_features = {
+        feature["id"]: feature["properties"]
+        for feature in geojson["features"]
+        if feature["properties"].get("feature_type") == "connection"
+    }
+    for _, connection in connections.iterrows():
+        properties = connection_features[str(connection["connection_id"])]
+        for field in (
+            "topography_alternative_trigger",
+            "topography_comparison_status",
+            "topography_comparison_rationale",
+            "topography_original_role",
+            "topography_selected_role",
+            "alignment_options",
+        ):
+            if not _artifact_values_equal(properties.get(field), connection[field]):
+                raise ValueError(
+                    f"connection {connection['connection_id']} differs for {field}"
+                )
     run = json.loads((output / "run.json").read_text(encoding="utf-8"))
     if run.get("disclaimer") != DISCLAIMER or run.get("connection_count") != len(connections):
         raise ValueError("run manifest does not describe the current publication")

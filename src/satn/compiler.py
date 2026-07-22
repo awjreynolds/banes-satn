@@ -26,6 +26,7 @@ from satn.models import (
     CouncilConfig,
     DivergenceRecord,
     NetworkScope,
+    TopographyComparisonStatus,
     TrafficLight,
     UrbanClassificationStatus,
 )
@@ -35,6 +36,10 @@ from satn.topography import (
     GradientThresholds,
     build_topography_profiles,
     empty_elevation_evidence,
+)
+from satn.topography_alternatives import (
+    TopographyComparison,
+    compare_alignment_topography,
 )
 from satn.urban import derive_urban_structure
 from satn.urban_school import assess_urban_school_access
@@ -166,6 +171,11 @@ def compile_network(
         "criterion_continuity",
         "criterion_bidirectional",
         "criterion_distance",
+        "topography_alternative_trigger",
+        "topography_comparison_status",
+        "topography_comparison_rationale",
+        "topography_original_role",
+        "topography_selected_role",
         "geometry",
     ]
     place_lookup = participants.set_index("place_id", drop=False)
@@ -200,8 +210,27 @@ def compile_network(
                     "ATM-seeded starting hypothesis selected the closest available OSM "
                     f"alignment role: {seeded.role}."
                 )
+        comparison = compare_alignment_topography(
+            selected,
+            options,
+            source.get("elevation_evidence", empty_elevation_evidence(road_graph.crs)),
+            config.compilation.topography,
+            road_graph.crs,
+        )
+        if comparison is not None:
+            selected = comparison.selected
+            if comparison.triggered:
+                reason = comparison.rationale
         row, record = _gate_connection(
-            config, gate, left, right, selected, options, reason, snap_distance
+            config,
+            gate,
+            left,
+            right,
+            selected,
+            options,
+            reason,
+            snap_distance,
+            comparison,
         )
         records.append(record)
         (accepted if record.decision == "accept" else rejected).append(row)
@@ -867,6 +896,7 @@ def _gate_connection(
     options: list[RouteOption],
     reason: str,
     snap_distance: float,
+    topography: TopographyComparison | None = None,
 ) -> tuple[dict[str, object], AgentRecord]:
     connection_id = _connection_id(str(left.place_id), str(right.place_id))
     checks_by_role = {
@@ -892,12 +922,36 @@ def _gate_connection(
         record.decision = "gap"
         record.outcome_reason = "Compilation Gate accepted no available alignment."
     selected = gated_selection if record.decision == "accept" else selected
+    topography_status = topography.status if topography is not None else None
+    topography_rationale = topography.rationale if topography is not None else None
+    if (
+        topography is not None
+        and record.decision != "accept"
+    ):
+        topography_status = TopographyComparisonStatus.GATE_REJECTED_SELECTION
+        topography_rationale = (
+            f"{topography.rationale} Compilation Gate rejected every authoritative "
+            "selection after bounded review; the result is a Network Gap."
+        )
+    elif (
+        topography is not None
+        and selected is not None
+        and selected.role != topography.selected.role
+    ):
+        topography_status = TopographyComparisonStatus.GATE_REVISED_SELECTION
+        topography_rationale = (
+            f"{topography.rationale} Compilation Gate revised the authoritative "
+            f"selection to {selected.role} after bounded review."
+        )
     endpoints_valid = selected is not None and snap_distance <= 2000
     continuous = selected is not None and not selected.geometry.is_empty
     bidirectional = selected is not None and selected.bidirectional
     distance_km = selected.length_km if selected else 0
     geometry = selected.geometry if selected else MultiPoint([left.geometry, right.geometry])
     classification = selected.role if selected else "network-gap"
+    authoritative_role = (
+        selected.role if record.decision == "accept" and selected is not None else None
+    )
     row = {
         "connection_id": connection_id,
         "from_place": left.place_id,
@@ -923,7 +977,14 @@ def _gate_connection(
         "agent_findings": json.dumps(_agent_findings(record), sort_keys=True),
         "source_ids": json.dumps(option_evidence_ids(options), sort_keys=True),
         "cache_status": "compiled",
-        "alignment_options": serialise_options(options),
+        "alignment_options": (
+            topography.serialise_options(
+                options,
+                authoritative_role,
+            )
+            if topography is not None
+            else serialise_options(options)
+        ),
         "criterion_endpoints": "green" if endpoints_valid else "red",
         "criterion_continuity": "green" if continuous else "red",
         "criterion_bidirectional": "green" if bidirectional else "red",
@@ -933,6 +994,23 @@ def _gate_connection(
             else "green"
             if distance_km <= config.compilation.max_connection_km
             else "amber"
+        ),
+        "topography_alternative_trigger": (
+            topography.triggered if topography is not None else False
+        ),
+        "topography_comparison_status": (
+            topography_status.value
+            if topography_status is not None
+            else "not-evaluated"
+        ),
+        "topography_comparison_rationale": (
+            topography_rationale if topography_rationale is not None else "Not evaluated."
+        ),
+        "topography_original_role": (
+            topography.original.role if topography is not None else None
+        ),
+        "topography_selected_role": (
+            authoritative_role if topography is not None else None
         ),
         "geometry": geometry,
     }

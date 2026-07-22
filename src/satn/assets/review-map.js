@@ -173,6 +173,11 @@
     addDefinition(list, "Distance criterion", value(properties.criterion_distance));
     addDefinition(list, "Rationale", value(properties.selection_reason));
     addDefinition(list, "Agent gate", value(properties.agent_outcome));
+    addDefinition(list, "Topography comparison", value(properties.topography_comparison_status, "not evaluated"));
+    addDefinition(list, "Topography triggered", value(properties.topography_alternative_trigger, false));
+    addDefinition(list, "Topography original role", value(properties.topography_original_role));
+    addDefinition(list, "Topography selected role", value(properties.topography_selected_role));
+    addDefinition(list, "Topography comparison rationale", value(properties.topography_comparison_rationale));
     addTopographyDetails(list, properties);
     if (["school-access-connection", "school-access-gap"].includes(properties.feature_type)) {
       addDefinition(list, "School kind", value(properties.school_kind));
@@ -223,7 +228,8 @@
         const button = document.createElement("button");
         button.type = "button";
         button.id = `item-${feature.id}`;
-        button.className = `connection ${feature.properties.feature_type === "gap" ? "gap" : ""}`;
+        const retainedTopography = ["original-retained-no-easier-option", "strategic-spine-retained"].includes(feature.properties.topography_comparison_status);
+        button.className = `connection ${feature.properties.feature_type === "gap" ? "gap" : ""} ${retainedTopography ? "retained-topography" : ""}`;
         button.dataset.featureId = feature.id;
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
@@ -258,6 +264,12 @@
           ? `${value(feature.properties.length_m)} m · ${value(feature.properties.forward_gradient_pct)}% forward`
           : `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
+        if (retainedTopography) {
+          const warning = document.createElement("span");
+          warning.className = "topography-warning";
+          warning.textContent = "Elevation challenge retained";
+          button.append(warning);
+        }
         button.addEventListener("mouseenter", () => { if (!state.pinned) showDetails(feature.id); });
         button.addEventListener("mouseleave", clearTransient);
         button.addEventListener("focus", () => { if (!state.pinned) showDetails(feature.id); });
@@ -285,7 +297,7 @@
       "layer-spine-access-connections": ["spine-access-connections", "access-obligations"],
       "layer-cross-spine-connectors": ["cross-spine-connectors", "branch-meeting-connections"],
       "layer-a-road-spines": ["a-road-spines"],
-      "layer-community-connections": ["connections"],
+      "layer-community-connections": ["connections", "topography-retained-warnings"],
       "layer-ncn-routes": ["urban-ncn-evidence"],
       "layer-urban-spines": ["urban-spines", "urban-classification-unknowns"],
       "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-portals"],
@@ -362,6 +374,7 @@
     map.addLayer({ id: "urban-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-spine"], paint: { "line-color": ["match", ["get", "official_classification"], "a-road", "#a04000", "b-road", "#8e44ad", "classified-unnumbered", "#5b2c6f", "#7f8c8d"], "line-width": 6 } });
     map.addLayer({ id: "urban-classification-unknowns", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-classification-unknown"], paint: { "line-color": "#7f8c8d", "line-width": 5, "line-dasharray": [1, 1] } });
     map.addLayer({ id: "connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "connection"], paint: { "line-color": "#196f3d", "line-width": 5, "line-offset": ["case", ["==", ["get", "classification"], "strategic-spine"], 5, 0] } });
+    map.addLayer({ id: "topography-retained-warnings", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "connection"], ["in", ["get", "topography_comparison_status"], ["literal", ["original-retained-no-easier-option", "strategic-spine-retained"]]]], paint: { "line-color": "#f39c12", "line-width": 9, "line-dasharray": [1, 1], "line-opacity": .95 } });
     map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["all", ["==", ["get", "feature_type"], "school"], ["!=", ["get", "school_obligation_eligible"], true]], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "retail-centres", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "retail-centre"], layout: { visibility: "none" }, paint: { "circle-color": "#d35400", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "healthcare", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "healthcare"], layout: { visibility: "none" }, paint: { "circle-color": "#c0392b", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
@@ -375,7 +388,7 @@
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
     });
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
-    ["connections", "spine-access-connections", "school-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
+    ["connections", "topography-retained-warnings", "spine-access-connections", "school-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
       map.on("mousemove", layer, (event) => { if (!state.pinned) showDetails(event.features[0].id); });
       map.on("mouseleave", layer, clearTransient);
       map.on("click", layer, (event) => togglePin(event.features[0].id));

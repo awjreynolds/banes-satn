@@ -149,6 +149,23 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         "gradient_section_count": run["layer_counts"]["gradient_sections"],
         "evidence_unavailable_count": unavailable_count,
         "corroboration_count": 0,
+        "alternative_trigger_count": int(
+            connections["topography_alternative_trigger"].sum()
+        ),
+        "easier_alternative_selected_count": int(
+            (
+                connections["topography_comparison_status"]
+                == "easier-alternative-selected"
+            ).sum()
+        ),
+        "original_retained_count": int(
+            connections["topography_comparison_status"].isin(
+                [
+                    "original-retained-no-easier-option",
+                    "strategic-spine-retained",
+                ]
+            ).sum()
+        ),
     }
     assert run["criteria"] == {
         section: {criterion: status for criterion, status in values.items()}
