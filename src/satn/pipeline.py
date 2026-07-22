@@ -9,7 +9,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from satn.agents import runtime_for
+from satn.agents import AgentRuntimeProvider, runtime_for
 from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
 from satn.constants import SCHEMA_VERSION
@@ -45,7 +45,11 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         len(source["network"]),
         len(source.get("context", [])),
     )
-    runtime = runtime_for(council.compilation.agent)
+    runtime = (
+        AgentRuntimeProvider(lambda: runtime_for(council.compilation.agent))
+        if council.compilation.agent.review_statuses
+        else None
+    )
     atm_reference = None
     if council.atm.enabled and council.atm.mode == "seeded":
         atm_reference = load_atm(council).to_crs(source["network"].crs)

@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from satn.models import AgentConfig, AgentRecord
+from satn.models import AgentConfig, AgentRecord, AgentReviewDecision, TrafficLight
 
 
 class AgentRole(StrEnum):
@@ -112,6 +113,30 @@ class AgentRuntime(ABC):
         output_type: type[BaseModel],
     ) -> RuntimeReply:
         """Return a response validated against ``output_type``."""
+
+
+class AgentRuntimeProvider:
+    """Materialise one shared Agent Runtime only when a selected status needs it."""
+
+    def __init__(self, factory: Callable[[], AgentRuntime]):
+        self._factory = factory
+        self._runtime: AgentRuntime | None = None
+
+    def get(self) -> AgentRuntime:
+        if self._runtime is None:
+            self._runtime = self._factory()
+        return self._runtime
+
+
+AgentRuntimeSource = AgentRuntime | AgentRuntimeProvider | None
+
+
+def materialize_agent_runtime(source: AgentRuntimeSource) -> AgentRuntime:
+    if isinstance(source, AgentRuntime):
+        return source
+    if isinstance(source, AgentRuntimeProvider):
+        return source.get()
+    raise RuntimeError("agent review is required, but no runtime exists")
 
 
 class FakeAgentRuntime(AgentRuntime):
@@ -230,8 +255,8 @@ class GateOutcome:
 
 
 class CompilationGate:
-    def __init__(self, runtime: AgentRuntime, config: AgentConfig):
-        self.runtime = runtime
+    def __init__(self, runtime: AgentRuntimeSource, config: AgentConfig):
+        self.runtime_source = runtime
         self.config = config
 
     def evaluate(
@@ -240,7 +265,38 @@ class CompilationGate:
         facts: dict[str, Any],
         initial_role: str | None,
         available_roles: list[str],
+        deterministic_decision: Literal["accept", "gap"] = "accept",
     ) -> GateOutcome:
+        governing_status = _governing_status(facts, initial_role)
+        review = self.config.review_decision(governing_status)
+        deterministic_outcome = (
+            "gap" if governing_status == TrafficLight.RED else deterministic_decision
+        )
+        if not review.review_required:
+            reason = (
+                "Deterministic Red prevents this connection entering the network; "
+                "agent review was skipped by policy."
+                if governing_status == TrafficLight.RED
+                else f"Deterministic {governing_status.value.title()} decision applied; "
+                "agent review was skipped by policy."
+            )
+            return GateOutcome(
+                AgentRecord(
+                    connection_id=connection_id,
+                    **review.model_dump(),
+                    runtime="not-invoked",
+                    model="not-invoked",
+                    proposal="{}",
+                    critique="[]",
+                    revision="{}",
+                    decision=deterministic_outcome,
+                    selected_role=initial_role,
+                    outcome_reason=reason,
+                    usage={"requests": 0, "tokens": 0},
+                ),
+                initial_role,
+            )
+
         attempts: list[dict[str, Any]] = []
         feedback: list[ChallengeFinding] = []
         current_role = initial_role
@@ -256,7 +312,11 @@ class CompilationGate:
                 current_role=current_role,
                 available_roles=tuple(available_roles),
                 facts=EvidenceFacts.model_validate(
-                    {key: value for key, value in facts.items() if key != "checks_by_role"}
+                    {
+                        key: value
+                        for key, value in facts.items()
+                        if key not in {"checks_by_role", "governing_status"}
+                    }
                 ),
                 deterministic_findings=tuple(findings),
                 prior_feedback=tuple(feedback),
@@ -356,10 +416,14 @@ class CompilationGate:
             }
             attempts.append(attempt)
             mandatory_pass = not any(finding.severity == "blocking" for finding in all_findings)
-            if synthesis.decision == "accept" and mandatory_pass:
+            if (
+                synthesis.decision == "accept"
+                and mandatory_pass
+                and deterministic_outcome == "accept"
+            ):
                 return GateOutcome(
                     _record(
-                        self.runtime,
+                        self._runtime(),
                         connection_id,
                         "accept",
                         current_role,
@@ -367,9 +431,15 @@ class CompilationGate:
                         attempts,
                         requests,
                         tokens,
+                        review,
                     ),
                     current_role,
                 )
+            if synthesis.decision == "accept" and deterministic_outcome == "gap":
+                outcome_reason = (
+                    "Bounded review completed; the deterministic gap remains authoritative."
+                )
+                break
             fingerprint = json.dumps(
                 {key: value for key, value in attempt.items() if key != "attempt"},
                 sort_keys=True,
@@ -386,7 +456,7 @@ class CompilationGate:
 
         return GateOutcome(
             _record(
-                self.runtime,
+                self._runtime(),
                 connection_id,
                 "gap",
                 current_role,
@@ -394,6 +464,7 @@ class CompilationGate:
                 attempts,
                 requests,
                 tokens,
+                review,
             ),
             current_role,
         )
@@ -410,10 +481,13 @@ class CompilationGate:
             raise RuntimeError("agent request limit exhausted")
         if tokens >= self.config.max_tokens:
             raise RuntimeError("agent token limit exhausted")
-        reply = self.runtime.run(role, payload, output_type)
+        reply = self._runtime().run(role, payload, output_type)
         if tokens + reply.tokens > self.config.max_tokens:
             raise RuntimeError("agent token limit exhausted")
         return reply.output, reply.tokens
+
+    def _runtime(self) -> AgentRuntime:
+        return materialize_agent_runtime(self.runtime_source)
 
 
 def runtime_for(config: AgentConfig) -> AgentRuntime:
@@ -439,6 +513,22 @@ def _deterministic_findings(
     ]
 
 
+def _governing_status(facts: dict[str, Any], role: str | None) -> TrafficLight:
+    if explicit := facts.get("governing_status"):
+        return TrafficLight(explicit)
+    checks = facts.get("checks_by_role", {}).get(role, {}) if role else {}
+    statuses = {TrafficLight(status) for status in checks.values()}
+    for status in (
+        TrafficLight.RED,
+        TrafficLight.AMBER,
+        TrafficLight.GREY,
+        TrafficLight.GREEN,
+    ):
+        if status in statuses:
+            return status
+    return TrafficLight.GREY
+
+
 def _record(
     runtime: AgentRuntime,
     connection_id: str,
@@ -448,10 +538,12 @@ def _record(
     attempts: list[dict[str, Any]],
     requests: int,
     tokens: int,
+    review: AgentReviewDecision,
 ) -> AgentRecord:
     latest = attempts[-1] if attempts else {}
     return AgentRecord(
         connection_id=connection_id,
+        **review.model_dump(),
         runtime=runtime.name,
         model=runtime.model,
         proposal=json.dumps(latest.get("proposal", {}), sort_keys=True),

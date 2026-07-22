@@ -70,6 +70,16 @@ def test_blind_comparison_is_independent_and_publication_is_lawful(tmp_path: Pat
         "match",
         "omission",
     }
+    assert all(
+        record["review_required"] is False
+        for record in divergence["records"]
+        if record["governing_status"] == "green"
+    )
+    assert all(
+        record["review_required"] is True and record["resolution_attempts"]
+        for record in divergence["records"]
+        if record["governing_status"] == "amber"
+    )
     assert "connections" not in set(pyogrio.list_layers(result.artifacts["geopackage"])[:, 0])
 
 
@@ -137,3 +147,23 @@ def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> Non
     assert "deviation" in {record.status for record in deviation}
     assert {record.status for record in addition} == {"addition", "omission"}
     assert all(record.resolution_attempts for record in [*deviation, *addition])
+
+
+def test_empty_review_policy_handles_atm_decisions_without_an_agent_runtime(
+    tmp_path: Path,
+) -> None:
+    config, _ = prepared(tmp_path)
+    config.compilation.agent.review_statuses = ()
+    config.compilation.agent.provider = "provider-that-must-not-be-constructed"
+
+    result = compile(config)
+    records = json.loads(result.artifacts["divergences"].read_text())["records"]
+    run = json.loads(result.artifacts["run"].read_text())
+
+    assert records
+    assert all(record["review_policy"] == [] for record in records)
+    assert all(record["review_required"] is False for record in records)
+    assert all(record["resolution_attempts"] == [] for record in records)
+    assert all("skipped by policy" in record["explanation"] for record in records)
+    assert run["agent_review"]["reviewed_decisions"] == 0
+    assert run["agent_review"]["skipped_decisions"] == len(result.agent_records) + len(records)

@@ -10,7 +10,7 @@ from satn.agents import (
     FakeAgentRuntime,
     PydanticAIRuntime,
 )
-from satn.models import AgentConfig
+from satn.models import AgentConfig, TrafficLight
 
 
 def facts(*, direct: str = "green", low_traffic: str = "green") -> dict[str, object]:
@@ -38,8 +38,74 @@ def facts(*, direct: str = "green", low_traffic: str = "green") -> dict[str, obj
 def gate(runtime: FakeAgentRuntime, *, attempts: int = 3) -> CompilationGate:
     return CompilationGate(
         runtime,
-        AgentConfig(max_attempts=attempts, max_requests=12, max_tokens=100),
+        AgentConfig(
+            review_statuses=tuple(TrafficLight),
+            max_attempts=attempts,
+            max_requests=12,
+            max_tokens=100,
+        ),
     )
+
+
+def test_agent_review_policy_defaults_to_amber_and_red_and_is_canonical() -> None:
+    assert AgentConfig().review_statuses == (TrafficLight.AMBER, TrafficLight.RED)
+    assert AgentConfig(review_statuses=["grey", "green", "grey"]).review_statuses == (
+        TrafficLight.GREEN,
+        TrafficLight.GREY,
+    )
+    assert AgentConfig(enabled=False).review_statuses == ()
+    with pytest.raises(ValueError, match="enabled: false conflicts"):
+        AgentConfig(enabled=False, review_statuses=["amber"])
+
+
+@pytest.mark.parametrize("status", tuple(TrafficLight))
+def test_selected_status_reaches_bounded_agent_review(status: TrafficLight) -> None:
+    config = AgentConfig(
+        review_statuses=(status,),
+        max_attempts=1,
+        max_requests=4,
+        max_tokens=100,
+    )
+
+    outcome = CompilationGate(FakeAgentRuntime(), config).evaluate(
+        "connection-a-b",
+        facts(direct=status.value),
+        "direct",
+        ["direct"],
+    )
+
+    assert outcome.record.governing_status == status
+    assert outcome.record.review_policy == (status,)
+    assert outcome.record.review_required is True
+    assert outcome.record.usage == {"requests": 4, "tokens": 4}
+
+
+@pytest.mark.parametrize(
+    ("status", "decision"),
+    [
+        (TrafficLight.GREEN, "accept"),
+        (TrafficLight.AMBER, "accept"),
+        (TrafficLight.RED, "gap"),
+        (TrafficLight.GREY, "accept"),
+    ],
+)
+def test_unselected_status_is_deterministic_and_never_needs_a_runtime(
+    status: TrafficLight,
+    decision: str,
+) -> None:
+    outcome = CompilationGate(None, AgentConfig(review_statuses=())).evaluate(
+        "connection-a-b",
+        facts(direct=status.value),
+        "direct",
+        ["direct"],
+    )
+
+    assert outcome.record.decision == decision
+    assert outcome.record.governing_status == status
+    assert outcome.record.review_policy == ()
+    assert outcome.record.review_required is False
+    assert outcome.record.runtime == "not-invoked"
+    assert outcome.record.usage == {"requests": 0, "tokens": 0}
 
 
 def test_success_records_all_typed_roles() -> None:

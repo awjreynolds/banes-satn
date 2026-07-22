@@ -13,7 +13,7 @@ import networkx as nx
 import pandas as pd
 from shapely.geometry import MultiPoint
 
-from satn.agents import AgentRuntime, CompilationGate
+from satn.agents import AgentRuntimeSource, CompilationGate
 from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
 from satn.evidence import (
     continuous_linework,
@@ -108,7 +108,7 @@ class CompiledNetwork:
 def compile_network(
     config: CouncilConfig,
     source: dict[str, gpd.GeoDataFrame],
-    runtime: AgentRuntime,
+    runtime: AgentRuntimeSource,
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
     context = source.get("context", empty_context(source["network"].crs)).copy()

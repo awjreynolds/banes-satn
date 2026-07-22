@@ -12,7 +12,7 @@ from satn.agents import AgentRole, CompilationGate, FakeAgentRuntime
 from satn.backbone import assemble_backbone_outward
 from satn.compiler import compile_network
 from satn.evidence import derive_context_layers, govern_network_scope
-from satn.models import AgentConfig, CouncilConfig
+from satn.models import AgentConfig, CouncilConfig, TrafficLight
 from satn.publisher import publish
 from satn.routing import RoadGraph
 from satn.sources import derive_strategic_destinations
@@ -487,7 +487,10 @@ def test_rejected_direct_frontier_falls_through_to_next_direct_frontier() -> Non
         empty,
         spines,
         graph,
-        CompilationGate(runtime, AgentConfig()),
+        CompilationGate(
+            runtime,
+            AgentConfig(review_statuses=(TrafficLight.GREEN,)),
+        ),
         15,
     )
 

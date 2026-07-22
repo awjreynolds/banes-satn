@@ -385,6 +385,7 @@ def _write_json_records(
         ignore_index=True,
         sort=False,
     )
+    review_records = [*compiled.agent_records, *compiled.divergence_records]
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
@@ -396,6 +397,17 @@ def _write_json_records(
         },
         "network_model": "backbone-outward",
         "authoritative_features": _authoritative_feature_records(compiled),
+        "agent_review": {
+            "statuses": [
+                status.value for status in config.compilation.agent.review_statuses
+            ],
+            "reviewed_decisions": sum(
+                record.review_required for record in review_records
+            ),
+            "skipped_decisions": sum(
+                not record.review_required for record in review_records
+            ),
+        },
         "compilation_input_fingerprint": compiled.compilation_input_fingerprint,
         "compilation_diagnostics": compiled.compilation_diagnostics,
         "connection_count": compiled.connection_count,
