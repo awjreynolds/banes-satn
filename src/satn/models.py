@@ -37,6 +37,52 @@ class UrbanClassificationStatus(StrEnum):
     EXPLICIT_UNKNOWN = "explicit-unknown"
 
 
+class AccessPointStatus(StrEnum):
+    MAPPED = "mapped"
+    INFERRED = "inferred"
+    UNRESOLVED = "unresolved"
+
+
+class AccessServiceStatus(StrEnum):
+    SERVED = "served"
+    SERVED_PROVISIONAL = "served-provisional"
+    NETWORK_GAP = "network-gap"
+
+
+ACCESS_OBLIGATION_COLUMNS = [
+    "obligation_id",
+    "obligation_kind",
+    "place_id",
+    "community_id",
+    "school_id",
+    "school_kind",
+    "name",
+    "network_role",
+    "network_scope",
+    "service_status",
+    "service_rationale",
+    "access_point_status",
+    "access_point_source_id",
+    "access_point_rationale",
+    "criterion_access_point",
+    "criterion_continuity",
+    "access_connection_id",
+    "root_spine_id",
+    "branch_id",
+    "low_traffic_area_id",
+    "low_traffic_area_name",
+    "portal_id",
+    "portal_name",
+    "urban_spine_id",
+    "fabric_source_ids",
+    "supporting_evidence",
+    "finding",
+    "geometry_semantics",
+    "provenance",
+    "geometry",
+]
+
+
 class GovernedSpatialSourceConfig(BaseModel):
     path: Path
     source_id: str = Field(min_length=1)

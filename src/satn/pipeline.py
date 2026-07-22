@@ -124,6 +124,10 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     row.access_point_status,
                     row.access_point_source_id,
                     row.access_point_rationale,
+                    row.low_traffic_area_id,
+                    row.portal_id,
+                    row.fabric_source_ids,
+                    row.finding,
                     row.geometry.wkb_hex,
                 )
                 for row in compiled.access_obligations.itertuples()
@@ -284,6 +288,17 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "access_connection_id": row.access_connection_id,
                     "root_spine_id": row.root_spine_id,
                     "branch_id": row.branch_id,
+                    "network_scope": row.network_scope,
+                    "criterion_continuity": row.criterion_continuity,
+                    "low_traffic_area_id": row.low_traffic_area_id,
+                    "low_traffic_area_name": row.low_traffic_area_name,
+                    "portal_id": row.portal_id,
+                    "portal_name": row.portal_name,
+                    "urban_spine_id": row.urban_spine_id,
+                    "fabric_source_ids": row.fabric_source_ids,
+                    "supporting_evidence": row.supporting_evidence,
+                    "finding": row.finding,
+                    "geometry_semantics": row.geometry_semantics,
                     "provenance": row.provenance,
                 }
                 for row in compiled.access_obligations.itertuples()

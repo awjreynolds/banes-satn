@@ -91,6 +91,10 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert "School access point" in school_details.inner_text()
         assert "mapped" in school_details.inner_text()
         assert "Mapped usable entrance" in school_details.inner_text()
+        assert "Continuity criterion" in school_details.inner_text()
+        assert "Candidate area" in school_details.inner_text()
+        assert "Main-road portal" in school_details.inner_text()
+        assert "Geometry meaning" in school_details.inner_text()
         school_connection = page.locator(
             '[data-feature-id^="spine-access-"]', has_text="Fixture School"
         )

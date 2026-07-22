@@ -48,7 +48,10 @@ def prepared_governed_urban_config(tmp_path: Path) -> CouncilConfig:
     places.to_file(places_path, driver="GeoJSON")
     context_path = fixture / "source" / "context.geojson"
     context = gpd.read_file(context_path)
-    context.loc[context["feature_type"] == "ncn-route", "network_scope"] = "urban"
+    context.loc[
+        context["feature_type"].isin(["ncn-route", "school"]),
+        "network_scope",
+    ] = "urban"
     context.to_file(context_path, driver="GeoJSON")
     classification_path = fixture / "source" / "official-roads.geojson"
     gpd.GeoDataFrame(
@@ -198,6 +201,16 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
         for feature in network["features"]
         if feature["properties"]["feature_type"] == "low-traffic-area-portal"
     ]
+    school_obligations = [
+        feature
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "school-access-obligation"
+    ]
+    school_connections = [
+        feature
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "school-access-connection"
+    ]
 
     assert network["urban_classification_status"] == "explicit-unknown"
     assert run["urban_classification_status"] == "explicit-unknown"
@@ -239,6 +252,31 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert {portal["properties"]["area_id"] for portal in area_portals} == {
         candidate_areas[0]["id"]
     }
+    assert len(school_obligations) == 1
+    urban_school = school_obligations[0]
+    assert urban_school["geometry"]["type"] == "Point"
+    assert urban_school["properties"]["network_role"] == (
+        "urban-school-access-obligation"
+    )
+    assert urban_school["properties"]["service_status"] == "served"
+    assert urban_school["properties"]["low_traffic_area_id"] == candidate_areas[0]["id"]
+    assert urban_school["properties"]["portal_id"] in {
+        portal["id"] for portal in area_portals
+    }
+    assert urban_school["properties"]["geometry_semantics"] == (
+        "area-permeability-no-internal-centreline"
+    )
+    assert json.loads(urban_school["properties"]["fabric_source_ids"])
+    assert not school_connections
+    assert all(
+        "school-fixture"
+        not in {
+            str(feature["properties"].get("from_place")),
+            str(feature["properties"].get("to_place")),
+        }
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "connection"
+    )
     assert len(ncn_evidence) == 1
     assert ncn_evidence[0]["id"] == "ncn-fixture"
     assert ncn_evidence[0]["properties"]["network_scope"] == "urban"
@@ -253,6 +291,17 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
         result.artifacts["geopackage"], layer="low_traffic_area_portals"
     )
     assert {portal["id"] for portal in area_portals} == set(published_portals["portal_id"])
+    published_obligations = gpd.read_file(
+        result.artifacts["geopackage"], layer="access_obligations"
+    )
+    published_urban_school = published_obligations[
+        published_obligations["network_role"] == "urban-school-access-obligation"
+    ].iloc[0]
+    assert published_urban_school["low_traffic_area_id"] == candidate_areas[0]["id"]
+    assert published_urban_school["portal_id"] == urban_school["properties"]["portal_id"]
+    assert published_urban_school["geometry_semantics"] == (
+        "area-permeability-no-internal-centreline"
+    )
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
     assert "Urban Main-Road Spines" in review_html

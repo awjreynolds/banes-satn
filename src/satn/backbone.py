@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import heapq
 import json
 from dataclasses import dataclass
@@ -14,7 +13,14 @@ from shapely.geometry import MultiPoint, Point
 from shapely.ops import nearest_points
 
 from satn.agents import CompilationGate
-from satn.models import AgentRecord
+from satn.identifiers import stable_id as _stable_id
+from satn.models import (
+    ACCESS_OBLIGATION_COLUMNS,
+    AccessPointStatus,
+    AccessServiceStatus,
+    AgentRecord,
+    TrafficLight,
+)
 from satn.routing import RoadGraph, RouteOption, stationary_route_option
 
 MAX_OBLIGATION_ATTACHMENT_M = 2000.0
@@ -70,28 +76,6 @@ ACCESS_COLUMNS = [
     "provenance",
     "criterion_continuity",
     "criterion_bidirectional",
-    "geometry",
-]
-
-OBLIGATION_COLUMNS = [
-    "obligation_id",
-    "obligation_kind",
-    "place_id",
-    "community_id",
-    "school_id",
-    "school_kind",
-    "name",
-    "network_role",
-    "service_status",
-    "service_rationale",
-    "access_point_status",
-    "access_point_source_id",
-    "access_point_rationale",
-    "criterion_access_point",
-    "access_connection_id",
-    "root_spine_id",
-    "branch_id",
-    "provenance",
     "geometry",
 ]
 
@@ -1066,7 +1050,11 @@ def _obligations(
     for _, community in communities.sort_values("place_id").iterrows():
         place_id = str(community["place_id"])
         access = served_communities.get(place_id)
-        service_status = "served" if access is not None else "network-gap"
+        service_status = (
+            AccessServiceStatus.SERVED.value
+            if access is not None
+            else AccessServiceStatus.NETWORK_GAP.value
+        )
         provenance = {
             "community_id": place_id,
             "service_status": service_status,
@@ -1111,13 +1099,15 @@ def _obligations(
     for _, school in schools.sort_values("place_id").iterrows():
         school_id = str(school["place_id"])
         access = served_schools.get(school_id)
-        access_status = str(school.get("access_point_status"))
+        access_status = AccessPointStatus(
+            str(school.get("access_point_status"))
+        ).value
         service_status = (
-            "served"
-            if access is not None and access_status == "mapped"
-            else "served-provisional"
+            AccessServiceStatus.SERVED.value
+            if access is not None and access_status == AccessPointStatus.MAPPED.value
+            else AccessServiceStatus.SERVED_PROVISIONAL.value
             if access is not None
-            else "network-gap"
+            else AccessServiceStatus.NETWORK_GAP.value
         )
         provenance = {
             "school_id": school_id,
@@ -1148,11 +1138,12 @@ def _obligations(
                 "service_rationale": (
                     "Mapped School Access Point has one governed parent edge to fixed "
                     "backbone geometry."
-                    if service_status == "served"
+                    if service_status == AccessServiceStatus.SERVED.value
                     else (
                         "Inferred School Access Point reaches fixed backbone geometry but "
                         "remains subject to verification."
-                        if service_status == "served-provisional"
+                        if service_status
+                        == AccessServiceStatus.SERVED_PROVISIONAL.value
                         else "School access is unresolved and remains visible as a Network Gap."
                     )
                 ),
@@ -1160,10 +1151,10 @@ def _obligations(
                 "access_point_source_id": school.get("access_point_source_id"),
                 "access_point_rationale": school.get("access_point_rationale"),
                 "criterion_access_point": {
-                    "mapped": "green",
-                    "inferred": "amber",
-                    "unresolved": "grey",
-                }.get(access_status, "grey"),
+                    AccessPointStatus.MAPPED.value: TrafficLight.GREEN.value,
+                    AccessPointStatus.INFERRED.value: TrafficLight.AMBER.value,
+                    AccessPointStatus.UNRESOLVED.value: TrafficLight.GREY.value,
+                }.get(access_status, TrafficLight.GREY.value),
                 "access_connection_id": (
                     access["access_connection_id"] if access is not None else None
                 ),
@@ -1175,7 +1166,7 @@ def _obligations(
         )
     return gpd.GeoDataFrame(
         rows,
-        columns=OBLIGATION_COLUMNS,
+        columns=ACCESS_OBLIGATION_COLUMNS,
         geometry="geometry",
         crs=communities.crs or schools.crs,
     )
@@ -1580,8 +1571,3 @@ def _branches(
             }
         )
     return gpd.GeoDataFrame(rows, columns=BRANCH_COLUMNS, geometry="geometry", crs=crs)
-
-
-def _stable_id(prefix: str, *parts: object) -> str:
-    value = "::".join(str(part) for part in parts)
-    return f"{prefix}-{hashlib.sha256(value.encode()).hexdigest()[:12]}"

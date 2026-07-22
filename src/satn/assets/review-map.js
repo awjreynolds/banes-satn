@@ -99,9 +99,20 @@
       if (["school", "school-access-obligation"].includes(properties.feature_type)) {
         addDefinition(list, "School kind", value(properties.school_kind, properties.category));
         addDefinition(list, "School access point", value(properties.access_point_status));
+        addDefinition(list, "Access point source identifier", value(properties.access_point_source_id));
         addDefinition(list, "Access rationale", value(properties.access_point_rationale));
         addDefinition(list, "Service status", value(properties.service_status));
         addDefinition(list, "Service rationale", value(properties.service_rationale));
+        if (properties.feature_type === "school-access-obligation") {
+          addDefinition(list, "Network scope", value(properties.network_scope));
+          addDefinition(list, "Continuity criterion", value(properties.criterion_continuity));
+          addDefinition(list, "Candidate area", value(properties.low_traffic_area_name, properties.low_traffic_area_id));
+          addDefinition(list, "Main-road portal", value(properties.portal_name, properties.portal_id));
+          addDefinition(list, "Fabric source identifiers", parseList(properties.fabric_source_ids).join(", ") || "None");
+          addDefinition(list, "Supporting evidence", value(properties.supporting_evidence));
+          addDefinition(list, "Finding", value(properties.finding, "None"));
+          addDefinition(list, "Geometry meaning", value(properties.geometry_semantics));
+        }
       }
       panel.append(heading, list);
       setHighlight(null);
@@ -278,7 +289,7 @@
     map.addLayer({ id: "cross-spine-connectors", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "cross-spine-connector"], paint: { "line-color": "#8e44ad", "line-width": 8, "line-opacity": .72 } });
     map.addLayer({ id: "branch-meeting-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "branch-meeting-connection"], paint: { "line-color": "#f39c12", "line-width": 7, "line-dasharray": [2, 1] } });
     map.addLayer({ id: "access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "access-obligation"], paint: { "circle-color": "#16a085", "circle-radius": 8, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
-    map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "criterion_access_point"], "green", "#1e8449", "amber", "#f39c12", "red", "#c0392b", "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
+    map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "service_status"], "served", "#1e8449", "served-provisional", "#f39c12", "network-gap", ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "#c0392b"], "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
     map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
     map.addLayer({ id: "urban-ncn-evidence", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "ncn-route"], ["==", ["get", "network_scope"], "urban"]], layout: { visibility: "none" }, paint: { "line-color": "#2471a3", "line-width": 4, "line-dasharray": [2, 1] } });

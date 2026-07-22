@@ -36,6 +36,10 @@ _Avoid_: education site, college, university
 The usable School entrance used to assess network access and School Street plausibility, recorded as mapped, inferred or unresolved. An inferred point may be proposed from boundaries, gates, paths and adjoining streets but remains unverified and cannot alone support a Green or Red assessment.
 _Avoid_: School representative point, automatic nearest-road snap, assumed main entrance
 
+**Urban School Access Assessment**:
+An inspectable School Access Obligation record showing whether a usable urban School Access Point shares continuous low-traffic street or path fabric with a named Low-Traffic Area Portal on an Urban Main-Road Spine. It cites the Candidate Low-Traffic Area, portal and supporting evidence while representing the internal journey as area permeability rather than a selected residential centreline.
+_Avoid_: urban school route, school-to-school journey, residential centreline
+
 **School Street Candidate Assessment**:
 A preliminary agentic assessment of whether a timed motor-traffic restriction outside a School is Green/Promising, Amber/Needs Investigation, Red/Unlikely or Grey/Not Evaluated, using evidence about usable entrances, adjoining road classification, bus and essential access, alternative through-traffic routes and displacement. It expresses qualitative plausibility for human investigation, not scheme feasibility or a calibrated probability.
 _Avoid_: School Street decision, probability score, guaranteed intervention
