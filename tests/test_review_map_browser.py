@@ -59,7 +59,15 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         place_details = page.locator("#feature-details").inner_text()
         assert "Stable ID" in place_details
         assert "Place role" in place_details
-        assert page.locator('[data-feature-type="access-obligation"]').count() > 0
+        obligation_card = page.locator('[data-feature-type="access-obligation"]').first
+        assert obligation_card.count() == 1
+        obligation_card.click()
+        obligation_details = page.locator("#feature-details").inner_text()
+        assert "Service status" in obligation_details
+        assert "Service rationale" in obligation_details
+        assert "Network scope" in obligation_details
+        assert "Continuity criterion" in obligation_details
+        assert "Geometry meaning" in obligation_details
         assert page.locator('[data-feature-type="a-road-spine"]').count() > 0
         assert page.locator('[data-feature-type="ncn-route"]').count() > 0
         assert page.locator('[data-feature-type="school"]').count() > 0
@@ -78,6 +86,9 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert school_legend.is_hidden()
         access_legend = page.locator("#legend-spine-access-connections")
         assert access_legend.is_visible()
+        assert "Green point" in access_legend.inner_text()
+        assert "Amber point" in access_legend.inner_text()
+        assert "Red point" in access_legend.inner_text()
         connector_legend = page.locator("#legend-cross-spine-connectors")
         assert connector_legend.is_visible()
         page.locator("#layer-spine-access-connections").uncheck()
@@ -85,9 +96,16 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         page.locator("#layer-cross-spine-connectors").uncheck()
         assert connector_legend.is_hidden()
         ncn_legend = page.locator("#legend-ncn-routes")
-        page.locator("#layer-ncn-routes").check()
+        assert page.locator("#layer-ncn-routes").is_checked()
         assert ncn_legend.is_visible()
+        assert "across rural and urban areas" in ncn_legend.inner_text()
+        assert "connector LINK evidence" in ncn_legend.inner_text()
         assert "not automatically a Circulation Boundary" in ncn_legend.inner_text()
+        repository_link = page.get_by_role("link", name="View source, methodology and issues")
+        assert repository_link.is_visible()
+        assert repository_link.get_attribute("href") == (
+            "https://github.com/awjreynolds/banes-satn"
+        )
         urban_legend = page.locator("#legend-urban-spines")
         assert urban_legend.is_visible()
         assert "Classified Unnumbered" in urban_legend.inner_text()

@@ -6,7 +6,7 @@ import ast
 import heapq
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from itertools import pairwise
 
@@ -762,15 +762,17 @@ def _is_a_road(refs: object) -> bool:
 def _tag_values(value: object) -> list[str]:
     if not _present(value):
         return []
-    if isinstance(value, list):
-        return [str(item) for item in value]
-    if isinstance(value, str) and value.startswith("["):
+    if isinstance(value, str) and value.startswith(("[", "(", "{")):
         try:
             parsed = ast.literal_eval(value)
-            if isinstance(parsed, list):
-                return [str(item) for item in parsed]
+            if isinstance(parsed, (list, tuple, set)):
+                value = parsed
         except (SyntaxError, ValueError):
             pass
+    if isinstance(value, set):
+        return sorted(str(item) for item in value)
+    if isinstance(value, Iterable) and not isinstance(value, (str, bytes, dict)):
+        return [str(item) for item in value]
     return [str(value)]
 
 

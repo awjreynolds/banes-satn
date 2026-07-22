@@ -6,7 +6,9 @@ import subprocess
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 import pyogrio
+from shapely.geometry import LineString
 
 from satn import compile
 from satn.constants import DISCLAIMER
@@ -147,6 +149,8 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert 'id="layer-community-connections"' not in html
     assert 'id="layer-spine-access-connections"' in html
     assert 'id="layer-ncn-routes"' in html
+    assert 'id="layer-ncn-routes" type="checkbox" checked' in html
+    assert 'href="https://github.com/awjreynolds/banes-satn"' in html
     assert 'id="layer-strategic-spines"' in html
     assert 'id="layer-spine-access-connections"' in html
     assert "A-road Strategic Spine — major engineering required" in html
@@ -165,6 +169,61 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert (result.artifacts["review_map"].parent / "agent-records.json").exists()
     assert '"place_name": "Eastfield"' in data
     assert '"place_name": "Westfield"' in data
+    assert "[Open the interactive network map](https://awjreynolds.github.io/banes-satn/)" in (
+        PROJECT / "README.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_ncn_connector_link_is_published_as_evidence_but_not_promoted_to_spine(
+    tmp_path: Path,
+) -> None:
+    config_path = fixture_config(tmp_path)
+    context_path = config_path.parent / "source" / "context.geojson"
+    context = gpd.read_file(context_path)
+    link = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "ncn-link-fixture",
+                "feature_type": "ncn-link",
+                "name": "NCN 1 connector link",
+                "category": "National Cycle Network connector link",
+                "source_id": "ncn-link-1",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "ncn_evidence_role": "connector-link",
+                "geometry": LineString([(-2.46, 51.4), (-2.455, 51.4)]),
+            }
+        ],
+        crs=context.crs,
+    )
+    context = gpd.GeoDataFrame(
+        pd.concat([context, link], ignore_index=True, sort=False),
+        geometry="geometry",
+        crs=context.crs,
+    )
+    context.to_file(context_path, driver="GeoJSON")
+    config = CouncilConfig.from_yaml(config_path)
+    snapshot(config)
+
+    result = compile(config)
+
+    ncn_evidence = gpd.read_file(result.artifacts["geopackage"], layer="ncn_routes")
+    assert set(ncn_evidence["ncn_evidence_role"].fillna("established-route")) == {
+        "established-route",
+        "connector-link",
+    }
+    network = json.loads(result.artifacts["geojson"].read_text(encoding="utf-8"))
+    published_ncn_types = {
+        feature["properties"]["feature_type"]
+        for feature in network["features"]
+        if feature["id"] in {"ncn-fixture", "ncn-link-fixture"}
+    }
+    assert published_ncn_types == {"ncn-route", "ncn-link"}
+    strategic_spines = gpd.read_file(result.artifacts["geopackage"], layer="strategic_spines")
+    ncn_spines = strategic_spines[strategic_spines["spine_kind"] == "ncn"]
+    assert len(ncn_spines) == 1
+    assert json.loads(ncn_spines.iloc[0]["provenance"])["source_ids"] == ["ncn1"]
+    assert "ncn-link-fixture" not in ncn_spines.iloc[0]["provenance"]
 
 
 def test_external_cli_snapshot_and_compile(tmp_path: Path) -> None:

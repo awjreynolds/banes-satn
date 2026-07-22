@@ -166,18 +166,76 @@ def test_gateway_records_unknown_when_no_onward_centre_is_available() -> None:
 
 def test_loads_current_ncn_features_from_public_service(monkeypatch: pytest.MonkeyPatch) -> None:
     boundary = source_frames().boundary
+    pages = [
+        {
+            "type": "FeatureCollection",
+            "exceededTransferLimit": True,
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"RouteType": "NCN", "RouteNo": "24", "SegmentID": 12},
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[-2.5, 51.4], [-2.45, 51.41]],
+                    },
+                }
+            ],
+        },
+        {
+            "type": "FeatureCollection",
+            "exceededTransferLimit": False,
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"RouteType": "LINK", "RouteNo": "24", "SegmentID": 13},
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[-2.45, 51.41], [-2.44, 51.415]],
+                    },
+                }
+            ],
+        },
+    ]
+
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(pages.pop(0)).encode()
+
+    seen: list[str] = []
+
+    def fake_urlopen(request: object, timeout: int) -> Response:
+        seen.append(request.full_url)  # type: ignore[attr-defined]
+        assert timeout == 90
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    result = _load_ncn_features("https://example.test/FeatureServer", boundary)
+
+    queries = [urllib.parse.parse_qs(urllib.parse.urlparse(url).query) for url in seen]
+    assert [query["resultOffset"] for query in queries] == [["0"], ["1"]]
+    assert all(query["where"] == ["RouteType IN ('NCN','LINK')"] for query in queries)
+    assert all(query["resultRecordCount"] == ["2000"] for query in queries)
+    query = queries[0]
+    assert query["geometryType"] == ["esriGeometryEnvelope"]
+    assert list(result["RouteType"]) == ["NCN", "LINK"]
+    assert list(result["RouteNo"]) == ["24", "24"]
+    assert result.crs.to_epsg() == 4326
+
+
+def test_ncn_pagination_rejects_a_transfer_limit_page_without_progress(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     payload = {
         "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {"RouteType": "NCN", "RouteNo": "24", "SegmentID": 12},
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [[-2.5, 51.4], [-2.45, 51.41]],
-                },
-            }
-        ],
+        "exceededTransferLimit": True,
+        "features": [],
     }
 
     class Response:
@@ -190,22 +248,10 @@ def test_loads_current_ncn_features_from_public_service(monkeypatch: pytest.Monk
         def read(self) -> bytes:
             return json.dumps(payload).encode()
 
-    seen: dict[str, str] = {}
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: Response())
 
-    def fake_urlopen(request: object, timeout: int) -> Response:
-        seen["url"] = request.full_url  # type: ignore[attr-defined]
-        assert timeout == 90
-        return Response()
-
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-
-    result = _load_ncn_features("https://example.test/FeatureServer", boundary)
-
-    query = urllib.parse.parse_qs(urllib.parse.urlparse(seen["url"]).query)
-    assert query["where"] == ["RouteType = 'NCN'"]
-    assert query["geometryType"] == ["esriGeometryEnvelope"]
-    assert result.iloc[0]["RouteNo"] == "24"
-    assert result.crs.to_epsg() == 4326
+    with pytest.raises(ValueError, match="transfer limit without returning features"):
+        _load_ncn_features("https://example.test/FeatureServer", source_frames().boundary)
 
 
 def test_grouped_osm_feature_queries_merge_and_deduplicate_stable_ids() -> None:

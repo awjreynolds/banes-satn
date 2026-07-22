@@ -8,6 +8,7 @@ from shapely.geometry import LineString, Point
 from satn.agents import FakeAgentRuntime
 from satn.compiler import compile_network
 from satn.models import CouncilConfig
+from satn.routing import RoadGraph, choose_alignment
 from satn.urban import derive_urban_structure
 
 
@@ -117,6 +118,120 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     assert portals["portal_id"].is_unique
     assert set(portals["area_id"]) == set(areas["structure_id"])
     assert all("A road" in name for name in portals["name"])
+
+
+def test_geojson_array_tags_preserve_urban_fabric_and_a_road_routing(tmp_path: Path) -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "neighbourhood",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=4326,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "main",
+                "highway": ["primary"],
+                "ref": ["A4"],
+                "geometry": LineString([(0, -0.02), (0, 0.02)]),
+            },
+            {
+                "osmid": "minor-west",
+                "highway": ["residential"],
+                "geometry": LineString([(-0.01, 0), (-0.005, 0)]),
+            },
+            {
+                "osmid": "minor-west-2",
+                "highway": ["residential"],
+                "geometry": LineString([(-0.005, 0), (-0.005, 0.005)]),
+            },
+            {
+                "osmid": "minor-east",
+                "highway": ["unclassified"],
+                "geometry": LineString([(0.005, 0), (0.01, 0)]),
+            },
+            {
+                "osmid": "minor-east-2",
+                "highway": ["residential"],
+                "geometry": LineString([(0.005, 0), (0.005, 0.005)]),
+            },
+        ],
+        crs=4326,
+    )
+    network_path = tmp_path / "network.geojson"
+    network.to_file(network_path, driver="GeoJSON")
+    reloaded = gpd.read_file(network_path)
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": f"official-a-{index}",
+                "official_classification": "a-road",
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "Open Government Licence v3.0",
+                "content_fingerprint": "abc123",
+                "geometry": geometry,
+            }
+            for index, geometry in enumerate(
+                (
+                    LineString([(0, -0.02), (0, 0.02)]),
+                    LineString([(-0.01, -0.01), (-0.01, 0.01)]),
+                    LineString([(0.01, -0.01), (0.01, 0.01)]),
+                    LineString([(-0.01, -0.01), (0.01, -0.01)]),
+                    LineString([(-0.01, 0.01), (0.01, 0.01)]),
+                ),
+                start=1,
+            )
+        ],
+        crs=4326,
+    )
+
+    urban = derive_urban_structure(places, reloaded, official)
+    graph = RoadGraph(reloaded)
+    selected, _, _ = choose_alignment(
+        graph,
+        graph.nearest_node(Point(0, -0.02))[0],
+        graph.nearest_node(Point(0, 0.02))[0],
+    )
+
+    assert type(reloaded.iloc[0]["highway"]).__name__ == "ndarray"
+    assert len(urban.low_traffic_areas) == 2
+    assert selected is not None
+    assert selected.role == "strategic-spine"
+    assert selected.a_road_share == 1
+
+
+def test_tuple_and_set_tags_preserve_a_road_routing_semantics() -> None:
+    for highway in (("primary",), {"primary"}):
+        graph = RoadGraph(
+            gpd.GeoDataFrame(
+                [
+                    {
+                        "osmid": "main",
+                        "highway": highway,
+                        "ref": ("A4",) if isinstance(highway, tuple) else {"A4"},
+                        "geometry": LineString([(0, 0), (0.01, 0)]),
+                    }
+                ],
+                crs=4326,
+            )
+        )
+
+        selected, _, _ = choose_alignment(
+            graph,
+            graph.nearest_node(Point(0, 0))[0],
+            graph.nearest_node(Point(0.01, 0))[0],
+        )
+
+        assert selected is not None
+        assert selected.role == "strategic-spine"
+        assert selected.a_road_share == 1
 
 
 def test_osm_tags_do_not_override_missing_or_unclassified_official_evidence() -> None:
@@ -231,6 +346,71 @@ def test_official_a_b_and_classified_unnumbered_are_stable_urban_spines() -> Non
     assert list(first.low_traffic_area_portals["portal_id"]) == list(
         second.low_traffic_area_portals["portal_id"]
     )
+
+
+def test_governed_urban_a_road_evidence_extends_the_urban_spine_extent() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=27700,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "urban-street",
+                "highway": "residential",
+                "geometry": LineString([(-100, 0), (100, 0)]),
+            }
+        ],
+        crs=27700,
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "urban-a-evidence",
+                "feature_type": "a-road-spine",
+                "network_scope": "urban",
+                "geometry": LineString([(2500, -100), (2500, 100)]),
+            },
+            {
+                "evidence_id": "rural-a-evidence",
+                "feature_type": "a-road-spine",
+                "network_scope": "rural",
+                "geometry": LineString([(3500, -100), (3500, 100)]),
+            },
+        ],
+        crs=27700,
+    )
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": feature_id,
+                "official_classification": "a-road",
+                "source_id": "official-roads",
+                "effective_date": "2026-01-01",
+                "licence": "OGL v3.0",
+                "content_fingerprint": "abc123",
+                "geometry": geometry,
+            }
+            for feature_id, geometry in (
+                ("urban-a", LineString([(2530, -100), (2530, 100)])),
+                ("rural-a", LineString([(3530, -100), (3530, 100)])),
+            )
+        ],
+        crs=27700,
+    )
+
+    urban = derive_urban_structure(places, network, official, context)
+
+    assert list(urban.spines["official_feature_id"]) == ["urban-a"]
+    assert urban.spines.iloc[0]["role"] == "urban-main-road-spine"
 
 
 def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic() -> None:

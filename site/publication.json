@@ -1,30 +1,30 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-95fd14569473",
+  "run_id": "run-500c8cc952ab",
   "status": "reviewable",
   "network_model": "backbone-outward",
   "connection_count": 79,
-  "gap_count": 85,
+  "gap_count": 74,
   "human_intervention_request_count": 0,
   "superseded_hypotheses": 0,
   "layer_counts": {
     "strategic_spines": 64,
-    "access_obligations": 147,
+    "access_obligations": 210,
     "school_access_obligations": 93,
-    "gaps": 85,
+    "gaps": 74,
     "spine_access_connections": 63,
     "spine_access_branches": 55,
     "branch_meeting_connections": 16,
     "cross_spine_connectors": 16,
     "a_road_spines": 2393,
-    "ncn_routes": 204,
-    "urban_spines": 0,
-    "urban_classification_unknowns": 0,
-    "candidate_low_traffic_areas": 0,
-    "low_traffic_area_portals": 0,
+    "ncn_routes": 255,
+    "urban_spines": 1515,
+    "urban_classification_unknowns": 1956,
+    "candidate_low_traffic_areas": 92,
+    "low_traffic_area_portals": 1706,
     "schools": 104,
     "school_street_assessments": 93,
-    "topography_profiles": 159,
+    "topography_profiles": 1674,
     "gradient_sections": 0,
     "elevation_corroboration": 0,
     "retail_centres": 55,
@@ -36,7 +36,10 @@
       "distance_challenges": "green"
     },
     "network": {
-      "community_coverage": "red",
+      "community_coverage": "green",
+      "rural_community_accounting": "green",
+      "urban_community_accounting": "green",
+      "community_accounting": "green",
       "authoritative_model": "green",
       "legacy_pairwise_absent": "green",
       "intervention_coverage": "green"
@@ -55,12 +58,13 @@
     },
     "urban_network": {
       "official_road_classification": "grey",
-      "official_main_road_spines": "grey",
+      "official_main_road_spines": "green",
       "ncn_kept_as_permeability_evidence": "green",
-      "candidate_low_traffic_areas": "grey",
-      "stable_named_area_portals": "grey",
+      "candidate_low_traffic_areas": "green",
+      "stable_named_area_portals": "green",
       "area_permeability_without_centreline": "green",
-      "urban_school_area_access": "red"
+      "urban_school_area_access": "red",
+      "urban_community_area_access": "amber"
     },
     "school_street_candidate_assessments": {
       "all_in_scope_schools_assessed": "green",
@@ -120,7 +124,18 @@
     "reciprocal_routing_edges": 39369,
     "nearby_node_candidate_sets": 64,
     "nearby_node_candidate_set_reuses": 4950,
-    "unmaterializable_attachment_paths": 42
+    "unmaterializable_attachment_paths": 42,
+    "community_coverage": {
+      "identified_rural": 54,
+      "served_rural": 54,
+      "gaps_rural": 0,
+      "identified_urban": 63,
+      "served_urban": 63,
+      "gaps_urban": 0,
+      "identified_total": 117,
+      "served_total": 117,
+      "gaps_total": 0
+    }
   },
   "comparison_role": "superseded-reference-not-ground-truth",
   "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan."
