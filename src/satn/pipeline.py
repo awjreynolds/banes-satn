@@ -115,8 +115,20 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for row in compiled.gradient_sections.itertuples()
             ),
+            "elevation_corroboration": sorted(
+                (
+                    row.corroboration_id,
+                    row.source_id,
+                    row.osm_elevation,
+                    row.osm_incline,
+                    row.evidence_role,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.elevation_corroboration.itertuples()
+            ),
             "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
             "urban_classification_status": compiled.urban_classification_status,
+            "elevation_evidence_status": compiled.elevation_evidence_status,
             "urban_spines": sorted(
                 (
                     row.structure_id,
@@ -236,6 +248,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         metadata={
             "network_units": compiled.network_units,
             "urban_classification_status": compiled.urban_classification_status,
+            "elevation_evidence_status": compiled.elevation_evidence_status,
             "urban_spines": len(compiled.urban_spines),
             "urban_classification_unknowns": len(
                 compiled.urban_classification_unknowns
@@ -329,6 +342,9 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             ],
             "topography_profiles": len(compiled.topography_profiles),
             "gradient_sections": len(compiled.gradient_sections),
+            "elevation_corroboration_count": len(
+                compiled.elevation_corroboration
+            ),
             "topography_profile_records": [
                 {
                     "profile_id": row.profile_id,

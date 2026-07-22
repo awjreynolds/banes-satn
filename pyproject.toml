@@ -47,6 +47,7 @@ markers = [
   "live_agent: requires SATN_TEST_AGENT_MODEL and provider credentials",
   "live_osm: requires live Nominatim and Overpass access",
   "browser: uses the installed Playwright Chromium browser",
+  "live_terrain: performs configured terrain retrieval and requires --live-terrain",
 ]
 
 [tool.ruff]

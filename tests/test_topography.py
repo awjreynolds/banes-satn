@@ -287,13 +287,26 @@ def test_public_compile_uses_snapshot_elevation_and_configured_bands(
     snapshot_path = snapshot(council)
 
     manifest = json.loads((snapshot_path / "snapshot.json").read_text())
-    assert manifest["evidence_sources"]["elevation"] == {
-        "source_ids": ["fixture-terrain-2026"],
-        "effective_dates": ["2026-01-01"],
-        "licences": ["Synthetic fixture"],
+    elevation_manifest = manifest["evidence_sources"]["elevation"]
+    assert elevation_manifest | {
+        "retrieved_at": "ignored",
+        "content_fingerprint": "ignored",
+    } == {
+        "provider": "local-geojson",
+        "source_id": "fixture-terrain-2026",
+        "effective_date": "2026-01-01",
+        "date_kind": "effective",
+        "licence": "Synthetic fixture",
+        "attribution": "Synthetic governed terrain fixture",
+        "bounded_to_compilation_area": True,
+        "coverage_status": "available",
         "sample_count": 30,
-        "content_fingerprint": manifest["file_sha256"]["elevation-evidence.geojson"],
+        "content_fingerprint": "ignored",
+        "retrieved_at": "ignored",
     }
+    assert elevation_manifest["content_fingerprint"] == manifest["file_sha256"][
+        "elevation-evidence.geojson"
+    ]
     result = compile(council)
     profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
     sections = gpd.read_file(result.artifacts["geopackage"], layer="gradient_sections")

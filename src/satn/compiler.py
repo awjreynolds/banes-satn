@@ -66,6 +66,8 @@ class CompiledNetwork:
     school_street_assessments: gpd.GeoDataFrame
     topography_profiles: gpd.GeoDataFrame
     gradient_sections: gpd.GeoDataFrame
+    elevation_corroboration: gpd.GeoDataFrame
+    elevation_evidence_status: str
     retail_centres: gpd.GeoDataFrame
     healthcare: gpd.GeoDataFrame
     agent_records: list[AgentRecord]
@@ -529,6 +531,27 @@ def compile_network(
         school_street_assessments=school_street_assessments,
         topography_profiles=topography_profiles,
         gradient_sections=gradient_sections,
+        elevation_corroboration=source.get(
+            "elevation_corroboration",
+            gpd.GeoDataFrame(
+                columns=[
+                    "corroboration_id",
+                    "source_id",
+                    "osm_elevation",
+                    "osm_incline",
+                    "evidence_role",
+                    "geometry",
+                ],
+                geometry="geometry",
+                crs=crs,
+            ),
+        ),
+        elevation_evidence_status=(
+            "governed-national"
+            if config.source.national_elevation is not None
+            and not source.get("elevation_evidence", empty_elevation_evidence(crs)).empty
+            else "explicit-unknown"
+        ),
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
         agent_records=[*records, *backbone.agent_records],

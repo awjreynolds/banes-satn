@@ -167,7 +167,30 @@ Offline fixtures can supply `source/elevation-evidence.geojson` containing Point
 samples with `evidence_id`, `source_id`, `effective_date`, `licence` and
 `elevation_m`. Snapshot creation validates and fingerprints that governed file, and
 normal compilation loads it without a live lookup. National terrain acquisition for
-real council snapshots is a separate subsequent integration boundary.
+real council snapshots uses the same contract. A configured local GeoJSON or remote
+GeoJSON point service is clipped to the governed boundary plus compilation buffer,
+canonicalised, attributed and fingerprinted in the immutable snapshot:
+
+```yaml
+source:
+  national_elevation:
+    provider: local-geojson # or remote-geojson with url
+    path: data/local/national-terrain-samples.geojson
+    source_id: national-dtm-2026
+    effective_date: 2026-01-15
+    licence: Open Government Licence v3.0
+    attribution: National terrain model
+    elevation_field: elevation_m
+    identifier_field: evidence_id
+```
+
+Remote sources receive the governed bounding box and must return a GeoJSON
+FeatureCollection of Point samples. Compilation performs no live lookup: it reads the
+snapshotted `elevation-evidence.geojson`. Changing that evidence changes the snapshot,
+cache and run fingerprints. Sparse OSM `ele` and `incline` tags are published only as
+`corroborating-only` evidence and never substitute for missing national coverage. Run
+the optional live-source smoke test explicitly with `--live-terrain` and
+`SATN_TEST_TERRAIN_GEOJSON_URL`.
 
 Configure a council-governed classification dataset as follows. The source must be
 line geometry with an `official_classification`, `road_classification` or
