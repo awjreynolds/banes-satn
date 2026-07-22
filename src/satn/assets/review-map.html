@@ -24,18 +24,16 @@
         <div id="legend-spine-access-connections" class="layer-summary" role="note">
           <p>Spine Access Connection — routed Community attachment</p>
           <p>Community Access Obligation — served reference point</p>
+          <p>Amber dashed line — retained Elevation Challenge with no materially easier option</p>
         </div>
         <label><input id="layer-cross-spine-connectors" type="checkbox" checked aria-describedby="legend-cross-spine-connectors"> Cross-Spine Connectors</label>
         <div id="legend-cross-spine-connectors" class="layer-summary" role="note">
           <p>Cross-Spine Connector — continuous transverse chain</p>
           <p>Branch Meeting Connection — first justified meeting only</p>
+          <p>Amber dashed line — retained Elevation Challenge with no materially easier option</p>
         </div>
-        <label><input id="layer-a-road-spines" type="checkbox"> Raw A-road evidence</label>
-        <label><input id="layer-community-connections" type="checkbox" checked aria-describedby="legend-community-connections"> Community connections</label>
-        <div id="legend-community-connections" class="layer-summary" role="note">
-          <p>Green line — selected Community Connection</p>
-          <p>Amber dashed warning — Elevation Challenge retained because no materially easier plausible option was found</p>
-        </div>
+        <label><input id="layer-a-road-spines" type="checkbox" aria-describedby="legend-a-road-spines"> Raw A-road evidence</label>
+        <div id="legend-a-road-spines" class="layer-summary" role="note" hidden><p>Orange line — governed source corridor before assembly.</p></div>
         <label><input id="layer-ncn-routes" type="checkbox" aria-describedby="legend-ncn-routes"> Urban NCN Evidence</label>
         <div id="legend-ncn-routes" class="layer-summary" role="note" hidden>
           <p>Established NCN geometry — permeability evidence, not automatically a Circulation Boundary</p>
@@ -54,7 +52,8 @@
           <p>Blue dot — named portal to a qualifying Circulation Boundary</p>
           <p>Area permeability only — no preferred residential cycling centreline asserted</p>
         </div>
-        <label><input id="layer-places" type="checkbox" checked> Places</label>
+        <label><input id="layer-places" type="checkbox" checked aria-describedby="legend-places"> Places</label>
+        <div id="legend-places" class="layer-summary" role="note"><p>Dark dot — labelled place reference point.</p></div>
         <label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label>
         <div id="legend-schools" class="layer-summary" role="note" hidden>
           <p>Green — Mapped and served</p>
@@ -83,10 +82,14 @@
           <p>Grey — Elevation Evidence unavailable</p>
           <p>Sequential blue terrain colours show physical gradient severity, not Criterion Status or route rejection.</p>
         </div>
-        <label><input id="layer-retail-centres" type="checkbox"> High streets &amp; retail centres</label>
-        <label><input id="layer-healthcare" type="checkbox"> Doctors, pharmacies &amp; hospitals</label>
-        <label><input id="layer-gaps-warnings" type="checkbox" checked> Gaps and warnings</label>
-        <label><input id="layer-atm" type="checkbox" __ATM_STATE__> ATM reference (before/after)</label>
+        <label><input id="layer-retail-centres" type="checkbox" aria-describedby="legend-retail-centres"> High streets &amp; retail centres</label>
+        <div id="legend-retail-centres" class="layer-summary" role="note" hidden><p>Orange dot — retail amenity evidence.</p></div>
+        <label><input id="layer-healthcare" type="checkbox" aria-describedby="legend-healthcare"> Doctors, pharmacies &amp; hospitals</label>
+        <div id="legend-healthcare" class="layer-summary" role="note" hidden><p>Red dot — healthcare amenity evidence.</p></div>
+        <label><input id="layer-gaps-warnings" type="checkbox" checked aria-describedby="legend-gaps-warnings"> Gaps and warnings</label>
+        <div id="legend-gaps-warnings" class="layer-summary" role="note"><p>Red dot — unresolved Network Gap. Amber dot — undeclared crossing warning.</p></div>
+        <label><input id="layer-atm" type="checkbox" __ATM_STATE__ aria-describedby="legend-atm"> ATM reference (before/after)</label>
+        <div id="legend-atm" class="layer-summary" role="note" hidden><p>Blue dashed line — governed comparison reference, never ground truth.</p></div>
       </fieldset>
 
       <p id="layer-summary" class="layer-summary" aria-live="polite"></p>

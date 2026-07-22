@@ -13,7 +13,13 @@ from satn.models import (
     ObservedThroughTrafficConfig,
     OfficialRoadClassificationConfig,
 )
-from satn.sources import OSMData, _load_ncn_features, derive_network_places, snapshot
+from satn.sources import (
+    OSMData,
+    _features_from_tag_groups,
+    _load_ncn_features,
+    derive_network_places,
+    snapshot,
+)
 
 PROJECT = Path(__file__).parents[1]
 
@@ -200,6 +206,41 @@ def test_loads_current_ncn_features_from_public_service(monkeypatch: pytest.Monk
     assert query["geometryType"] == ["esriGeometryEnvelope"]
     assert result.iloc[0]["RouteNo"] == "24"
     assert result.crs.to_epsg() == 4326
+
+
+def test_grouped_osm_feature_queries_merge_and_deduplicate_stable_ids() -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeOSMnx:
+        @staticmethod
+        def features_from_polygon(_polygon: object, *, tags: dict[str, object]) -> gpd.GeoDataFrame:
+            calls.append(tags)
+            return gpd.GeoDataFrame(
+                [
+                    {
+                        "element_type": "node",
+                        "osmid": 1,
+                        "name": "Shared feature",
+                        "geometry": Point(-2.5, 51.4),
+                    },
+                    {
+                        "element_type": "node",
+                        "osmid": len(calls) + 1,
+                        "name": f"Feature {len(calls) + 1}",
+                        "geometry": Point(-2.5 + len(calls) / 100, 51.4),
+                    },
+                ],
+                crs=4326,
+            )
+
+    result = _features_from_tag_groups(
+        FakeOSMnx(),
+        Polygon([(-2.6, 51.3), (-2.4, 51.3), (-2.4, 51.5), (-2.6, 51.3)]),
+        ({"amenity": "school"}, {"shop": True}, {"entrance": True}),
+    )
+
+    assert calls == [{"amenity": "school"}, {"shop": True}, {"entrance": True}]
+    assert set(result["osmid"]) == {1, 2, 3, 4}
 
 
 class FakeOSMAdapter:

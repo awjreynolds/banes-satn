@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 import shutil
 import tempfile
@@ -43,6 +44,7 @@ ROAD_CLASSIFICATION_COLUMNS = [
     "content_fingerprint",
     "geometry",
 ]
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -67,6 +69,8 @@ class OSMnxAdapter:
     def acquire(self, config: CouncilConfig) -> OSMData:
         import osmnx as ox
 
+        ox.settings.overpass_url = config.source.overpass_url
+        ox.settings.requests_timeout = config.source.osm_timeout_seconds
         query = config.source.osm_place_query
         if not query:
             raise ValueError("OSM sources require source.osm_place_query")
@@ -92,44 +96,53 @@ class OSMnxAdapter:
             if config.source.ncn_feature_service_url
             else None
         )
-        facilities = ox.features_from_polygon(
+        facilities = _features_from_tag_groups(
+            ox,
             governed_polygon,
-            tags={
-                "amenity": [
-                    "school",
-                    "college",
-                    "university",
-                    "doctors",
-                    "pharmacy",
-                    "clinic",
-                    "hospital",
-                    "marketplace",
-                ],
-                "shop": True,
-                "landuse": "retail",
-                "entrance": True,
-                "barrier": ["gate", "lift_gate", "swing_gate"],
-            },
-        ).reset_index()
-        circulation_boundaries = ox.features_from_polygon(
+            (
+                {
+                    "amenity": [
+                        "school",
+                        "college",
+                        "university",
+                        "doctors",
+                        "pharmacy",
+                        "clinic",
+                        "hospital",
+                        "marketplace",
+                    ]
+                },
+                {"shop": True, "landuse": "retail"},
+                {
+                    "entrance": True,
+                    "barrier": ["gate", "lift_gate", "swing_gate"],
+                },
+            ),
+        )
+        circulation_boundaries = _features_from_tag_groups(
+            ox,
             governed_polygon,
-            tags={
-                "waterway": ["river", "canal"],
-                "railway": ["rail", "light_rail", "subway"],
-                "landuse": [
-                    "residential",
-                    "commercial",
-                    "industrial",
-                    "retail",
-                    "farmland",
-                    "meadow",
-                    "grass",
-                    "forest",
-                    "recreation_ground",
-                ],
-                "natural": ["wood", "heath", "scrub", "grassland"],
-            },
-        ).reset_index()
+            (
+                {
+                    "waterway": ["river", "canal"],
+                    "railway": ["rail", "light_rail", "subway"],
+                },
+                {
+                    "landuse": [
+                        "residential",
+                        "commercial",
+                        "industrial",
+                        "retail",
+                        "farmland",
+                        "meadow",
+                        "grass",
+                        "forest",
+                        "recreation_ground",
+                    ]
+                },
+                {"natural": ["wood", "heath", "scrub", "grassland"]},
+            ),
+        )
         graph = ox.graph_from_polygon(
             governed_polygon,
             network_type=config.source.network_type,
@@ -150,6 +163,44 @@ class OSMnxAdapter:
         )
 
 
+def _features_from_tag_groups(
+    ox: object,
+    polygon: object,
+    tag_groups: tuple[dict[str, object], ...],
+) -> gpd.GeoDataFrame:
+    """Fetch bounded OSM feature groups and merge them by stable OSM identity."""
+    frames = []
+    for index, tags in enumerate(tag_groups, start=1):
+        LOGGER.info(
+            "OSM feature query group started group=%d/%d tags=%s",
+            index,
+            len(tag_groups),
+            ",".join(sorted(tags)),
+        )
+        frame = ox.features_from_polygon(  # type: ignore[attr-defined]
+            polygon, tags=tags
+        ).reset_index()
+        frames.append(frame)
+        LOGGER.info(
+            "OSM feature query group completed group=%d/%d features=%d",
+            index,
+            len(tag_groups),
+            len(frame),
+        )
+    populated = [frame for frame in frames if not frame.empty]
+    if not populated:
+        return gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=4326)
+    merged = gpd.GeoDataFrame(
+        pd.concat(populated, ignore_index=True, sort=False),
+        geometry="geometry",
+        crs=populated[0].crs,
+    )
+    identity = [
+        column for column in ("element", "id", "element_type", "osmid") if column in merged.columns
+    ]
+    return merged.drop_duplicates(identity or None).reset_index(drop=True)
+
+
 def snapshot(
     config: CouncilConfig,
     *,
@@ -158,10 +209,17 @@ def snapshot(
 ) -> Path:
     """Materialise an immutable, attributable source snapshot."""
     destination = config.source.snapshot_dir / config.source.snapshot_id
+    LOGGER.info(
+        "Snapshot acquisition started source_kind=%s snapshot=%s replace=%s",
+        config.source.kind,
+        config.source.snapshot_id,
+        replace,
+    )
     if destination.exists() and not replace:
         manifest = json.loads((destination / "snapshot.json").read_text(encoding="utf-8"))
         if manifest.get("schema_version") == SCHEMA_VERSION:
             _validate_snapshot(destination)
+            LOGGER.info("Existing snapshot validated path=%s", destination)
             return destination
 
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -193,9 +251,7 @@ def snapshot(
                 "ncn": config.source.ncn_feature_service_url,
                 "official_road_classification": _road_classification_manifest(config, temporary),
                 "observed_through_traffic": _observed_through_traffic_manifest(config, temporary),
-                "elevation": _elevation_evidence_manifest(
-                    config, temporary, retrieved_at
-                ),
+                "elevation": _elevation_evidence_manifest(config, temporary, retrieved_at),
             },
             "files": files,
             "file_sha256": {
@@ -211,6 +267,7 @@ def snapshot(
         if destination.exists():
             shutil.rmtree(destination)
         temporary.replace(destination)
+        LOGGER.info("Snapshot validated and committed path=%s files=%d", destination, len(files))
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
@@ -303,9 +360,7 @@ def _write_osm_snapshot(
         ox.save_graphml(data.graph, temporary / "network.graphml")
     if config.source.national_elevation is not None:
         _snapshot_national_elevation(config, temporary)
-        frames[ELEVATION_EVIDENCE_FILENAME] = gpd.read_file(
-            temporary / ELEVATION_EVIDENCE_FILENAME
-        )
+        frames[ELEVATION_EVIDENCE_FILENAME] = gpd.read_file(temporary / ELEVATION_EVIDENCE_FILENAME)
     return str(config.source.osm_place_query), list(frames)
 
 
@@ -316,9 +371,7 @@ def _snapshot_official_road_classification(
     governed = config.source.official_road_classification
     if governed is None:
         return False
-    source, fingerprint = _load_governed_line_source(
-        governed, "official road classification"
-    )
+    source, fingerprint = _load_governed_line_source(governed, "official road classification")
     classification_column = next(
         (
             column
@@ -365,9 +418,7 @@ def _snapshot_observed_through_traffic(
     governed = config.source.observed_through_traffic
     if governed is None:
         return False
-    source, fingerprint = _load_governed_line_source(
-        governed, "observed through-traffic"
-    )
+    source, fingerprint = _load_governed_line_source(governed, "observed through-traffic")
     rows: list[dict[str, object]] = []
     for index, feature in source.iterrows():
         if not isinstance(feature.geometry, (LineString, MultiLineString)):
@@ -435,15 +486,11 @@ def _elevation_evidence_manifest(
                 if governed.effective_date is not None
                 else retrieved_at.split("T", maxsplit=1)[0]
             ),
-            "date_kind": (
-                "effective" if governed.effective_date is not None else "retrieved"
-            ),
+            "date_kind": ("effective" if governed.effective_date is not None else "retrieved"),
             "licence": governed.licence,
             "attribution": governed.attribution,
             "bounded_to_compilation_area": True,
-            "coverage_status": (
-                "available" if not evidence.empty else "explicit-unknown"
-            ),
+            "coverage_status": ("available" if not evidence.empty else "explicit-unknown"),
             "sample_count": len(evidence),
             "content_fingerprint": hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
             "retrieved_at": retrieved_at,
@@ -480,9 +527,7 @@ def _snapshot_national_elevation(config: CouncilConfig, temporary: Path) -> None
         raise ValueError("national Elevation Evidence requires Point samples")
     boundary = gpd.read_file(temporary / "boundary.geojson")
     compilation_area = (
-        boundary.to_crs(27700)
-        .geometry.buffer(config.source.external_buffer_km * 1000)
-        .union_all()
+        boundary.to_crs(27700).geometry.buffer(config.source.external_buffer_km * 1000).union_all()
     )
     bounded = source.to_crs(27700)
     bounded = bounded[bounded.geometry.intersects(compilation_area)].to_crs(source.crs)
@@ -627,9 +672,7 @@ def _observed_through_traffic_manifest(
     path = snapshot_path / OBSERVED_THROUGH_TRAFFIC_FILENAME
     if governed is None or not path.exists():
         return None
-    return _governed_source_manifest(
-        governed, path, OBSERVED_THROUGH_TRAFFIC_FILENAME
-    )
+    return _governed_source_manifest(governed, path, OBSERVED_THROUGH_TRAFFIC_FILENAME)
 
 
 def _governed_source_manifest(

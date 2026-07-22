@@ -1,31 +1,127 @@
 {
-  "run_id": "run-b7a6413f89bb",
-  "status": "complete",
-  "connection_count": 163,
-  "gap_count": 0,
-  "superseded_hypotheses": 2,
+  "schema_version": "2.0",
+  "run_id": "run-95fd14569473",
+  "status": "reviewable",
+  "network_model": "backbone-outward",
+  "connection_count": 79,
+  "gap_count": 85,
+  "human_intervention_request_count": 0,
+  "superseded_hypotheses": 0,
   "layer_counts": {
-    "a_road_spines": 2373,
-    "ncn_routes": 195,
+    "strategic_spines": 64,
+    "access_obligations": 147,
+    "school_access_obligations": 93,
+    "gaps": 85,
+    "spine_access_connections": 63,
+    "spine_access_branches": 55,
+    "branch_meeting_connections": 16,
+    "cross_spine_connectors": 16,
+    "a_road_spines": 2393,
+    "ncn_routes": 204,
+    "urban_spines": 0,
+    "urban_classification_unknowns": 0,
+    "candidate_low_traffic_areas": 0,
+    "low_traffic_area_portals": 0,
     "schools": 104,
+    "school_street_assessments": 93,
+    "topography_profiles": 159,
+    "gradient_sections": 0,
+    "elevation_corroboration": 0,
     "retail_centres": 55,
     "healthcare": 78
   },
   "criteria": {
     "connections": {
-      "mandatory_checks": "green",
+      "mandatory_checks": "red",
       "distance_challenges": "green"
     },
     "network": {
-      "community_coverage": "green",
-      "connected_graph": "green",
-      "unique_pairs": "green",
-      "internal_termini": "green",
+      "community_coverage": "red",
+      "authoritative_model": "green",
+      "legacy_pairwise_absent": "green",
       "intervention_coverage": "green"
+    },
+    "spine_network": {
+      "governed_spine_evidence": "green",
+      "first_reachable_access": "green",
+      "all_access_obligations_resolved": "red",
+      "school_access_state": "red",
+      "branch_provenance": "green",
+      "degree_one_access_valid": "green",
+      "gateway_coverage": "green",
+      "cross_spine_traversal": "green",
+      "parallel_meetings_suppressed": "green",
+      "a_road_intervention_assumptions": "green"
+    },
+    "urban_network": {
+      "official_road_classification": "grey",
+      "official_main_road_spines": "grey",
+      "ncn_kept_as_permeability_evidence": "green",
+      "candidate_low_traffic_areas": "grey",
+      "stable_named_area_portals": "grey",
+      "area_permeability_without_centreline": "green",
+      "urban_school_area_access": "red"
+    },
+    "school_street_candidate_assessments": {
+      "all_in_scope_schools_assessed": "green",
+      "qualitative_not_probability": "green"
+    },
+    "topography": {
+      "all_generated_edges_profiled": "green",
+      "elevation_evidence_coverage": "grey",
+      "gradient_sections_published": "grey"
     },
     "atm_comparison": {
       "compared": "grey"
     }
   },
+  "compilation_diagnostics": {
+    "assembly_strategy": "backbone-outward",
+    "candidate_evaluations": 4887,
+    "initial_frontiers": 64,
+    "final_frontiers": 118,
+    "served_communities": 54,
+    "unserved_communities": 0,
+    "optimization_findings": [
+      {
+        "finding_id": "serial-frontier-candidate-evaluation",
+        "finding": "Backbone candidates were evaluated serially across a large finite frontier-obligation search space.",
+        "evidence": {
+          "candidate_evaluations": 4887,
+          "initial_frontiers": 64,
+          "final_frontiers": 118
+        },
+        "potential_optimization": "Batch or safely parallelise independent initial-frontier searches while preserving deterministic candidate ranking."
+      },
+      {
+        "finding_id": "repeated-node-association-search",
+        "status": "optimized-during-compilation-development",
+        "finding": "Multiple spine candidates reused the same community-to-node association set.",
+        "evidence": {
+          "unique_candidate_sets": 64,
+          "candidate_set_reuses": 4950
+        },
+        "applied_optimization": "Cache immutable point-to-node candidate sets for the duration of a run."
+      },
+      {
+        "finding_id": "unmaterializable-osm-attachment-paths",
+        "status": "bounded-and-visible",
+        "finding": "Some graph paths could not be merged into valid governed linework.",
+        "evidence": {
+          "path_count": 42
+        },
+        "applied_optimization": "Reject the affected candidate pair without exhaustive start/end retries; continue evaluating other governed frontiers.",
+        "potential_optimization": "Normalize disconnected OSM edge geometry at snapshot ingestion."
+      }
+    ],
+    "road_graph_nodes": 18922,
+    "road_graph_edges": 40745,
+    "reciprocal_routing_nodes": 18517,
+    "reciprocal_routing_edges": 39369,
+    "nearby_node_candidate_sets": 64,
+    "nearby_node_candidate_set_reuses": 4950,
+    "unmaterializable_attachment_paths": 42
+  },
+  "comparison_role": "superseded-reference-not-ground-truth",
   "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan."
 }

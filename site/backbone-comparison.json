@@ -1,0 +1,56 @@
+{
+  "schema_version": "2.0",
+  "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan.",
+  "comparison_role": "superseded-reference-not-ground-truth",
+  "previous_publication_available": true,
+  "current_backbone": {
+    "network_model": "backbone-outward",
+    "connection_count": 79,
+    "spine_access_connection_count": 63,
+    "branch_meeting_connection_count": 16,
+    "cross_spine_connector_count": 16,
+    "served_obligation_count": 62,
+    "network_gap_count": 85,
+    "linework_length_m": 82678.4,
+    "typed_role_count": 79,
+    "selection_rationale_count": 79
+  },
+  "topology": {
+    "current": {
+      "strategic_spine_count": 64,
+      "network_unit_count": 55,
+      "spine_access_branch_count": 55,
+      "spine_access_connection_count": 63,
+      "branch_meeting_connection_count": 16,
+      "cross_spine_connector_count": 16,
+      "node_count": 90,
+      "edge_count": 79,
+      "component_count": 11,
+      "degree_one_node_count": 51
+    },
+    "previous": {
+      "network_model": "legacy-pairwise",
+      "network_gap_count": 0,
+      "node_count": 118,
+      "edge_count": 163,
+      "component_count": 1,
+      "degree_one_node_count": 1,
+      "feature_role_counts": {
+        "connection": 163
+      }
+    }
+  },
+  "superseded_pairwise_reference": {
+    "network_model": "legacy-pairwise",
+    "connection_count": 163,
+    "linework_length_m": 319649.0
+  },
+  "visual_noise": {
+    "connection_count_delta": -84,
+    "linework_length_m_delta": -236970.6
+  },
+  "explainability": {
+    "all_current_connections_have_typed_roles": true,
+    "all_current_connections_have_selection_rationale": true
+  }
+}

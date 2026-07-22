@@ -24,7 +24,7 @@ def test_compile_selects_materially_easier_plausible_alignment() -> None:
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(easier)
     assert bool(connection["topography_alternative_trigger"])
     assert connection["topography_comparison_status"] == "easier-alternative-selected"
@@ -56,7 +56,7 @@ def test_repeated_shorter_climbs_trigger_when_cumulative_ascent_is_material() ->
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(easier)
     assert bool(connection["topography_alternative_trigger"])
     assert "Repeated shorter climbs" in connection["topography_comparison_rationale"]
@@ -77,7 +77,7 @@ def test_governed_trigger_lengths_are_adjustable() -> None:
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
     assert not bool(connection["topography_alternative_trigger"])
     assert connection["topography_comparison_status"] == "not-triggered"
@@ -92,15 +92,14 @@ def test_triggered_original_remains_visibly_flagged_without_plausible_alternativ
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
     assert bool(connection["topography_alternative_trigger"])
-    assert connection["topography_comparison_status"] == (
-        "original-retained-no-easier-option"
+    assert connection["topography_comparison_status"] == ("original-retained-no-easier-option")
+    assert (
+        "original remains selected and visibly flagged"
+        in connection["topography_comparison_rationale"]
     )
-    assert "original remains selected and visibly flagged" in connection[
-        "topography_comparison_rationale"
-    ]
 
 
 def test_strategic_spine_is_retained_when_gradient_triggers_comparison() -> None:
@@ -111,14 +110,12 @@ def test_strategic_spine_is_retained_when_gradient_triggers_comparison() -> None
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
-    assert connection["classification"] == "strategic-spine"
+    assert connection["topography_selected_role"] == "strategic-spine"
     assert bool(connection["topography_alternative_trigger"])
     assert connection["topography_comparison_status"] == "strategic-spine-retained"
-    assert "does not remove a strategic corridor" in connection[
-        "topography_comparison_rationale"
-    ]
+    assert "does not remove a strategic corridor" in connection["topography_comparison_rationale"]
 
 
 def test_missing_elevation_keeps_original_and_makes_comparison_explicit() -> None:
@@ -130,7 +127,7 @@ def test_missing_elevation_keeps_original_and_makes_comparison_explicit() -> Non
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
     assert not bool(connection["topography_alternative_trigger"])
     assert connection["topography_comparison_status"] == "evidence-unavailable"
@@ -166,7 +163,7 @@ def test_governed_section_length_thresholds_trigger_at_the_boundary(
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(easier)
     assert label in connection["topography_comparison_rationale"]
 
@@ -194,11 +191,9 @@ def test_trigger_free_option_with_more_climbing_is_not_materially_easier() -> No
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
-    assert connection["topography_comparison_status"] == (
-        "original-retained-no-easier-option"
-    )
+    assert connection["topography_comparison_status"] == ("original-retained-no-easier-option")
 
 
 def test_unidirectional_option_is_not_a_plausible_topography_alternative() -> None:
@@ -216,15 +211,13 @@ def test_unidirectional_option_is_not_a_plausible_topography_alternative() -> No
     config = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
-    assert connection["topography_selected_role"] == "direct"
-    assert connection["topography_comparison_status"] == (
-        "original-retained-no-easier-option"
-    )
+    assert connection["topography_comparison_status"] == ("original-retained-no-easier-option")
+    assert connection["topography_selected_role"] == "low-traffic"
 
 
-def test_gate_revision_reconciles_the_authoritative_topography_selection() -> None:
+def test_agent_proposal_cannot_silently_override_authoritative_topography_selection() -> None:
     direct = LineString([(0, 0), (1000, 0)])
     easier = LineString([(0, 0), (0, 200), (1000, 200), (1000, 0)])
     source = _two_route_source(direct, easier)
@@ -243,17 +236,14 @@ def test_gate_revision_reconciles_the_authoritative_topography_selection() -> No
 
     compiled = compile_network(config, source, runtime)
 
-    connection = compiled.connections.iloc[0]
-    assert connection.geometry.equals(direct)
-    assert connection["topography_selected_role"] == "direct"
-    assert connection["topography_comparison_status"] == "gate-revised-selection"
-    assert "Compilation Gate revised" in connection["topography_comparison_rationale"]
+    connection = _authoritative_connection(compiled)
+    assert connection.geometry.equals(easier)
+    assert connection["topography_selected_role"] == "low-traffic"
+    assert connection["topography_comparison_status"] == "easier-alternative-selected"
     selected = [
-        option
-        for option in json.loads(connection["alignment_options"])
-        if option["selected"]
+        option for option in json.loads(connection["alignment_options"]) if option["selected"]
     ]
-    assert [option["role"] for option in selected] == ["direct"]
+    assert [option["role"] for option in selected] == ["low-traffic"]
 
 
 def test_gate_rejection_publishes_no_authoritative_alignment_selection() -> None:
@@ -269,19 +259,17 @@ def test_gate_rejection_publishes_no_authoritative_alignment_selection() -> None
                     "selected_role": None,
                     "rationale": "Evidence remains unresolved.",
                 }
+                for _ in range(12)
             ]
         }
     )
 
     compiled = compile_network(config, source, runtime)
 
-    assert compiled.connections.empty
     gap = compiled.gaps.iloc[0]
     assert gap["topography_selected_role"] is None
     assert gap["topography_comparison_status"] == "gate-rejected-selection"
-    assert not any(
-        option["selected"] for option in json.loads(gap["alignment_options"])
-    )
+    assert not any(option["selected"] for option in json.loads(gap["alignment_options"]))
 
 
 def test_physically_impracticable_a_road_is_not_a_topography_substitute() -> None:
@@ -297,11 +285,9 @@ def test_physically_impracticable_a_road_is_not_a_topography_substitute() -> Non
 
     compiled = compile_network(config, source, FakeAgentRuntime())
 
-    connection = compiled.connections.iloc[0]
+    connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
-    assert connection["topography_comparison_status"] == (
-        "original-retained-no-easier-option"
-    )
+    assert connection["topography_comparison_status"] == ("original-retained-no-easier-option")
     strategic = next(
         option
         for option in json.loads(connection["alignment_options"])
@@ -328,13 +314,13 @@ def test_retained_elevation_challenge_has_persistent_map_warning(tmp_path: Path)
         page.route("https://tile.openstreetmap.org/**", lambda route: route.abort())
         page.goto(artifacts["review_map"].as_uri())
 
-        legend = page.locator("#legend-community-connections")
+        legend = page.locator("#legend-spine-access-connections")
         assert legend.is_visible()
         assert "Amber dashed warning" in legend.inner_text()
         warning = page.locator(".connection.retained-topography")
         assert warning.count() == 1
         assert "Elevation challenge retained" in warning.inner_text()
-        page.locator("#layer-community-connections").uncheck()
+        page.locator("#layer-spine-access-connections").uncheck()
         assert legend.is_hidden()
         browser.close()
 
@@ -428,16 +414,35 @@ def _two_route_source(
         ),
         "places": places,
         "network": network,
+        "context": gpd.GeoDataFrame(
+            [
+                {
+                    "evidence_id": "west-spine",
+                    "feature_type": "a-road-spine",
+                    "name": "A1",
+                    "category": "A-road strategic spine",
+                    "source_id": "west-spine-source",
+                    "feature_count": 1,
+                    "network_scope": "rural",
+                    "geometry": LineString([(0, 0), (0, 10)]),
+                }
+            ],
+            geometry="geometry",
+            crs=27700,
+        ),
         "elevation_evidence": elevation,
     }
 
 
+def _authoritative_connection(compiled: object) -> object:
+    return compiled.spine_access_connections[
+        compiled.spine_access_connections["place_name"] == "East"
+    ].iloc[0]
+
+
 def _gentle_alternative_heights(end_height_m: float) -> list[tuple[Point, float]]:
     samples: list[tuple[Point, float]] = [(Point(0, 100), end_height_m / 14)]
-    samples.extend(
-        (Point(x, 200), end_height_m * (200 + x) / 1400)
-        for x in range(0, 1001, 100)
-    )
+    samples.extend((Point(x, 200), end_height_m * (200 + x) / 1400) for x in range(0, 1001, 100))
     samples.append((Point(1000, 100), end_height_m * 1300 / 1400))
     return samples
 

@@ -106,9 +106,7 @@ def test_adjustable_gradient_bands_keep_every_section_visible() -> None:
     ]
     assert list(sections["length_m"]) == pytest.approx([100, 100, 100, 100, 100])
     assert profiles.iloc[0]["steepest_sustained_gradient_pct"] == pytest.approx(19.5)
-    assert json.loads(profiles.iloc[0]["gradient_section_ids"]) == list(
-        sections["section_id"]
-    )
+    assert json.loads(profiles.iloc[0]["gradient_section_ids"]) == list(sections["section_id"])
 
 
 def test_unusable_elevation_evidence_is_explicitly_grey() -> None:
@@ -229,6 +227,21 @@ def test_compiler_consumes_governed_fixture_elevation_evidence_without_rerouting
         ),
         "places": places,
         "network": network,
+        "context": gpd.GeoDataFrame(
+            [
+                {
+                    "evidence_id": "west-spine",
+                    "feature_type": "a-road-spine",
+                    "name": "A1",
+                    "source_id": "west-spine-source",
+                    "network_scope": "rural",
+                    "category": "A-road strategic spine",
+                    "geometry": LineString([(0, 0), (0, 1)]),
+                }
+            ],
+            geometry="geometry",
+            crs=27700,
+        ),
         "elevation_evidence": elevations([(0, 100), (100, 0), (200, 100)]),
     }
 
@@ -240,19 +253,18 @@ def test_compiler_consumes_governed_fixture_elevation_evidence_without_rerouting
         FakeAgentRuntime(),
     )
 
-    assert len(compiled.connections) == 1
-    assert compiled.connections.iloc[0].geometry.equals(network.iloc[0].geometry)
-    assert list(compiled.topography_profiles["evidence_status"]) == ["available"]
+    east = compiled.spine_access_connections.set_index("place_id").loc["east"]
+    assert east.geometry.equals(network.iloc[0].geometry)
+    east_profile = compiled.topography_profiles[
+        compiled.topography_profiles["edge_id"] == east["access_connection_id"]
+    ].iloc[0]
+    assert east_profile["evidence_status"] == "available"
     assert set(compiled.gradient_sections["uphill_direction"]) == {"forward", "reverse"}
-    assert compiled.criteria["topography"]["elevation_evidence_coverage"] == "green"
+    assert compiled.criteria["topography"]["elevation_evidence_coverage"] == "grey"
 
     artifacts = publish(council, compiled, "run-topography-fixture")
-    published_profiles = gpd.read_file(
-        artifacts["geopackage"], layer="topography_profiles"
-    )
-    published_sections = gpd.read_file(
-        artifacts["geopackage"], layer="gradient_sections"
-    )
+    published_profiles = gpd.read_file(artifacts["geopackage"], layer="topography_profiles")
+    published_sections = gpd.read_file(artifacts["geopackage"], layer="gradient_sections")
     published_geojson = json.loads(artifacts["geojson"].read_text())
     assert set(published_profiles["profile_id"]) == {
         feature["id"]
@@ -304,9 +316,10 @@ def test_public_compile_uses_snapshot_elevation_and_configured_bands(
         "content_fingerprint": "ignored",
         "retrieved_at": "ignored",
     }
-    assert elevation_manifest["content_fingerprint"] == manifest["file_sha256"][
-        "elevation-evidence.geojson"
-    ]
+    assert (
+        elevation_manifest["content_fingerprint"]
+        == manifest["file_sha256"]["elevation-evidence.geojson"]
+    )
     result = compile(council)
     profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
     sections = gpd.read_file(result.artifacts["geopackage"], layer="gradient_sections")

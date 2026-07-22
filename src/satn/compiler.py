@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import combinations
 from numbers import Number
@@ -15,31 +14,26 @@ import pandas as pd
 from shapely.geometry import MultiPoint
 
 from satn.agents import AgentRuntime, CompilationGate
-from satn.atm import choose_seeded_alignment
-from satn.backbone import assemble_backbone_outward
-from satn.cache import ConnectionCache
+from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
 from satn.evidence import continuous_linework, empty_context, mark_ncn_edges
+from satn.identifiers import stable_id as _stable_id
 from satn.models import (
     AccessPointStatus,
     AccessServiceStatus,
     AgentRecord,
     CouncilConfig,
     DivergenceRecord,
+    HumanInterventionRequest,
     NetworkScope,
-    TopographyComparisonStatus,
     TrafficLight,
     UrbanClassificationStatus,
 )
-from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
+from satn.routing import RoadGraph
 from satn.school_street import assess_school_street_candidates
 from satn.topography import (
     GradientThresholds,
     build_topography_profiles,
     empty_elevation_evidence,
-)
-from satn.topography_alternatives import (
-    TopographyComparison,
-    compare_alignment_topography,
 )
 from satn.urban import derive_urban_structure
 from satn.urban_school import assess_urban_school_access
@@ -51,7 +45,6 @@ class CompiledNetwork:
     road_context: gpd.GeoDataFrame
     label_places: gpd.GeoDataFrame
     places: gpd.GeoDataFrame
-    connections: gpd.GeoDataFrame
     gaps: gpd.GeoDataFrame
     urban_spines: gpd.GeoDataFrame
     urban_classification_unknowns: gpd.GeoDataFrame
@@ -80,9 +73,15 @@ class CompiledNetwork:
     network_units: list[dict[str, object]]
     atm_reference: gpd.GeoDataFrame | None
     divergence_records: list[DivergenceRecord]
-    cache_hits: int
-    cache_misses: int
     superseded_hypotheses: int
+    human_intervention_requests: list[HumanInterventionRequest]
+    compilation_diagnostics: dict[str, object]
+    compilation_input_fingerprint: str = ""
+
+    @property
+    def connection_count(self) -> int:
+        """Number of authoritative Community/School access and branch-meeting edges."""
+        return len(self.spine_access_connections) + len(self.branch_meeting_connections)
 
     @property
     def status(self) -> str:
@@ -94,18 +93,10 @@ class CompiledNetwork:
         return "complete" if self.gaps.empty and not has_red else "reviewable"
 
 
-def _connection_id(left: str, right: str) -> str:
-    pair = "::".join(sorted((left, right)))
-    return f"connection-{hashlib.sha256(pair.encode()).hexdigest()[:12]}"
-
-
 def compile_network(
     config: CouncilConfig,
     source: dict[str, gpd.GeoDataFrame],
     runtime: AgentRuntime,
-    *,
-    cache: ConnectionCache | None = None,
-    atm_seed: gpd.GeoDataFrame | None = None,
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
     context = source.get("context", empty_context(source["network"].crs)).copy()
@@ -113,156 +104,30 @@ def compile_network(
     if len(communities) < 2:
         raise ValueError("a network requires at least two Communities")
     gateways = places[places["kind"] == "cross_boundary_gateway"].copy()
-    strategic_destinations = places[places["kind"] == "strategic_destination"].copy()
-    participants = gpd.GeoDataFrame(
-        pd.concat([communities, gateways, strategic_destinations], ignore_index=True),
-        geometry="geometry",
-        crs=places.crs,
-    )
     routable_network = mark_ncn_edges(source["network"], context)
     road_graph = RoadGraph(routable_network)
     gate = CompilationGate(runtime, config.compilation.agent)
-    attachments = _network_place_attachments(places, participants, road_graph)
     strategic_spines = _strategic_spines(context)
     rural_communities = _rural_communities(communities, config)
     rural_schools = _rural_schools(context)
-    assembly_enabled = not strategic_spines.empty
     backbone = assemble_backbone_outward(
-        rural_communities if assembly_enabled else rural_communities.iloc[0:0],
+        rural_communities,
         rural_schools,
-        gateways if assembly_enabled else gateways.iloc[0:0],
+        gateways,
         strategic_spines,
         road_graph,
         gate,
         config.compilation.max_connection_km,
+        source.get("elevation_evidence", empty_elevation_evidence(road_graph.crs)),
+        config.compilation.topography,
     )
     spine_access_connections = backbone.connections
     access_obligations = backbone.obligations
     spine_access_branches = backbone.branches
     branch_meeting_connections = backbone.meeting_connections
     cross_spine_connectors = backbone.cross_spine_connectors
-    candidate_pairs = _local_adjacency_pairs(communities, road_graph, attachments)
-    candidate_pairs.update(_gateway_pairs(gateways, communities, road_graph, attachments))
-    candidate_pairs.update(
-        _gateway_pairs(strategic_destinations, communities, road_graph, attachments)
-    )
-    accepted: list[dict[str, object]] = []
-    rejected: list[dict[str, object]] = []
-    records: list[AgentRecord] = []
-    connection_columns = [
-        "connection_id",
-        "from_place",
-        "to_place",
-        "from_place_name",
-        "to_place_name",
-        "distance_km",
-        "classification",
-        "intervention_archetype",
-        "geometry_semantics",
-        "status",
-        "selection_reason",
-        "agent_outcome",
-        "agent_attempt_count",
-        "agent_findings",
-        "source_ids",
-        "cache_status",
-        "alignment_options",
-        "criterion_endpoints",
-        "criterion_continuity",
-        "criterion_bidirectional",
-        "criterion_distance",
-        "topography_alternative_trigger",
-        "topography_comparison_status",
-        "topography_comparison_rationale",
-        "topography_original_role",
-        "topography_selected_role",
-        "geometry",
-    ]
-    place_lookup = participants.set_index("place_id", drop=False)
-    attempted_pairs: set[tuple[str, str]] = set()
-    cache_hits = 0
-    cache_misses = 0
-
-    def compile_pair(pair: tuple[str, str]) -> bool:
-        nonlocal cache_hits, cache_misses
-        if pair in attempted_pairs:
-            return False
-        attempted_pairs.add(pair)
-        cached = cache.load(pair) if cache is not None else None
-        if cached is not None:
-            row, record = cached
-            accepted.append(row)
-            records.append(record)
-            cache_hits += 1
-            return True
-        cache_misses += 1
-        left_id, right_id = pair
-        left = place_lookup.loc[left_id]
-        right = place_lookup.loc[right_id]
-        selected, options, reason, snap_distance = _route_pair(
-            road_graph, attachments[left_id], attachments[right_id]
-        )
-        if atm_seed is not None:
-            seeded = choose_seeded_alignment(options, atm_seed, left.geometry, right.geometry)
-            if seeded is not None:
-                selected = seeded
-                reason = (
-                    "ATM-seeded starting hypothesis selected the closest available OSM "
-                    f"alignment role: {seeded.role}."
-                )
-        comparison = compare_alignment_topography(
-            selected,
-            options,
-            source.get("elevation_evidence", empty_elevation_evidence(road_graph.crs)),
-            config.compilation.topography,
-            road_graph.crs,
-        )
-        if comparison is not None:
-            selected = comparison.selected
-            if comparison.triggered:
-                reason = comparison.rationale
-        row, record = _gate_connection(
-            config,
-            gate,
-            left,
-            right,
-            selected,
-            options,
-            reason,
-            snap_distance,
-            comparison,
-        )
-        records.append(record)
-        (accepted if record.decision == "accept" else rejected).append(row)
-        if cache is not None:
-            cache.store(pair, row, record)
-        return record.decision == "accept"
-
-    for left_id, right_id in sorted(candidate_pairs):
-        compile_pair((left_id, right_id))
-
-    _repair_components(
-        participants,
-        road_graph,
-        attachments,
-        attempted_pairs,
-        accepted,
-        compile_pair,
-    )
-    _repair_internal_termini(
-        communities,
-        participants,
-        road_graph,
-        attachments,
-        attempted_pairs,
-        accepted,
-        compile_pair,
-    )
-
+    gaps = backbone.gaps.copy()
     crs = source["network"].crs
-    connections = gpd.GeoDataFrame(
-        accepted, columns=connection_columns, geometry="geometry", crs=crs
-    )
     official_road_classification = source.get("official_road_classification")
     urban = derive_urban_structure(
         places,
@@ -291,6 +156,14 @@ def compile_network(
             geometry="geometry",
             crs=crs,
         )
+        urban_school_gaps = _urban_school_gaps(urban_school_access, crs)
+        if not urban_school_gaps.empty:
+            gaps = gpd.GeoDataFrame(
+                pd.concat([gaps, urban_school_gaps], ignore_index=True, sort=False),
+                columns=GAP_COLUMNS,
+                geometry="geometry",
+                crs=crs,
+            ).sort_values("connection_id")
     school_street_assessments = assess_school_street_candidates(
         _in_scope_schools(context),
         source["network"],
@@ -304,7 +177,6 @@ def compile_network(
         else UrbanClassificationStatus.EXPLICIT_UNKNOWN
     )
     topography_edge_frames = [
-        ("connection", "connection_id", connections),
         ("strategic-spine", "spine_id", strategic_spines),
         (
             "spine-access-connection",
@@ -332,66 +204,35 @@ def compile_network(
             steep=config.compilation.topography.steep_max_pct,
             very_steep=config.compilation.topography.very_steep_max_pct,
         ),
-        maximum_sample_spacing_m=(
-            config.compilation.topography.maximum_sample_spacing_m
-        ),
-        minimum_sustained_spacing_m=(
-            config.compilation.topography.minimum_sustained_spacing_m
-        ),
+        maximum_sample_spacing_m=(config.compilation.topography.maximum_sample_spacing_m),
+        minimum_sustained_spacing_m=(config.compilation.topography.minimum_sustained_spacing_m),
     )
-    crossing_warnings = _crossing_warnings(connections)
-    connection_graph = _connection_graph(participants, accepted)
-    covered = all(place_id in connection_graph for place_id in communities["place_id"])
-    connected = bool(connection_graph) and covered and nx.is_connected(connection_graph)
-    internal_termini = [
-        place_id for place_id in communities["place_id"] if connection_graph.degree(place_id) == 1
-    ]
-    if len(communities) <= 2:
-        internal_termini = []
-    unresolved = _unresolved_rejections(
-        connection_graph,
-        rejected,
-        set(communities["place_id"]),
-        set(internal_termini),
+    crossing_warnings = _backbone_crossing_warnings(
+        spine_access_connections, branch_meeting_connections
     )
-    gaps = gpd.GeoDataFrame(unresolved, columns=connection_columns, geometry="geometry", crs=crs)
-    if not backbone.gaps.empty:
-        gaps = gpd.GeoDataFrame(
-            pd.concat([gaps, backbone.gaps], ignore_index=True, sort=False),
-            geometry="geometry",
-            crs=crs,
-        )
-    unresolved_ids = {str(row["connection_id"]) for row in unresolved}
-    superseded = [row for row in rejected if str(row["connection_id"]) not in unresolved_ids]
-    record_by_id = {record.connection_id: record for record in records}
-    for row in superseded:
-        row["status"] = "superseded"
-        row["agent_outcome"] = "Rejected hypothesis superseded by the complete assembled network."
-        record = record_by_id[str(row["connection_id"])]
-        record.decision = "superseded"
-        record.outcome_reason = str(row["agent_outcome"])
-    pairs = [tuple(sorted((row["from_place"], row["to_place"]))) for row in accepted]
-    network_units = _network_units(connection_graph, accepted)
+    obligation_status = _access_obligation_status(access_obligations)
+    covered = obligation_status in {TrafficLight.GREEN, TrafficLight.AMBER}
+    network_units = _backbone_network_units(
+        spine_access_branches,
+        branch_meeting_connections,
+        cross_spine_connectors,
+    )
     criteria = {
         "connections": {
-            "mandatory_checks": TrafficLight.RED if unresolved else TrafficLight.GREEN,
+            "mandatory_checks": (TrafficLight.GREEN if gaps.empty else TrafficLight.RED),
             "distance_challenges": (
                 TrafficLight.AMBER
-                if _has_distance_challenge(connections, branch_meeting_connections)
+                if _has_distance_challenge(spine_access_connections, branch_meeting_connections)
                 else TrafficLight.GREEN
             ),
         },
         "network": {
             "community_coverage": (TrafficLight.GREEN if covered else TrafficLight.RED),
-            "connected_graph": TrafficLight.GREEN if connected else TrafficLight.RED,
-            "unique_pairs": (
-                TrafficLight.GREEN if len(pairs) == len(set(pairs)) else TrafficLight.RED
-            ),
-            "internal_termini": (TrafficLight.GREEN if not internal_termini else TrafficLight.RED),
+            "authoritative_model": TrafficLight.GREEN,
+            "legacy_pairwise_absent": TrafficLight.GREEN,
             "intervention_coverage": (
                 TrafficLight.GREEN
                 if _intervention_coverage_complete(
-                    connections,
                     spine_access_connections,
                     branch_meeting_connections,
                 )
@@ -409,13 +250,9 @@ def compile_network(
                 if not strategic_spines.empty
                 else TrafficLight.GREY
             ),
-            "all_access_obligations_resolved": (
-                _access_obligation_status(access_obligations)
-            ),
+            "all_access_obligations_resolved": (_access_obligation_status(access_obligations)),
             "school_access_state": _access_obligation_status(
-                access_obligations[
-                    access_obligations["obligation_kind"] == "school"
-                ]
+                access_obligations[access_obligations["obligation_kind"] == "school"]
             ),
             "branch_provenance": (
                 TrafficLight.GREEN
@@ -426,9 +263,7 @@ def compile_network(
             ),
             "degree_one_access_valid": (
                 TrafficLight.GREEN
-                if _degree_one_access_valid(
-                    access_obligations, spine_access_connections
-                )
+                if _degree_one_access_valid(access_obligations, spine_access_connections)
                 else TrafficLight.RED
                 if not access_obligations.empty
                 else TrafficLight.GREY
@@ -460,29 +295,23 @@ def compile_network(
         "urban_network": {
             "official_road_classification": (
                 TrafficLight.GREEN
-                if urban_classification_status
-                == UrbanClassificationStatus.GOVERNED_OFFICIAL
+                if urban_classification_status == UrbanClassificationStatus.GOVERNED_OFFICIAL
                 else TrafficLight.GREY
             ),
             "official_main_road_spines": (
                 TrafficLight.GREEN
                 if not urban_spines.empty
                 else TrafficLight.GREY
-                if urban_classification_status
-                == UrbanClassificationStatus.EXPLICIT_UNKNOWN
+                if urban_classification_status == UrbanClassificationStatus.EXPLICIT_UNKNOWN
                 else TrafficLight.RED
             ),
             "ncn_kept_as_permeability_evidence": TrafficLight.GREEN,
             "candidate_low_traffic_areas": (
-                TrafficLight.GREEN
-                if not low_traffic_areas.empty
-                else TrafficLight.GREY
+                TrafficLight.GREEN if not low_traffic_areas.empty else TrafficLight.GREY
             ),
             "stable_named_area_portals": (
                 TrafficLight.GREEN
-                if _candidate_area_portals_complete(
-                    low_traffic_areas, low_traffic_area_portals
-                )
+                if _candidate_area_portals_complete(low_traffic_areas, low_traffic_area_portals)
                 else TrafficLight.GREY
                 if low_traffic_areas.empty
                 else TrafficLight.RED
@@ -493,9 +322,7 @@ def compile_network(
                 <= {"area-no-internal-centreline"}
                 else TrafficLight.RED
             ),
-            "urban_school_area_access": _access_obligation_status(
-                urban_school_access
-            ),
+            "urban_school_area_access": _access_obligation_status(urban_school_access),
         },
         "school_street_candidate_assessments": {
             "all_in_scope_schools_assessed": (
@@ -506,9 +333,9 @@ def compile_network(
             "qualitative_not_probability": (
                 TrafficLight.GREEN
                 if not school_street_assessments.empty
-                and school_street_assessments["qualification"].str.contains(
-                    "not scheme feasibility or calibrated probability"
-                ).all()
+                and school_street_assessments["qualification"]
+                .str.contains("not scheme feasibility or calibrated probability")
+                .all()
                 else TrafficLight.GREY
                 if school_street_assessments.empty
                 else TrafficLight.RED
@@ -528,9 +355,7 @@ def compile_network(
                 else TrafficLight.GREY
             ),
             "gradient_sections_published": (
-                TrafficLight.GREEN
-                if not gradient_sections.empty
-                else TrafficLight.GREY
+                TrafficLight.GREEN if not gradient_sections.empty else TrafficLight.GREY
             ),
         },
         "atm_comparison": {"compared": TrafficLight.GREY},
@@ -540,7 +365,6 @@ def compile_network(
         road_context=source["network"].copy(),
         label_places=source.get("label_places", places).copy(),
         places=places,
-        connections=connections,
         gaps=gaps,
         urban_spines=urban_spines,
         urban_classification_unknowns=urban_classification_unknowns,
@@ -583,14 +407,157 @@ def compile_network(
         ),
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
-        agent_records=[*records, *backbone.agent_records],
+        agent_records=backbone.agent_records,
         criteria=criteria,
         network_units=network_units,
         atm_reference=None,
         divergence_records=[],
-        cache_hits=cache_hits,
-        cache_misses=cache_misses,
-        superseded_hypotheses=len(superseded),
+        superseded_hypotheses=sum(
+            record.decision == "superseded" for record in backbone.agent_records
+        ),
+        human_intervention_requests=_human_intervention_requests(
+            backbone.agent_records, config.compilation.agent.max_attempts
+        ),
+        compilation_diagnostics=backbone.compilation_diagnostics,
+    )
+
+
+def _urban_school_gaps(
+    obligations: gpd.GeoDataFrame,
+    crs: object,
+) -> gpd.GeoDataFrame:
+    """Materialise every unserved urban School obligation as a visible Network Gap."""
+    rows: list[dict[str, object]] = []
+    for _, obligation in obligations[
+        obligations["service_status"] == AccessServiceStatus.NETWORK_GAP.value
+    ].sort_values("obligation_id").iterrows():
+        school_id = str(obligation["school_id"])
+        reason = str(obligation["service_rationale"])
+        source_ids = json.loads(str(obligation.get("fabric_source_ids") or "[]"))
+        access_source = obligation.get("access_point_source_id")
+        if access_source is not None and not pd.isna(access_source):
+            source_ids.append(str(access_source))
+        rows.append(
+            {
+                "connection_id": _stable_id(
+                    "urban-school-access-gap", obligation["obligation_id"]
+                ),
+                "network_role": "school-access-gap",
+                "from_place": school_id,
+                "to_place": None,
+                "from_place_name": obligation.get("name"),
+                "to_place_name": None,
+                "distance_km": None,
+                "classification": "network-gap",
+                "intervention_archetype": "urban permeability investigation",
+                "geometry_semantics": (
+                    "unserved urban School Access Point evidence; no residential "
+                    "centreline is fabricated"
+                ),
+                "status": "gap",
+                "selection_reason": reason,
+                "agent_outcome": reason,
+                "agent_attempt_count": 0,
+                "agent_findings": json.dumps(
+                    [
+                        {
+                            "code": str(obligation.get("finding") or "urban-access-gap"),
+                            "severity": "blocking",
+                            "message": reason,
+                            "evidence_ids": sorted(set(source_ids)),
+                        }
+                    ],
+                    sort_keys=True,
+                ),
+                "school_id": school_id,
+                "school_kind": obligation.get("school_kind"),
+                "access_point_status": obligation.get("access_point_status"),
+                "access_point_source_id": access_source,
+                "access_point_rationale": obligation.get("access_point_rationale"),
+                "source_ids": json.dumps(sorted(set(source_ids))),
+                "cache_status": "not-cacheable",
+                "alignment_options": "[]",
+                "criterion_endpoints": obligation.get("criterion_access_point"),
+                "criterion_continuity": obligation.get("criterion_continuity"),
+                "criterion_bidirectional": "grey",
+                "criterion_distance": "grey",
+                "topography_alternative_trigger": False,
+                "topography_comparison_status": "not-evaluated",
+                "topography_comparison_rationale": (
+                    "Urban service is assessed through area permeability; no routed "
+                    "alignment exists for topography comparison."
+                ),
+                "topography_original_role": None,
+                "topography_selected_role": None,
+                "geometry": MultiPoint([obligation.geometry]),
+            }
+        )
+    return gpd.GeoDataFrame(rows, columns=GAP_COLUMNS, geometry="geometry", crs=crs)
+
+
+def _human_intervention_requests(
+    records: list[AgentRecord],
+    maximum_attempts: int,
+) -> list[HumanInterventionRequest]:
+    """Escalate only material ambiguity that survives the bounded revision loop."""
+    requests: list[HumanInterventionRequest] = []
+    for record in records:
+        bounded_revision_finished = len(record.attempts) >= maximum_attempts or any(
+            marker in record.outcome_reason.lower() for marker in ("no progress", "no-progress")
+        )
+        if record.decision != "gap" or not bounded_revision_finished or not record.attempts:
+            continue
+        latest = record.attempts[-1]
+        findings = [
+            *latest.get("findings", []),
+            *latest.get("deterministic_findings", []),
+            *latest.get("critique", {}).get("findings", []),
+            *latest.get("red_team", {}).get("findings", []),
+        ]
+        blocking = [
+            finding
+            for finding in findings
+            if finding.get("severity") == "blocking" and _is_material_ambiguity(finding)
+        ]
+        if not blocking:
+            continue
+        choices = sorted(
+            {
+                str(attempt.get("proposal", {}).get("selected_role"))
+                for attempt in record.attempts
+                if attempt.get("proposal", {}).get("selected_role")
+            }
+        )
+        requests.append(
+            HumanInterventionRequest(
+                request_id=f"human-intervention-{hashlib.sha256(record.connection_id.encode()).hexdigest()[:12]}",
+                connection_id=record.connection_id,
+                reason=record.outcome_reason,
+                attempted_revisions=record.attempts,
+                unresolved_findings=blocking,
+                missing_evidence=sorted(
+                    {
+                        str(evidence_id)
+                        for finding in blocking
+                        for evidence_id in finding.get("evidence_ids", [])
+                    }
+                ),
+                choices=choices,
+                smallest_human_input=(
+                    "Provide the missing governed evidence or select one of the listed "
+                    "alignment roles; otherwise retain the visible Network Gap."
+                ),
+            )
+        )
+    return requests
+
+
+def _is_material_ambiguity(finding: dict[str, object]) -> bool:
+    """Distinguish a missing human fact from an ordinary failed route criterion."""
+    text = " ".join(str(finding.get(field, "")).lower() for field in ("code", "message"))
+    return any(
+        marker in text
+        for marker in ("ambiguous", "ambiguity", "missing-evidence", "missing evidence")
     )
 
 
@@ -603,246 +570,6 @@ def _candidate_area_portals_complete(
     expected = areas.set_index("structure_id")["portal_count"].astype(int).to_dict()
     actual = portals.groupby("area_id").size().to_dict() if not portals.empty else {}
     return expected == actual and all(str(name).strip() for name in portals.get("name", []))
-
-
-def _network_place_attachments(
-    places: gpd.GeoDataFrame,
-    participants: gpd.GeoDataFrame,
-    graph: RoadGraph,
-) -> dict[str, list[tuple[str, float]]]:
-    portals = places[places["kind"] == "community_portal"]
-    result: dict[str, list[tuple[str, float]]] = {}
-    for _, place in participants.iterrows():
-        candidates = (
-            portals[portals["parent_place_id"] == place.place_id]
-            if "parent_place_id" in portals
-            else portals
-        )
-        points = list(candidates.geometry) or [place.geometry]
-        result[place.place_id] = [graph.nearest_node(point) for point in points]
-    return result
-
-
-def _gateway_pairs(
-    gateways: gpd.GeoDataFrame,
-    communities: gpd.GeoDataFrame,
-    graph: RoadGraph,
-    attachments: dict[str, list[tuple[str, float]]],
-) -> set[tuple[str, str]]:
-    pairs: set[tuple[str, str]] = set()
-    for gateway_id in gateways["place_id"]:
-        candidates = [
-            (
-                _network_distance(graph, attachments[gateway_id], attachments[community_id]),
-                community_id,
-            )
-            for community_id in communities["place_id"]
-        ]
-        reachable = [candidate for candidate in candidates if candidate[0] < float("inf")]
-        if reachable:
-            pairs.add(tuple(sorted((gateway_id, min(reachable)[1]))))
-    return pairs
-
-
-def _local_adjacency_pairs(
-    communities: gpd.GeoDataFrame,
-    graph: RoadGraph,
-    attachments: dict[str, list[tuple[str, float]]],
-) -> set[tuple[str, str]]:
-    """Build a cycling-network relative-neighbourhood frontier.
-
-    A pair remains local when no third Community is closer to both endpoints. The
-    rule has no fixed radius or neighbour count, so an isolated long bridge remains
-    eligible for challenge by the compilation gate.
-    """
-    identifiers = list(communities["place_id"])
-    geometries = communities.set_index("place_id")["geometry"]
-    distances: dict[tuple[str, str], float] = {}
-    ranks: dict[tuple[str, str], tuple[float, float, str]] = {}
-    for index, left in enumerate(identifiers):
-        for right in identifiers[index + 1 :]:
-            pair = tuple(sorted((left, right)))
-            distances[pair] = _network_distance(graph, attachments[left], attachments[right])
-            ranks[pair] = (
-                distances[pair],
-                geometries[left].distance(geometries[right]),
-                "::".join(pair),
-            )
-
-    pairs: set[tuple[str, str]] = set()
-    for (left, right), distance in distances.items():
-        if distance == float("inf"):
-            continue
-        blocked = any(
-            ranks[tuple(sorted((left, third)))] < ranks[(left, right)]
-            and ranks[tuple(sorted((right, third)))] < ranks[(left, right)]
-            for third in identifiers
-            if third not in {left, right}
-        )
-        if not blocked:
-            pairs.add((left, right))
-
-    covered = {place_id for pair in pairs for place_id in pair}
-    for left in set(identifiers) - covered:
-        right = min(
-            (candidate for candidate in identifiers if candidate != left),
-            key=lambda candidate: geometries[left].distance(geometries[candidate]),
-        )
-        pairs.add(tuple(sorted((left, right))))
-    return pairs
-
-
-def _network_distance(
-    graph: RoadGraph,
-    starts: list[tuple[str, float]],
-    ends: list[tuple[str, float]],
-) -> float:
-    return graph.network_distance(starts, ends)
-
-
-def _repair_components(
-    participants: gpd.GeoDataFrame,
-    graph: RoadGraph,
-    attachments: dict[str, list[tuple[str, float]]],
-    attempted: set[tuple[str, str]],
-    accepted: list[dict[str, object]],
-    compile_pair: Callable[[tuple[str, str]], bool],
-) -> None:
-    identifiers = list(participants["place_id"])
-    maximum_pairs = len(identifiers) * (len(identifiers) - 1) // 2
-    while len(attempted) < maximum_pairs:
-        assembled = _connection_graph(participants, accepted)
-        components = list(nx.connected_components(assembled))
-        if len(components) <= 1:
-            return
-        candidates: list[tuple[float, tuple[str, str]]] = []
-        for left_component, right_component in combinations(components, 2):
-            for left in left_component:
-                for right in right_component:
-                    pair = tuple(sorted((left, right)))
-                    if pair in attempted:
-                        continue
-                    distance = _network_distance(graph, attachments[left], attachments[right])
-                    if distance < float("inf"):
-                        candidates.append((distance, pair))
-        if not candidates:
-            geometry = participants.set_index("place_id")["geometry"]
-            unresolved = [
-                (geometry[left].distance(geometry[right]), tuple(sorted((left, right))))
-                for left_component, right_component in combinations(components, 2)
-                for left in left_component
-                for right in right_component
-                if tuple(sorted((left, right))) not in attempted
-            ]
-            if unresolved:
-                compile_pair(min(unresolved)[1])
-            return
-        compile_pair(min(candidates)[1])
-
-
-def _repair_internal_termini(
-    communities: gpd.GeoDataFrame,
-    participants: gpd.GeoDataFrame,
-    graph: RoadGraph,
-    attachments: dict[str, list[tuple[str, float]]],
-    attempted: set[tuple[str, str]],
-    accepted: list[dict[str, object]],
-    compile_pair: Callable[[tuple[str, str]], bool],
-) -> None:
-    if len(communities) <= 2:
-        return
-    participant_ids = list(participants["place_id"])
-    maximum_pairs = len(participant_ids) * (len(participant_ids) - 1) // 2
-    while len(attempted) < maximum_pairs:
-        assembled = _connection_graph(participants, accepted)
-        termini = sorted(
-            place_id for place_id in communities["place_id"] if assembled.degree(place_id) == 1
-        )
-        if not termini:
-            return
-        candidates: list[tuple[float, tuple[str, str]]] = []
-        for terminus in termini:
-            for neighbour in participant_ids:
-                if terminus == neighbour:
-                    continue
-                pair = tuple(sorted((terminus, neighbour)))
-                if pair in attempted:
-                    continue
-                distance = _network_distance(graph, attachments[terminus], attachments[neighbour])
-                if distance < float("inf"):
-                    candidates.append((distance, pair))
-        if not candidates:
-            geometry = participants.set_index("place_id")["geometry"]
-            unresolved = [
-                (
-                    geometry[terminus].distance(geometry[neighbour]),
-                    tuple(sorted((terminus, neighbour))),
-                )
-                for terminus in termini
-                for neighbour in participant_ids
-                if terminus != neighbour and tuple(sorted((terminus, neighbour))) not in attempted
-            ]
-            if not unresolved or not compile_pair(min(unresolved)[1]):
-                return
-            continue
-        compile_pair(min(candidates)[1])
-
-
-def _connection_graph(
-    participants: gpd.GeoDataFrame,
-    accepted: list[dict[str, object]],
-) -> nx.Graph:
-    graph = nx.Graph()
-    graph.add_nodes_from(participants["place_id"])
-    graph.add_edges_from((row["from_place"], row["to_place"]) for row in accepted)
-    return graph
-
-
-def _unresolved_rejections(
-    graph: nx.Graph,
-    rejected: list[dict[str, object]],
-    communities: set[str],
-    internal_termini: set[str],
-) -> list[dict[str, object]]:
-    """Keep only failures that still correspond to an unresolved network obligation."""
-    component_by_place = {
-        place_id: index
-        for index, component in enumerate(nx.connected_components(graph))
-        for place_id in component
-    }
-    uncovered = {place_id for place_id in communities if graph.degree(place_id) == 0}
-    unresolved_places = uncovered | internal_termini
-    unresolved: list[dict[str, object]] = []
-    for row in rejected:
-        left = str(row["from_place"])
-        right = str(row["to_place"])
-        separates_components = component_by_place.get(left) != component_by_place.get(right)
-        if separates_components or left in unresolved_places or right in unresolved_places:
-            unresolved.append(row)
-    return unresolved
-
-
-def _network_units(
-    graph: nx.Graph,
-    accepted: list[dict[str, object]],
-) -> list[dict[str, object]]:
-    units: list[dict[str, object]] = []
-    for place_ids in sorted(nx.connected_components(graph), key=lambda values: sorted(values)):
-        members = sorted(place_ids)
-        connections = sorted(
-            row["connection_id"]
-            for row in accepted
-            if row["from_place"] in place_ids and row["to_place"] in place_ids
-        )
-        digest = hashlib.sha256("::".join(members).encode()).hexdigest()[:10]
-        units.append(
-            {
-                "unit_id": f"network-unit-{digest}",
-                "place_ids": members,
-                "connection_ids": connections,
-            }
-        )
-    return units
 
 
 def _crossing_warnings(connections: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -871,159 +598,63 @@ def _crossing_warnings(connections: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=connections.crs)
 
 
-def _route_pair(
-    graph: RoadGraph,
-    starts: list[tuple[str, float]],
-    ends: list[tuple[str, float]],
-) -> tuple[RouteOption | None, list[RouteOption], str, float]:
-    candidates: list[tuple[RouteOption, list[RouteOption], str, float]] = []
-    for start, start_snap in starts:
-        for end, end_snap in ends:
-            selected, options, reason = choose_alignment(graph, start, end)
-            if selected is not None:
-                candidates.append((selected, options, reason, start_snap + end_snap))
-    if not candidates:
-        return None, [], "No continuous OSM cycling-network path exists.", float("inf")
-    return min(candidates, key=lambda candidate: candidate[0].length_km + candidate[3] / 1000)
+def _backbone_crossing_warnings(
+    access: gpd.GeoDataFrame,
+    meetings: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    """Expose only undeclared geometric crossings in the authoritative linework."""
+    columns = ["warning_id", "connection_a", "connection_b", "status", "message", "geometry"]
+    rows = [
+        {
+            "connection_id": str(row["access_connection_id"]),
+            "geometry": row.geometry,
+        }
+        for _, row in access.iterrows()
+    ] + [
+        {
+            "connection_id": str(row["meeting_connection_id"]),
+            "geometry": row.geometry,
+        }
+        for _, row in meetings.iterrows()
+    ]
+    crs = access.crs or meetings.crs
+    if not rows:
+        return gpd.GeoDataFrame([], columns=columns, geometry="geometry", crs=crs)
+    frame = gpd.GeoDataFrame(rows, geometry="geometry", crs=crs)
+    return _crossing_warnings(frame)
 
 
-def _gate_connection(
-    config: CouncilConfig,
-    gate: CompilationGate,
-    left: object,
-    right: object,
-    selected: RouteOption | None,
-    options: list[RouteOption],
-    reason: str,
-    snap_distance: float,
-    topography: TopographyComparison | None = None,
-) -> tuple[dict[str, object], AgentRecord]:
-    connection_id = _connection_id(str(left.place_id), str(right.place_id))
-    checks_by_role = {
-        option.role: _option_checks(config, option, snap_distance) for option in options
-    }
-    outcome = gate.evaluate(
-        connection_id=connection_id,
-        facts={
-            "from_place": left.place_id,
-            "to_place": right.place_id,
-            "selection_reason": reason,
-            "evidence_ids": option_evidence_ids(options),
-            "checks_by_role": checks_by_role,
-        },
-        initial_role=selected.role if selected else None,
-        available_roles=[option.role for option in options],
-    )
-    record = outcome.record
-    gated_selection = next(
-        (option for option in options if option.role == outcome.selected_role), None
-    )
-    if record.decision == "accept" and gated_selection is None:
-        record.decision = "gap"
-        record.outcome_reason = "Compilation Gate accepted no available alignment."
-    selected = gated_selection if record.decision == "accept" else selected
-    topography_status = topography.status if topography is not None else None
-    topography_rationale = topography.rationale if topography is not None else None
-    if (
-        topography is not None
-        and record.decision != "accept"
-    ):
-        topography_status = TopographyComparisonStatus.GATE_REJECTED_SELECTION
-        topography_rationale = (
-            f"{topography.rationale} Compilation Gate rejected every authoritative "
-            "selection after bounded review; the result is a Network Gap."
-        )
-    elif (
-        topography is not None
-        and selected is not None
-        and selected.role != topography.selected.role
-    ):
-        topography_status = TopographyComparisonStatus.GATE_REVISED_SELECTION
-        topography_rationale = (
-            f"{topography.rationale} Compilation Gate revised the authoritative "
-            f"selection to {selected.role} after bounded review."
-        )
-    endpoints_valid = selected is not None and snap_distance <= 2000
-    continuous = selected is not None and not selected.geometry.is_empty
-    bidirectional = selected is not None and selected.bidirectional
-    distance_km = selected.length_km if selected else 0
-    geometry = selected.geometry if selected else MultiPoint([left.geometry, right.geometry])
-    classification = selected.role if selected else "network-gap"
-    authoritative_role = (
-        selected.role if record.decision == "accept" and selected is not None else None
-    )
-    row = {
-        "connection_id": connection_id,
-        "from_place": left.place_id,
-        "to_place": right.place_id,
-        "from_place_name": left.get("name", left.place_id),
-        "to_place_name": right.get("name", right.place_id),
-        "distance_km": round(distance_km, 3) if selected else None,
-        "classification": classification,
-        "intervention_archetype": _intervention_archetype(classification),
-        "geometry_semantics": (
-            "A-road corridor centreline; cartographically offset to depict alongside provision"
-            if classification == "strategic-spine"
-            else "indicative OSM alignment centreline"
-        ),
-        "status": "validated" if record.decision == "accept" else "gap",
-        "selection_reason": (
-            reason
-            if selected is None or selected.role == (outcome.selected_role or selected.role)
-            else f"Compilation Gate revised the alignment to {outcome.selected_role}."
-        ),
-        "agent_outcome": record.outcome_reason,
-        "agent_attempt_count": len(record.attempts),
-        "agent_findings": json.dumps(_agent_findings(record), sort_keys=True),
-        "source_ids": json.dumps(option_evidence_ids(options), sort_keys=True),
-        "cache_status": "compiled",
-        "alignment_options": (
-            topography.serialise_options(
-                options,
-                authoritative_role,
-            )
-            if topography is not None
-            else serialise_options(options)
-        ),
-        "criterion_endpoints": "green" if endpoints_valid else "red",
-        "criterion_continuity": "green" if continuous else "red",
-        "criterion_bidirectional": "green" if bidirectional else "red",
-        "criterion_distance": (
-            "grey"
-            if selected is None
-            else "green"
-            if distance_km <= config.compilation.max_connection_km
-            else "amber"
-        ),
-        "topography_alternative_trigger": (
-            topography.triggered if topography is not None else False
-        ),
-        "topography_comparison_status": (
-            topography_status.value
-            if topography_status is not None
-            else "not-evaluated"
-        ),
-        "topography_comparison_rationale": (
-            topography_rationale if topography_rationale is not None else "Not evaluated."
-        ),
-        "topography_original_role": (
-            topography.original.role if topography is not None else None
-        ),
-        "topography_selected_role": (
-            authoritative_role if topography is not None else None
-        ),
-        "geometry": geometry,
-    }
-    return row, record
-
-
-def _intervention_archetype(classification: str) -> str | None:
-    return {
-        "strategic-spine": "wide shared path alongside A-road corridor",
-        "ncn-informed": "NCN-aligned route upgrade",
-        "low-traffic": "low-traffic route treatment",
-        "direct": "protected or filtered direct link",
-    }.get(classification)
+def _backbone_network_units(
+    branches: gpd.GeoDataFrame,
+    meetings: gpd.GeoDataFrame,
+    connectors: gpd.GeoDataFrame,
+) -> list[dict[str, object]]:
+    """Describe stable backbone units without reconstructing a peer-to-peer graph."""
+    meeting_ids_by_root: dict[str, set[str]] = {}
+    for _, meeting in meetings.iterrows():
+        meeting_id = str(meeting["meeting_connection_id"])
+        for root in (meeting["from_root_spine_id"], meeting["to_root_spine_id"]):
+            meeting_ids_by_root.setdefault(str(root), set()).add(meeting_id)
+    connector_ids_by_root: dict[str, set[str]] = {}
+    for _, connector in connectors.iterrows():
+        connector_id = str(connector["cross_spine_connector_id"])
+        for root in (connector["from_root_spine_id"], connector["to_root_spine_id"]):
+            connector_ids_by_root.setdefault(str(root), set()).add(connector_id)
+    return [
+        {
+            "unit_id": str(row["branch_id"]),
+            "root_spine_id": str(row["root_spine_id"]),
+            "place_ids": json.loads(str(row["place_ids"])),
+            "connection_ids": json.loads(str(row["connection_ids"])),
+            "meeting_connection_ids": sorted(
+                meeting_ids_by_root.get(str(row["root_spine_id"]), set())
+            ),
+            "cross_spine_connector_ids": sorted(
+                connector_ids_by_root.get(str(row["root_spine_id"]), set())
+            ),
+        }
+        for _, row in branches.sort_values("branch_id").iterrows()
+    ]
 
 
 def _context_frame(context: gpd.GeoDataFrame, feature_type: str) -> gpd.GeoDataFrame:
@@ -1053,9 +684,7 @@ def _scoped_schools(
     scope_kind: NetworkScope,
 ) -> gpd.GeoDataFrame:
     schools = _in_scope_schools(context)
-    scope = schools.get(
-        "network_scope", pd.Series("unresolved", index=schools.index, dtype=object)
-    )
+    scope = schools.get("network_scope", pd.Series("unresolved", index=schools.index, dtype=object))
     return schools[scope.eq(scope_kind.value)].copy().sort_values("place_id")
 
 
@@ -1126,9 +755,7 @@ def _truthy(value: object) -> bool:
 
 def _has_distance_challenge(*frames: gpd.GeoDataFrame) -> bool:
     return any(
-        "amber" in set(frame.get("criterion_distance", []))
-        for frame in frames
-        if not frame.empty
+        "amber" in set(frame.get("criterion_distance", [])) for frame in frames if not frame.empty
     )
 
 
@@ -1141,17 +768,14 @@ def _access_obligation_status(obligations: gpd.GeoDataFrame) -> TrafficLight:
     if AccessServiceStatus.SERVED_PROVISIONAL.value in statuses:
         return TrafficLight.AMBER
     return (
-        TrafficLight.GREEN
-        if statuses == {AccessServiceStatus.SERVED.value}
-        else TrafficLight.RED
+        TrafficLight.GREEN if statuses == {AccessServiceStatus.SERVED.value} else TrafficLight.RED
     )
 
 
 def _intervention_coverage_complete(*frames: gpd.GeoDataFrame) -> bool:
     populated = [frame for frame in frames if not frame.empty]
     return bool(populated) and all(
-        "intervention_archetype" in frame
-        and bool(frame["intervention_archetype"].notna().all())
+        "intervention_archetype" in frame and bool(frame["intervention_archetype"].notna().all())
         for frame in populated
     )
 
@@ -1183,14 +807,11 @@ def _degree_one_access_valid(
         (obligations["obligation_kind"] == "community")
         & (obligations["service_status"] == "served")
     ]
-    community_connections = connections[
-        connections["obligation_kind"] == "community"
-    ]
+    community_connections = connections[connections["obligation_kind"] == "community"]
     if community_connections["place_id"].duplicated().any():
         return False
     expected = {
-        str(row["place_id"]): str(row["access_connection_id"])
-        for _, row in served.iterrows()
+        str(row["place_id"]): str(row["access_connection_id"]) for _, row in served.iterrows()
     }
     actual = {
         str(row["place_id"]): str(row["access_connection_id"])
@@ -1204,9 +825,7 @@ def _cross_spine_status(
     meetings: gpd.GeoDataFrame,
 ) -> TrafficLight:
     roots = sorted(
-        connections.loc[
-            connections["obligation_kind"] == "community", "root_spine_id"
-        ]
+        connections.loc[connections["obligation_kind"] == "community", "root_spine_id"]
         .dropna()
         .unique()
     )
@@ -1264,11 +883,57 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         ("a-road-spine", "a-road"),
         ("ncn-route", "ncn"),
     ):
-        for _, evidence in candidates[candidates["feature_type"] == feature_type].iterrows():
-            evidence_id = str(evidence.get("evidence_id", evidence.get("source_id", "")))
-            source_id = str(evidence.get("source_id", evidence_id))
+        evidence_frame = candidates[candidates["feature_type"] == feature_type].copy()
+        evidence_frame["_corridor_key"] = evidence_frame.apply(
+            lambda evidence: (
+                str(evidence.get("name") or "").strip()
+                or f"unnamed::{evidence.get('category')}::{evidence.get('source_id')}"
+            ),
+            axis=1,
+        )
+        for corridor_key, corridor in evidence_frame.groupby("_corridor_key", sort=True):
+            evidence_ids = tuple(
+                sorted(
+                    {
+                        str(evidence_id)
+                        for evidence_id in corridor.get("evidence_id", [])
+                        if str(evidence_id).strip()
+                    }
+                )
+            )
+            source_ids = tuple(
+                sorted(
+                    {
+                        str(source_id)
+                        for source_id in corridor.get("source_id", [])
+                        if str(source_id).strip()
+                    }
+                )
+            )
+            evidence_id = _stable_role_id(
+                "strategic-spine-evidence", spine_kind, corridor_key, *evidence_ids
+            )
+            source_id = _stable_role_id(
+                "strategic-spine-sources", spine_kind, corridor_key, *source_ids
+            )
+            name = next(
+                (
+                    value
+                    for value in corridor.get("name", [])
+                    if value is not None and str(value).strip()
+                ),
+                None,
+            )
+            category = next(
+                (
+                    value
+                    for value in corridor.get("category", [])
+                    if value is not None and str(value).strip()
+                ),
+                None,
+            )
             is_a_road = spine_kind == "a-road"
-            for geometry in continuous_linework(evidence.geometry):
+            for geometry in continuous_linework(corridor.geometry.union_all()):
                 segment_key = hashlib.sha256(geometry.wkb).hexdigest()[:12]
                 rows.append(
                     {
@@ -1281,8 +946,8 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         ),
                         "network_role": "strategic-spine",
                         "spine_kind": spine_kind,
-                        "name": evidence.get("name"),
-                        "category": evidence.get("category"),
+                        "name": name,
+                        "category": category,
                         "evidence_id": evidence_id,
                         "source_id": source_id,
                         "network_scope": NetworkScope.RURAL.value,
@@ -1303,7 +968,9 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         "provenance": json.dumps(
                             {
                                 "evidence_id": evidence_id,
+                                "evidence_ids": evidence_ids,
                                 "source_id": source_id,
+                                "source_ids": source_ids,
                                 "source_feature_type": feature_type,
                                 "network_scope": NetworkScope.RURAL.value,
                             },
@@ -1328,37 +995,3 @@ def _a_road_assumptions_complete(strategic_spines: gpd.GeoDataFrame) -> bool:
         a_roads["intervention_assumption"].notna().all()
         and a_roads["design_status"].str.contains("not a carriageway").all()
     )
-
-
-def _option_checks(
-    config: CouncilConfig,
-    option: RouteOption,
-    snap_distance: float,
-) -> dict[str, str]:
-    return {
-        "endpoints": "green" if snap_distance <= 2000 else "red",
-        "continuity": "green" if not option.geometry.is_empty else "red",
-        "bidirectional": "green" if option.bidirectional else "red",
-        "distance": (
-            "green" if option.length_km <= config.compilation.max_connection_km else "amber"
-        ),
-    }
-
-
-def option_evidence_ids(options: list[RouteOption]) -> list[str]:
-    return sorted({edge_id for option in options for edge_id in option.edge_ids})
-
-
-def _agent_findings(record: AgentRecord) -> list[dict[str, object]]:
-    findings: list[dict[str, object]] = []
-    for attempt in record.attempts:
-        findings.extend(attempt.get("deterministic_findings", []))
-        for role in ("critique", "red_team"):
-            findings.extend(attempt.get(role, {}).get("findings", []))
-        findings.extend(attempt.get("findings", []))
-    unique = {
-        json.dumps(finding, sort_keys=True): finding
-        for finding in findings
-        if isinstance(finding, dict)
-    }
-    return list(unique.values())

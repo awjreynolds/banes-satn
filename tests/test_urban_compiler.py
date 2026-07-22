@@ -326,7 +326,7 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
     assert portals["portal_id"].is_unique
 
 
-def test_multi_portal_communities_use_the_nearest_connected_portals() -> None:
+def test_urban_portals_do_not_create_internal_peer_to_peer_routes() -> None:
     places = gpd.GeoDataFrame(
         [
             {
@@ -400,10 +400,9 @@ def test_multi_portal_communities_use_the_nearest_connected_portals() -> None:
         FakeAgentRuntime(),
     )
 
-    assert len(compiled.connections) == 1
+    assert compiled.spine_access_connections.empty
     assert compiled.urban_spines.empty
     assert compiled.urban_classification_unknowns.empty
     assert compiled.urban_classification_status == "explicit-unknown"
     assert compiled.criteria["urban_network"]["official_road_classification"] == "grey"
-    coordinates = list(compiled.connections.iloc[0].geometry.coords)
-    assert {coordinates[0], coordinates[-1]} == {(0.0, 0.0), (0.1, 0.0)}
+    assert compiled.criteria["network"]["legacy_pairwise_absent"] == "green"

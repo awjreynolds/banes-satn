@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 import shutil
 import tempfile
@@ -14,18 +15,42 @@ from importlib.resources import files
 from pathlib import Path
 
 import geopandas as gpd
+import networkx as nx
 import pandas as pd
 from pypdf import PdfReader
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A2, A3, A4, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
-from shapely.geometry import MultiLineString, mapping
+from shapely.geometry import MultiLineString, mapping, shape
 
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
 from satn.models import CouncilConfig
 from satn.sources import NCN_ATTRIBUTION, OSM_ATTRIBUTION
+
+LOGGER = logging.getLogger(__name__)
+
+
+def publication_artifacts(output: Path) -> dict[str, Path]:
+    """Return the stable artifact contract for a validated publication directory."""
+    return {
+        "geopackage": output / "network.gpkg",
+        "geojson": output / "network.geojson",
+        "run": output / "run.json",
+        "agents": output / "agent-records.json",
+        "divergences": output / "divergence-records.json",
+        "human_intervention_requests": output / "human-intervention-requests.json",
+        "backbone_comparison": output / "backbone-comparison.json",
+        "review_map": output / "review-map" / "index.html",
+        "review_zip": output / "review-map.zip",
+        "pdf": output / "network-map.pdf",
+    }
+
+
+def validate_publication(output: Path, config: CouncilConfig) -> None:
+    """Validate an existing publication before any whole-run reuse."""
+    _validate_artifacts(output, config)
 
 
 def publish(
@@ -34,39 +59,44 @@ def publish(
     run_id: str,
 ) -> dict[str, Path]:
     output = config.publication.output_dir
+    LOGGER.info("Publication started temporary_parent=%s", output.parent)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=f".{output.name}-", dir=output.parent))
     try:
         _write_geopackage(temporary / "network.gpkg", compiled)
         _write_geojson(temporary / "network.geojson", compiled)
         _write_json_records(temporary, config, compiled, run_id)
+        _write_backbone_comparison(
+            temporary / "backbone-comparison.json",
+            compiled,
+            config.publication.comparison_reference or output,
+        )
         review = temporary / "review-map"
         review.mkdir()
         _write_review_map(review, config, compiled)
         _zip_review_map(temporary / "review-map.zip", review)
         _write_pdf(temporary / "network-map.pdf", config, compiled)
         _validate_artifacts(temporary, config)
+        LOGGER.info("Publication artifacts validated temporary=%s", temporary)
         backup = output.with_name(f".{output.name}-previous")
         if backup.exists():
             shutil.rmtree(backup)
         if output.exists():
             output.replace(backup)
-        temporary.replace(output)
-        if backup.exists():
-            shutil.rmtree(backup)
+        try:
+            temporary.replace(output)
+        except Exception:
+            if backup.exists() and not output.exists():
+                backup.replace(output)
+            raise
+        else:
+            if backup.exists():
+                shutil.rmtree(backup)
+            LOGGER.info("Publication atomically replaced output=%s", output)
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
-    return {
-        "geopackage": output / "network.gpkg",
-        "geojson": output / "network.geojson",
-        "run": output / "run.json",
-        "agents": output / "agent-records.json",
-        "divergences": output / "divergence-records.json",
-        "review_map": output / "review-map" / "index.html",
-        "review_zip": output / "review-map.zip",
-        "pdf": output / "network-map.pdf",
-    }
+    return publication_artifacts(output)
 
 
 def _metadata_frame(crs: object) -> gpd.GeoDataFrame:
@@ -78,7 +108,6 @@ def _metadata_frame(crs: object) -> gpd.GeoDataFrame:
 
 
 def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
-    compiled.connections.to_file(path, layer="connections", driver="GPKG")
     compiled.places.to_file(path, layer="places", driver="GPKG")
     if not compiled.strategic_spines.empty:
         compiled.strategic_spines.to_file(path, layer="strategic_spines", driver="GPKG")
@@ -89,13 +118,9 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
             path, layer="school_street_assessments", driver="GPKG"
         )
     if not compiled.topography_profiles.empty:
-        compiled.topography_profiles.to_file(
-            path, layer="topography_profiles", driver="GPKG"
-        )
+        compiled.topography_profiles.to_file(path, layer="topography_profiles", driver="GPKG")
     if not compiled.gradient_sections.empty:
-        compiled.gradient_sections.to_file(
-            path, layer="gradient_sections", driver="GPKG"
-        )
+        compiled.gradient_sections.to_file(path, layer="gradient_sections", driver="GPKG")
     if not compiled.elevation_corroboration.empty:
         compiled.elevation_corroboration.to_file(
             path, layer="elevation_corroboration", driver="GPKG"
@@ -111,9 +136,7 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
             path, layer="branch_meeting_connections", driver="GPKG"
         )
     if not compiled.cross_spine_connectors.empty:
-        compiled.cross_spine_connectors.to_file(
-            path, layer="cross_spine_connectors", driver="GPKG"
-        )
+        compiled.cross_spine_connectors.to_file(path, layer="cross_spine_connectors", driver="GPKG")
     if not compiled.gaps.empty:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
     if not compiled.urban_spines.empty:
@@ -193,7 +216,6 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "cross-spine-connector": "cross_spine_connector_id",
         "low-traffic-area-portal": "portal_id",
         "strategic-spine": "spine_id",
-        "connection": "connection_id",
         "gap": "connection_id",
         "school-access-gap": "connection_id",
     }.get(feature_type)
@@ -271,8 +293,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "urban_classification_status": compiled.urban_classification_status,
         "elevation_evidence_status": compiled.elevation_evidence_status,
         "features": (
-            _features(compiled.connections, "connection")
-            + _features(compiled.strategic_spines, "strategic-spine")
+            _features(compiled.strategic_spines, "strategic-spine")
             + _features(community_obligations, "access-obligation")
             + _features(school_obligations, "school-access-obligation")
             + _features(other_access_connections, "spine-access-connection")
@@ -352,6 +373,11 @@ def _write_json_records(
     compiled: CompiledNetwork,
     run_id: str,
 ) -> None:
+    topography_comparisons = pd.concat(
+        [compiled.spine_access_connections, compiled.branch_meeting_connections],
+        ignore_index=True,
+        sort=False,
+    )
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
@@ -361,7 +387,11 @@ def _write_json_records(
             section: {criterion: status.value for criterion, status in values.items()}
             for section, values in compiled.criteria.items()
         },
-        "connection_count": len(compiled.connections),
+        "network_model": "backbone-outward",
+        "authoritative_features": _authoritative_feature_records(compiled),
+        "compilation_input_fingerprint": compiled.compilation_input_fingerprint,
+        "compilation_diagnostics": compiled.compilation_diagnostics,
+        "connection_count": compiled.connection_count,
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
         "urban_classification_status": compiled.urban_classification_status,
@@ -374,36 +404,37 @@ def _write_json_records(
             ),
             "corroboration_count": len(compiled.elevation_corroboration),
             "alternative_trigger_count": int(
-                compiled.connections.get(
+                topography_comparisons.get(
                     "topography_alternative_trigger",
-                    pd.Series(False, index=compiled.connections.index),
+                    pd.Series(False, index=topography_comparisons.index),
                 ).sum()
             ),
             "easier_alternative_selected_count": int(
                 (
-                    compiled.connections.get(
+                    topography_comparisons.get(
                         "topography_comparison_status",
-                        pd.Series("", index=compiled.connections.index),
+                        pd.Series("", index=topography_comparisons.index),
                     )
                     == "easier-alternative-selected"
                 ).sum()
             ),
             "original_retained_count": int(
-                compiled.connections.get(
+                topography_comparisons.get(
                     "topography_comparison_status",
-                    pd.Series("", index=compiled.connections.index),
-                ).isin(
+                    pd.Series("", index=topography_comparisons.index),
+                )
+                .isin(
                     [
                         "original-retained-no-easier-option",
                         "strategic-spine-retained",
                     ]
-                ).sum()
+                )
+                .sum()
             ),
         },
         "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
         "superseded_hypotheses": compiled.superseded_hypotheses,
-        "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
         "atm_mode": config.atm.mode if config.atm.enabled else "disabled",
         "atm_geometry_included": compiled.atm_reference is not None,
         "disclaimer": DISCLAIMER,
@@ -423,6 +454,260 @@ def _write_json_records(
     (output / "divergence-records.json").write_text(
         json.dumps(divergences, indent=2), encoding="utf-8"
     )
+    intervention_requests = {
+        "schema_version": SCHEMA_VERSION,
+        "disclaimer": DISCLAIMER,
+        "records": [
+            request.model_dump(mode="json") for request in compiled.human_intervention_requests
+        ],
+    }
+    (output / "human-intervention-requests.json").write_text(
+        json.dumps(intervention_requests, indent=2), encoding="utf-8"
+    )
+
+
+def _authoritative_feature_records(
+    compiled: CompiledNetwork,
+) -> list[dict[str, str]]:
+    records = [
+        {
+            "feature_id": str(row.access_connection_id),
+            "network_role": str(row.network_role),
+        }
+        for row in compiled.spine_access_connections.itertuples()
+    ] + [
+        {
+            "feature_id": str(row.meeting_connection_id),
+            "network_role": str(row.network_role),
+        }
+        for row in compiled.branch_meeting_connections.itertuples()
+    ] + [
+        {
+            "feature_id": str(row.cross_spine_connector_id),
+            "network_role": str(row.network_role),
+        }
+        for row in compiled.cross_spine_connectors.itertuples()
+    ]
+    return sorted(records, key=lambda record: record["feature_id"])
+
+
+def _write_backbone_comparison(
+    path: Path,
+    compiled: CompiledNetwork,
+    previous_reference: Path,
+) -> None:
+    """Compare the current model with any superseded publication, never as truth."""
+    current_lines = [
+        *compiled.spine_access_connections.geometry,
+        *compiled.branch_meeting_connections.geometry,
+    ]
+    current_length_m = _linework_length_m(current_lines, compiled.places.crs)
+    previous_path = (
+        previous_reference / "network.geojson"
+        if previous_reference.is_dir()
+        else previous_reference
+    )
+    previous_features: list[dict[str, object]] = []
+    previous_gaps: list[dict[str, object]] = []
+    previous_model = "unavailable"
+    previous_connection_count = 0
+    previous_gap_count = 0
+    previous_length_m = 0.0
+    previous_topology: dict[str, int] = _topology_metrics([])
+    previous_role_counts: dict[str, int] = {}
+    if previous_path.exists():
+        previous = json.loads(previous_path.read_text(encoding="utf-8"))
+        if "features" not in previous and previous.get("comparison_role") == (
+            "superseded-reference-not-ground-truth"
+        ):
+            previous_model = str(previous["network_model"])
+            previous_connection_count = int(previous["connection_count"])
+            previous_gap_count = int(previous["network_gap_count"])
+            previous_length_m = float(previous["linework_length_m"])
+            previous_topology = {
+                key: int(value) for key, value in previous["topology"].items()
+            }
+            previous_role_counts = {
+                str(key): int(value)
+                for key, value in previous["feature_role_counts"].items()
+            }
+        else:
+            previous_types = {
+                feature.get("properties", {}).get("feature_type")
+                for feature in previous.get("features", [])
+            }
+            previous_model = (
+                "legacy-pairwise"
+                if "connection" in previous_types
+                else "backbone-outward"
+                if previous_types
+                & {
+                    "spine-access-connection",
+                    "school-access-connection",
+                    "branch-meeting-connection",
+                }
+                else "unknown"
+            )
+            previous_features = [
+                feature
+                for feature in previous.get("features", [])
+                if feature.get("properties", {}).get("feature_type")
+                in {
+                    "connection",
+                    "spine-access-connection",
+                    "school-access-connection",
+                    "branch-meeting-connection",
+                }
+            ]
+            previous_gaps = [
+                feature
+                for feature in previous.get("features", [])
+                if feature.get("properties", {}).get("feature_type")
+                in {"gap", "school-access-gap"}
+            ]
+            previous_lines = [
+                shape(feature["geometry"])
+                for feature in previous_features
+                if feature.get("geometry") is not None
+            ]
+            previous_endpoints = [
+                endpoints
+                for feature in previous_features
+                if (endpoints := _feature_endpoints(feature)) is not None
+            ]
+            previous_connection_count = len(previous_features)
+            previous_gap_count = len(previous_gaps)
+            previous_length_m = _linework_length_m(previous_lines, 4326)
+            previous_topology = _topology_metrics(previous_endpoints)
+            previous_role_counts = dict(
+                sorted(
+                    pd.Series(
+                        [
+                            feature.get("properties", {}).get(
+                                "feature_type", "unknown"
+                            )
+                            for feature in previous_features
+                        ],
+                        dtype=object,
+                    )
+                    .value_counts()
+                    .to_dict()
+                    .items()
+                )
+            )
+    rationale_complete = sum(
+        bool(str(row.get("selection_reason", "")).strip())
+        for frame in (
+            compiled.spine_access_connections,
+            compiled.branch_meeting_connections,
+        )
+        for _, row in frame.iterrows()
+    )
+    typed_role_complete = sum(
+        bool(str(row.get("network_role", "")).strip())
+        for frame in (
+            compiled.spine_access_connections,
+            compiled.branch_meeting_connections,
+        )
+        for _, row in frame.iterrows()
+    )
+    current_endpoints = [
+        (str(row.place_id), str(row.parent_target_id))
+        for row in compiled.spine_access_connections.itertuples()
+    ] + [
+        (str(row.from_place_id), str(row.to_place_id))
+        for row in compiled.branch_meeting_connections.itertuples()
+    ]
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "disclaimer": DISCLAIMER,
+        "comparison_role": "superseded-reference-not-ground-truth",
+        "previous_publication_available": previous_path.exists(),
+        "current_backbone": {
+            "network_model": "backbone-outward",
+            "connection_count": compiled.connection_count,
+            "spine_access_connection_count": len(compiled.spine_access_connections),
+            "branch_meeting_connection_count": len(compiled.branch_meeting_connections),
+            "cross_spine_connector_count": len(compiled.cross_spine_connectors),
+            "served_obligation_count": int(
+                compiled.access_obligations["service_status"]
+                .isin(["served", "served-provisional"])
+                .sum()
+            ),
+            "network_gap_count": len(compiled.gaps),
+            "linework_length_m": round(current_length_m, 1),
+            "typed_role_count": typed_role_complete,
+            "selection_rationale_count": rationale_complete,
+        },
+        "topology": {
+            "current": {
+                "strategic_spine_count": len(compiled.strategic_spines),
+                "network_unit_count": len(compiled.network_units),
+                "spine_access_branch_count": len(compiled.spine_access_branches),
+                "spine_access_connection_count": len(compiled.spine_access_connections),
+                "branch_meeting_connection_count": len(compiled.branch_meeting_connections),
+                "cross_spine_connector_count": len(compiled.cross_spine_connectors),
+                **_topology_metrics(current_endpoints),
+            },
+            "previous": {
+                "network_model": previous_model,
+                "network_gap_count": previous_gap_count,
+                **previous_topology,
+                "feature_role_counts": previous_role_counts,
+            },
+        },
+        "superseded_pairwise_reference": {
+            "network_model": previous_model,
+            "connection_count": previous_connection_count,
+            "linework_length_m": round(previous_length_m, 1),
+        },
+        "visual_noise": {
+            "connection_count_delta": (
+                compiled.connection_count - previous_connection_count
+            ),
+            "linework_length_m_delta": round(current_length_m - previous_length_m, 1),
+        },
+        "explainability": {
+            "all_current_connections_have_typed_roles": (
+                typed_role_complete == compiled.connection_count
+            ),
+            "all_current_connections_have_selection_rationale": (
+                rationale_complete == compiled.connection_count
+            ),
+        },
+    }
+    path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def _feature_endpoints(feature: dict[str, object]) -> tuple[str, str] | None:
+    properties = feature.get("properties", {})
+    if not isinstance(properties, dict):
+        return None
+    for left, right in (
+        ("from_place", "to_place"),
+        ("place_id", "parent_target_id"),
+        ("from_place_id", "to_place_id"),
+    ):
+        if properties.get(left) is not None and properties.get(right) is not None:
+            return str(properties[left]), str(properties[right])
+    return None
+
+
+def _topology_metrics(endpoints: list[tuple[str, str]]) -> dict[str, int]:
+    graph = nx.Graph()
+    graph.add_edges_from(endpoints)
+    return {
+        "node_count": graph.number_of_nodes(),
+        "edge_count": graph.number_of_edges(),
+        "component_count": nx.number_connected_components(graph) if graph else 0,
+        "degree_one_node_count": sum(degree == 1 for _, degree in graph.degree()),
+    }
+
+
+def _linework_length_m(geometries: list[object], crs: object) -> float:
+    if not geometries:
+        return 0.0
+    return float(gpd.GeoSeries(geometries, crs=crs).to_crs(27700).length.sum())
 
 
 def _write_review_map(
@@ -515,6 +800,24 @@ def _write_review_map(
         ),
         encoding="utf-8",
     )
+    (review / "human-intervention-requests.json").write_text(
+        json.dumps(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "disclaimer": DISCLAIMER,
+                "records": [
+                    request.model_dump(mode="json")
+                    for request in compiled.human_intervention_requests
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    shutil.copy2(
+        review.parent / "backbone-comparison.json",
+        review / "backbone-comparison.json",
+    )
     (review / "README.txt").write_text(
         f"{DISCLAIMER}\n{OSM_ATTRIBUTION}\n{NCN_ATTRIBUTION}\n", encoding="utf-8"
     )
@@ -542,7 +845,7 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
     canvas.drawString(
         42,
         height - 50,
-        f"Experimental network review | {len(compiled.connections)} connections | "
+        f"Experimental backbone review | {compiled.connection_count} connections | "
         f"Compiled {datetime.now(UTC).date().isoformat()}",
     )
     _draw_legend(canvas, width, height, compiled.atm_reference is not None)
@@ -620,34 +923,22 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             )
             canvas.setDash()
 
-        connection_geometries: list[object] = []
-        for _, connection in compiled.connections.to_crs(3857).iterrows():
-            geometry = connection.geometry.intersection(clip_shape)
-            if connection["classification"] == "strategic-spine":
-                geometry = _offset_linework(geometry, 3.2 / scale)
-            connection_geometries.append(geometry)
-        canvas.setStrokeColor(HexColor("#ffffff"))
-        canvas.setLineWidth(3.4)
-        _draw_line_collection(
-            canvas,
-            connection_geometries,
-            min_x,
-            min_y,
-            scale,
-            origin_x,
-            origin_y,
-        )
-        canvas.setStrokeColor(HexColor("#08783f"))
-        canvas.setLineWidth(1.8)
-        _draw_line_collection(
-            canvas,
-            connection_geometries,
-            min_x,
-            min_y,
-            scale,
-            origin_x,
-            origin_y,
-        )
+        school_mask = compiled.spine_access_connections["obligation_kind"] == "school"
+        for frame, colour in (
+            (compiled.spine_access_connections[~school_mask], "#08783f"),
+            (compiled.spine_access_connections[school_mask], "#7d3c98"),
+            (compiled.branch_meeting_connections, "#d47b00"),
+        ):
+            _draw_pdf_role_linework(
+                canvas,
+                _clipped_linework(frame, clip_shape),
+                colour,
+                min_x,
+                min_y,
+                scale,
+                origin_x,
+                origin_y,
+            )
 
         _draw_pdf_places(
             canvas,
@@ -669,21 +960,17 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
                 canvas.circle(px, py, 2.8, stroke=1, fill=1)
         _draw_scale(canvas, scale, origin_x, origin_y)
 
-    canvas.setFillColor(HexColor("#566573"))
-    canvas.setFont("Helvetica", 7.5)
-    canvas.drawString(
-        42,
-        24,
-        "Sources: OpenStreetMap contributors (ODbL); Walk Wheel Cycle Trust NCN (OGL v3.0).",
-    )
-    canvas.drawRightString(width - 42, 24, DISCLAIMER)
+    _draw_pdf_footer(canvas, width)
+    _draw_edge_register(canvas, width, height, compiled)
     canvas.save()
 
 
 def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool) -> None:
     entries = [
         ("#c56a1a", "A-road corridor"),
-        ("#08783f", "Community connection"),
+        ("#08783f", "Spine Access Connection"),
+        ("#7d3c98", "School Access Connection"),
+        ("#d47b00", "Branch Meeting / Cross-Spine"),
         ("#187aa5", "National Cycle Network"),
         ("#f4b942", "Crossing warning"),
     ]
@@ -705,6 +992,89 @@ def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool)
         canvas.line(item_x, item_y + 2, item_x + 22, item_y + 2)
         canvas.setFillColor(HexColor("#17202a"))
         canvas.drawString(item_x + 28, item_y, label)
+
+
+def _draw_pdf_role_linework(
+    canvas: Canvas,
+    geometries: list[object],
+    colour: str,
+    min_x: float,
+    min_y: float,
+    scale: float,
+    origin_x: float,
+    origin_y: float,
+) -> None:
+    canvas.setStrokeColor(HexColor("#ffffff"))
+    canvas.setLineWidth(3.4)
+    _draw_line_collection(canvas, geometries, min_x, min_y, scale, origin_x, origin_y)
+    canvas.setStrokeColor(HexColor(colour))
+    canvas.setLineWidth(1.8)
+    _draw_line_collection(canvas, geometries, min_x, min_y, scale, origin_x, origin_y)
+
+
+def _draw_pdf_footer(canvas: Canvas, width: float) -> None:
+    canvas.setFillColor(HexColor("#566573"))
+    canvas.setFont("Helvetica", 7.5)
+    canvas.drawString(
+        42,
+        24,
+        "Sources: OpenStreetMap contributors (ODbL); Walk Wheel Cycle Trust NCN (OGL v3.0).",
+    )
+    canvas.drawRightString(width - 42, 24, DISCLAIMER)
+
+
+def _draw_edge_register(
+    canvas: Canvas,
+    width: float,
+    height: float,
+    compiled: CompiledNetwork,
+) -> None:
+    """Append the stable identifiers and authoritative roles represented on the map."""
+    entries = [
+        (
+            str(row.access_connection_id),
+            str(row.network_role),
+            f"{row.place_name} -> {row.parent_target_name}",
+        )
+        for row in compiled.spine_access_connections.itertuples()
+    ] + [
+        (
+            str(row.meeting_connection_id),
+            str(row.network_role),
+            f"{row.from_place_name} -> {row.to_place_name}",
+        )
+        for row in compiled.branch_meeting_connections.itertuples()
+    ] + [
+        (
+            str(row.cross_spine_connector_id),
+            str(row.network_role),
+            f"{row.from_root_spine_name} -> {row.to_root_spine_name}",
+        )
+        for row in compiled.cross_spine_connectors.itertuples()
+    ]
+    if not entries:
+        return
+    entries.sort()
+    rows_per_page = max(1, int((height - 112) // 11))
+    for offset in range(0, len(entries), rows_per_page):
+        canvas.showPage()
+        page_entries = entries[offset : offset + rows_per_page]
+        canvas.setFillColor(HexColor("#17202a"))
+        canvas.setFont("Helvetica-Bold", 16)
+        canvas.drawString(42, height - 42, "Authoritative edge register")
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(HexColor("#566573"))
+        canvas.drawString(
+            42,
+            height - 58,
+            "Stable identifier | feature role | represented connection",
+        )
+        y = height - 78
+        for identifier, role, description in page_entries:
+            canvas.setFillColor(HexColor("#17202a"))
+            canvas.drawString(42, y, f"{identifier} | {role} | {description}"[:180])
+            y -= 11
+        _draw_pdf_footer(canvas, width)
 
 
 def _is_pdf_context_road(value: object) -> bool:
@@ -975,55 +1345,132 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "run.json",
         "agent-records.json",
         "divergence-records.json",
+        "human-intervention-requests.json",
+        "backbone-comparison.json",
         "review-map/index.html",
         "review-map/data.js",
+        "review-map/network.geojson",
+        "review-map/agent-records.json",
         "review-map/assets/maplibre-gl.js",
         "review-map/assets/maplibre-gl.css",
         "review-map/assets/review-map.js",
         "review-map/assets/review-map.css",
+        "review-map/backbone-comparison.json",
         "review-map.zip",
         "network-map.pdf",
     )
     missing = [name for name in required if not (output / name).exists()]
     if missing:
         raise ValueError(f"publication incomplete: {', '.join(missing)}")
-    connections = gpd.read_file(output / "network.gpkg", layer="connections")
+    expected_top_level = {Path(name).parts[0] for name in required}
+    unexpected = sorted(
+        path.name for path in output.iterdir() if path.name not in expected_top_level
+    )
+    if unexpected:
+        raise ValueError(f"publication contains unexpected artifacts: {', '.join(unexpected)}")
     metadata = gpd.read_file(output / "network.gpkg", layer="metadata")
     if set(metadata["disclaimer"]) != {DISCLAIMER}:
         raise ValueError("GeoPackage metadata disclaimer mismatch")
     geojson = json.loads((output / "network.geojson").read_text(encoding="utf-8"))
     if geojson.get("disclaimer") != DISCLAIMER:
         raise ValueError("GeoJSON disclaimer mismatch")
-    geojson_connection_ids = {
-        feature["id"]
-        for feature in geojson["features"]
-        if feature["properties"].get("feature_type") == "connection"
-    }
-    if geojson_connection_ids != set(connections["connection_id"]):
-        raise ValueError("connection identifiers differ between GeoPackage and GeoJSON")
-    connection_features = {
-        feature["id"]: feature["properties"]
-        for feature in geojson["features"]
-        if feature["properties"].get("feature_type") == "connection"
-    }
-    for _, connection in connections.iterrows():
-        properties = connection_features[str(connection["connection_id"])]
-        for field in (
-            "topography_alternative_trigger",
-            "topography_comparison_status",
-            "topography_comparison_rationale",
-            "topography_original_role",
-            "topography_selected_role",
-            "alignment_options",
-        ):
-            if not _artifact_values_equal(properties.get(field), connection[field]):
-                raise ValueError(
-                    f"connection {connection['connection_id']} differs for {field}"
-                )
     run = json.loads((output / "run.json").read_text(encoding="utf-8"))
-    if run.get("disclaimer") != DISCLAIMER or run.get("connection_count") != len(connections):
+    if run.get("disclaimer") != DISCLAIMER or run.get("network_model") != "backbone-outward":
         raise ValueError("run manifest does not describe the current publication")
+    authoritative_count = sum(
+        feature["properties"].get("feature_type")
+        in {
+            "spine-access-connection",
+            "school-access-connection",
+            "branch-meeting-connection",
+        }
+        for feature in geojson["features"]
+    )
+    if run.get("connection_count") != authoritative_count:
+        raise ValueError("authoritative connection count differs between artifacts")
+    authoritative_types = {
+        "spine-access-connection",
+        "school-access-connection",
+        "branch-meeting-connection",
+        "cross-spine-connector",
+    }
+    geojson_registry = {
+        str(feature["id"]): str(feature["properties"]["network_role"])
+        for feature in geojson["features"]
+        if feature["properties"].get("feature_type") in authoritative_types
+    }
+    run_registry = {
+        str(record["feature_id"]): str(record["network_role"])
+        for record in run.get("authoritative_features", [])
+    }
+    if run_registry != geojson_registry:
+        raise ValueError("authoritative feature identifiers or roles differ in run manifest")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
+    geopackage_registry: dict[str, str] = {}
+    if "spine_access_connections" in spatial_layer_names:
+        access_rows = gpd.read_file(
+            output / "network.gpkg", layer="spine_access_connections"
+        )
+        geopackage_registry.update(
+            zip(
+                access_rows["access_connection_id"].astype(str),
+                access_rows["network_role"].astype(str),
+                strict=True,
+            )
+        )
+    if "branch_meeting_connections" in spatial_layer_names:
+        meeting_rows = gpd.read_file(
+            output / "network.gpkg", layer="branch_meeting_connections"
+        )
+        geopackage_registry.update(
+            zip(
+                meeting_rows["meeting_connection_id"].astype(str),
+                meeting_rows["network_role"].astype(str),
+                strict=True,
+            )
+        )
+    if "cross_spine_connectors" in spatial_layer_names:
+        connector_rows = gpd.read_file(
+            output / "network.gpkg", layer="cross_spine_connectors"
+        )
+        geopackage_registry.update(
+            zip(
+                connector_rows["cross_spine_connector_id"].astype(str),
+                connector_rows["network_role"].astype(str),
+                strict=True,
+            )
+        )
+    if geopackage_registry != geojson_registry:
+        raise ValueError("authoritative feature identifiers or roles differ in GeoPackage")
+    agent_payload = json.loads(
+        (output / "agent-records.json").read_text(encoding="utf-8")
+    )
+    accepted_agent_records = [
+        record for record in agent_payload["records"] if record["decision"] == "accept"
+    ]
+    agent_registry = {
+        str(record["connection_id"]): str(record.get("network_role"))
+        for record in accepted_agent_records
+    }
+    agent_registry.update(
+        {
+            str(reference["feature_id"]): str(reference["network_role"])
+            for record in accepted_agent_records
+            for reference in record.get("derived_features", [])
+        }
+    )
+    if agent_registry != geojson_registry:
+        raise ValueError("authoritative feature identifiers or roles differ in agent records")
+    review_network = json.loads(
+        (output / "review-map" / "network.geojson").read_text(encoding="utf-8")
+    )
+    review_registry = {
+        str(feature["id"]): str(feature["properties"]["network_role"])
+        for feature in review_network["features"]
+        if feature["properties"].get("feature_type") in authoritative_types
+    }
+    if review_registry != geojson_registry:
+        raise ValueError("authoritative feature identifiers or roles differ in review map")
     layer_types = {
         "strategic_spines": ("strategic-spine",),
         "access_obligations": ("access-obligation", "school-access-obligation"),
@@ -1089,11 +1536,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
                 "elevation_source_ids",
             ):
                 if not _artifact_values_equal(properties.get(field), row[field]):
-                    raise ValueError(
-                        f"Topography Profile {profile_id} differs for {field}"
-                    )
+                    raise ValueError(f"Topography Profile {profile_id} differs for {field}")
         generated_edge_types = {
-            "connection",
             "strategic-spine",
             "spine-access-connection",
             "school-access-connection",
@@ -1150,10 +1594,20 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             ):
                 if not _artifact_values_equal(feature["properties"].get(field), row[field]):
                     raise ValueError(f"Gradient Section {section_id} differs for {field}")
-    for filename in ("agent-records.json", "divergence-records.json"):
+    for filename in (
+        "agent-records.json",
+        "divergence-records.json",
+        "human-intervention-requests.json",
+    ):
         record_file = json.loads((output / filename).read_text(encoding="utf-8"))
         if record_file.get("disclaimer") != DISCLAIMER:
             raise ValueError(f"{filename} disclaimer mismatch")
+    comparison = json.loads((output / "backbone-comparison.json").read_text(encoding="utf-8"))
+    if (
+        comparison.get("disclaimer") != DISCLAIMER
+        or comparison.get("comparison_role") != "superseded-reference-not-ground-truth"
+    ):
+        raise ValueError("backbone comparison governance metadata mismatch")
     html = (output / "review-map" / "index.html").read_text(encoding="utf-8")
     if DISCLAIMER not in html:
         raise ValueError("review map disclaimer missing")
@@ -1162,7 +1616,6 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "layer-spine-access-connections",
         "layer-cross-spine-connectors",
         "layer-a-road-spines",
-        "layer-community-connections",
         "layer-ncn-routes",
         "layer-urban-spines",
         "layer-low-traffic-areas",
@@ -1198,3 +1651,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     ):
         if required_text not in pdf_text:
             raise ValueError(f"PDF is missing required text: {required_text}")
+    for connection_id, network_role in geojson_registry.items():
+        if f"{connection_id} | {network_role}" not in pdf_text:
+            raise ValueError(
+                f"PDF edge register differs for authoritative feature: {connection_id}"
+            )

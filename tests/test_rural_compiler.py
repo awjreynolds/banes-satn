@@ -8,7 +8,7 @@ import pytest
 from shapely.geometry import LineString, MultiLineString, Point
 
 from satn.agents import FakeAgentRuntime
-from satn.compiler import compile_network
+from satn.compiler import _strategic_spines, compile_network
 from satn.models import CouncilConfig
 from satn.routing import RoadGraph, choose_alignment
 
@@ -21,6 +21,32 @@ def config() -> CouncilConfig:
 
 def edges(rows: list[dict[str, object]]) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, geometry="geometry", crs=4326)
+
+
+def test_connected_osm_fragments_form_one_provenanced_strategic_spine() -> None:
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": f"a4-evidence-{index}",
+                "feature_type": "a-road-spine",
+                "name": "A4",
+                "category": "A-road strategic spine",
+                "source_id": f"osm-way-{index}",
+                "network_scope": "rural",
+                "geometry": LineString([(index - 1, 0), (index, 0)]),
+            }
+            for index in (1, 2)
+        ],
+        crs=4326,
+    )
+
+    spines = _strategic_spines(context)
+
+    assert len(spines) == 1
+    assert spines.iloc[0]["name"] == "A4"
+    provenance = json.loads(spines.iloc[0]["provenance"])
+    assert provenance["evidence_ids"] == ["a4-evidence-1", "a4-evidence-2"]
+    assert provenance["source_ids"] == ["osm-way-1", "osm-way-2"]
 
 
 def test_a_road_is_the_priority_strategic_spine() -> None:
@@ -151,7 +177,7 @@ def test_bidirectionality_records_reverse_edges_on_the_selected_corridor() -> No
     assert option.reverse_corridor_share == 1
 
 
-def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> None:
+def test_peer_to_peer_nominations_are_not_generated_without_spine_evidence() -> None:
     places = gpd.GeoDataFrame(
         [
             {
@@ -196,14 +222,9 @@ def test_nearest_nominations_collapse_and_long_connection_is_challenged() -> Non
         FakeAgentRuntime(),
     )
 
-    pairs = {
-        tuple(sorted((row.from_place, row.to_place))) for _, row in compiled.connections.iterrows()
-    }
-    assert pairs == {("a", "b"), ("b", "c"), ("a", "c")}
-    assert len(compiled.connections) == len(pairs)
-    assert "amber" in set(compiled.connections["criterion_distance"])
-    assert set(compiled.connections["criterion_continuity"]) == {"green"}
-    assert compiled.criteria["network"]["internal_termini"] == "green"
+    assert compiled.spine_access_connections.empty
+    assert len(compiled.gaps) == len(places)
+    assert set(compiled.access_obligations["service_status"]) == {"network-gap"}
 
 
 def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:
@@ -247,13 +268,11 @@ def test_missing_path_is_a_red_gap_without_an_invented_line() -> None:
         FakeAgentRuntime(),
     )
 
-    assert compiled.connections.empty
-    assert len(compiled.gaps) == 1
-    gap = compiled.gaps.iloc[0]
-    assert gap.geometry.geom_type == "MultiPoint"
-    assert gap.criterion_continuity == "red"
-    assert gap.classification == "network-gap"
-    assert json.loads(gap.alignment_options) == []
+    assert len(compiled.gaps) == 2
+    assert set(compiled.gaps.geometry.geom_type) == {"MultiPoint"}
+    assert set(compiled.gaps["criterion_continuity"]) == {"red"}
+    assert set(compiled.gaps["classification"]) == {"network-gap"}
+    assert all(json.loads(value) == [] for value in compiled.gaps["alignment_options"])
 
 
 def test_disconnected_spine_evidence_cannot_become_a_validated_access() -> None:

@@ -25,6 +25,8 @@ nav { display: flex; flex-wrap: wrap; gap: .75rem; }
   border-radius: .4rem;
 }
 .connection.gap { border-color: #c0392b; }
+.connection.retained-topography { border-color: #b65f00; background: #fff6e6; }
+.topography-warning { margin-top: .35rem; color: #784212; font-weight: 700; }
 .connection span { display: block; }
 .connection:hover, .connection:focus, .connection.active { background: #e9f7ef; outline: 3px solid #17202a; }
 dt { font-weight: 700; }

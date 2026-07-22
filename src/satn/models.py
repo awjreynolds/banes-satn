@@ -137,6 +137,8 @@ class SourceConfig(BaseModel):
     osm_place_query: str | None = None
     ncn_feature_service_url: str | None = None
     network_type: str = "bike"
+    overpass_url: str = "https://overpass-api.de/api"
+    osm_timeout_seconds: int = Field(default=180, ge=30, le=1800)
     external_buffer_km: float = 15.0
     internal_portal_threshold_km: float = 1.0
     community_place_types: list[str] = Field(
@@ -194,6 +196,7 @@ class TopographyConfig(BaseModel):
 
 class PublicationConfig(BaseModel):
     output_dir: Path
+    comparison_reference: Path | None = None
     title: str
     pdf_page_size: str = "A3"
     audience: Literal["public", "local"] = "public"
@@ -203,7 +206,6 @@ class CompilationConfig(BaseModel):
     max_connection_km: float = 15.0
     full: bool = False
     criteria_version: str = "1"
-    cache_dir: Path = Path(".satn-cache")
     agent: AgentConfig = Field(default_factory=AgentConfig)
     topography: TopographyConfig = Field(default_factory=TopographyConfig)
 
@@ -249,8 +251,13 @@ class CouncilConfig(BaseModel):
             national_elevation.path = (root / national_elevation.path).resolve()
         if not self.publication.output_dir.is_absolute():
             self.publication.output_dir = (root / self.publication.output_dir).resolve()
-        if not self.compilation.cache_dir.is_absolute():
-            self.compilation.cache_dir = (root / self.compilation.cache_dir).resolve()
+        if (
+            self.publication.comparison_reference is not None
+            and not self.publication.comparison_reference.is_absolute()
+        ):
+            self.publication.comparison_reference = (
+                root / self.publication.comparison_reference
+            ).resolve()
         if self.atm.path is not None and not self.atm.path.is_absolute():
             self.atm.path = (root / self.atm.path).resolve()
         return self
@@ -262,8 +269,14 @@ class CouncilConfig(BaseModel):
         return cls(config_path=config_path, **raw)
 
 
+class PublishedFeatureReference(BaseModel):
+    feature_id: str
+    network_role: str
+
+
 class AgentRecord(BaseModel):
     connection_id: str
+    network_role: str | None = None
     runtime: str
     model: str
     proposal: str
@@ -274,6 +287,7 @@ class AgentRecord(BaseModel):
     outcome_reason: str = ""
     attempts: list[dict[str, Any]] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)
+    derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -285,6 +299,17 @@ class DivergenceRecord(BaseModel):
     explanation: str
     resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
     resolved: bool = False
+
+
+class HumanInterventionRequest(BaseModel):
+    request_id: str
+    connection_id: str
+    reason: str
+    attempted_revisions: list[dict[str, Any]] = Field(default_factory=list)
+    unresolved_findings: list[dict[str, Any]] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+    choices: list[str] = Field(default_factory=list)
+    smallest_human_input: str
 
 
 class CompilationResult(BaseModel):

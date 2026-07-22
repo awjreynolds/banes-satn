@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "comparison_role": "superseded-reference-not-ground-truth",
+  "source_run_id": "run-b7a6413f89bb",
+  "network_model": "legacy-pairwise",
+  "connection_count": 163,
+  "network_gap_count": 0,
+  "linework_length_m": 319649.0,
+  "topology": {
+    "node_count": 118,
+    "edge_count": 163,
+    "component_count": 1,
+    "degree_one_node_count": 1
+  },
+  "feature_role_counts": {
+    "connection": 163
+  },
+  "disclaimer": "Experimental SATN POC — not an adopted B&NES plan."
+}

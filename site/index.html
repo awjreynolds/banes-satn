@@ -15,16 +15,81 @@
 
       <fieldset id="layer-controls">
         <legend>Map layers</legend>
-        <label><input id="layer-a-road-spines" type="checkbox" checked> A-road core spines</label>
-        <label><input id="layer-community-connections" type="checkbox" checked> Community connections</label>
-        <label><input id="layer-ncn-routes" type="checkbox" checked> National Cycle Network</label>
-        <label><input id="layer-urban-structure" type="checkbox" checked> Urban network structure</label>
-        <label><input id="layer-places" type="checkbox" checked> Places</label>
-        <label><input id="layer-schools" type="checkbox"> Schools &amp; education</label>
-        <label><input id="layer-retail-centres" type="checkbox"> High streets &amp; retail centres</label>
-        <label><input id="layer-healthcare" type="checkbox"> Doctors, pharmacies &amp; hospitals</label>
-        <label><input id="layer-gaps-warnings" type="checkbox" checked> Gaps and warnings</label>
-        <label><input id="layer-atm" type="checkbox" disabled> ATM reference (before/after)</label>
+        <label><input id="layer-strategic-spines" type="checkbox" checked aria-describedby="legend-strategic-spines"> Strategic Spines</label>
+        <div id="legend-strategic-spines" class="layer-summary" role="note">
+          <p>A-road Strategic Spine — major engineering required</p>
+          <p>Established NCN Strategic Spine</p>
+        </div>
+        <label><input id="layer-spine-access-connections" type="checkbox" checked aria-describedby="legend-spine-access-connections"> Spine Access Connections</label>
+        <div id="legend-spine-access-connections" class="layer-summary" role="note">
+          <p>Spine Access Connection — routed Community attachment</p>
+          <p>Community Access Obligation — served reference point</p>
+          <p>Amber dashed line — retained Elevation Challenge with no materially easier option</p>
+        </div>
+        <label><input id="layer-cross-spine-connectors" type="checkbox" checked aria-describedby="legend-cross-spine-connectors"> Cross-Spine Connectors</label>
+        <div id="legend-cross-spine-connectors" class="layer-summary" role="note">
+          <p>Cross-Spine Connector — continuous transverse chain</p>
+          <p>Branch Meeting Connection — first justified meeting only</p>
+          <p>Amber dashed line — retained Elevation Challenge with no materially easier option</p>
+        </div>
+        <label><input id="layer-a-road-spines" type="checkbox" aria-describedby="legend-a-road-spines"> Raw A-road evidence</label>
+        <div id="legend-a-road-spines" class="layer-summary" role="note" hidden><p>Orange line — governed source corridor before assembly.</p></div>
+        <label><input id="layer-ncn-routes" type="checkbox" aria-describedby="legend-ncn-routes"> Urban NCN Evidence</label>
+        <div id="legend-ncn-routes" class="layer-summary" role="note" hidden>
+          <p>Established NCN geometry — permeability evidence, not automatically a Circulation Boundary</p>
+        </div>
+        <label><input id="layer-urban-spines" type="checkbox" checked aria-describedby="legend-urban-spines"> Urban Main-Road Spines</label>
+        <div id="legend-urban-spines" class="layer-summary" role="note">
+          <p>A road — major engineering/protected provision assumption</p>
+          <p>B road — official through-road spine</p>
+          <p>Classified Unnumbered (C) road — official through-road spine</p>
+          <p>Missing official classification — Explicit Unknown; OSM tags are not substituted</p>
+          <p>Grey dashed line — governed road with classification still unknown</p>
+        </div>
+        <label><input id="layer-low-traffic-areas" type="checkbox" checked aria-describedby="legend-low-traffic-areas"> Candidate Low-Traffic Areas &amp; portals</label>
+        <div id="legend-low-traffic-areas" class="layer-summary" role="note">
+          <p>Blue area — Candidate Low-Traffic Area, not an existing LTN</p>
+          <p>Blue dot — named portal to a qualifying Circulation Boundary</p>
+          <p>Area permeability only — no preferred residential cycling centreline asserted</p>
+        </div>
+        <label><input id="layer-places" type="checkbox" checked aria-describedby="legend-places"> Places</label>
+        <div id="legend-places" class="layer-summary" role="note"><p>Dark dot — labelled place reference point.</p></div>
+        <label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label>
+        <div id="legend-schools" class="layer-summary" role="note" hidden>
+          <p>Green — Mapped and served</p>
+          <p>Amber — Inferred access point; needs verification</p>
+          <p>Red — mapped access point but no reachable backbone or continuous urban fabric to a main-road portal</p>
+          <p>Grey — Unresolved access point</p>
+          <p>Urban service — area permeability to a named main-road portal; no residential centreline selected</p>
+          <p>Urban finding — unresolved entrance, missing portal or discontinuous low-traffic fabric</p>
+          <p>Purple — contextual college or university</p>
+        </div>
+        <label><input id="layer-school-streets" type="checkbox" aria-describedby="legend-school-streets"> School Street Candidate Assessments</label>
+        <div id="legend-school-streets" class="layer-summary" role="note" hidden>
+          <p>Green — Promising</p>
+          <p>Amber — Needs Investigation</p>
+          <p>Red — Unlikely</p>
+          <p>Grey — Not Evaluated</p>
+          <p>Qualitative evidence for investigation — not scheme feasibility or calibrated probability</p>
+        </div>
+        <label><input id="layer-gradient-sections" type="checkbox" aria-describedby="legend-gradient-sections"> Gradient Sections</label>
+        <div id="legend-gradient-sections" class="layer-summary" role="note" hidden>
+          <p>Gentle — up to 3%</p>
+          <p>Noticeable — above 3% to 5%</p>
+          <p>Steep — above 5% to 8%</p>
+          <p>Very Steep — above 8% to 12.5%</p>
+          <p>Severe — above 12.5%</p>
+          <p>Grey — Elevation Evidence unavailable</p>
+          <p>Sequential blue terrain colours show physical gradient severity, not Criterion Status or route rejection.</p>
+        </div>
+        <label><input id="layer-retail-centres" type="checkbox" aria-describedby="legend-retail-centres"> High streets &amp; retail centres</label>
+        <div id="legend-retail-centres" class="layer-summary" role="note" hidden><p>Orange dot — retail amenity evidence.</p></div>
+        <label><input id="layer-healthcare" type="checkbox" aria-describedby="legend-healthcare"> Doctors, pharmacies &amp; hospitals</label>
+        <div id="legend-healthcare" class="layer-summary" role="note" hidden><p>Red dot — healthcare amenity evidence.</p></div>
+        <label><input id="layer-gaps-warnings" type="checkbox" checked aria-describedby="legend-gaps-warnings"> Gaps and warnings</label>
+        <div id="legend-gaps-warnings" class="layer-summary" role="note"><p>Red dot — unresolved Network Gap. Amber dot — undeclared crossing warning.</p></div>
+        <label><input id="layer-atm" type="checkbox" disabled aria-describedby="legend-atm"> ATM reference (before/after)</label>
+        <div id="legend-atm" class="layer-summary" role="note" hidden><p>Blue dashed line — governed comparison reference, never ground truth.</p></div>
       </fieldset>
 
       <p id="layer-summary" class="layer-summary" aria-live="polite"></p>
@@ -37,6 +102,9 @@
         <legend>Evaluation section</legend>
         <label><input id="criteria-connections" type="radio" name="section" value="connections" checked> Connections</label>
         <label><input id="criteria-network" type="radio" name="section" value="network"> Network</label>
+        <label><input id="criteria-spine-network" type="radio" name="section" value="spine_network"> Spine network</label>
+        <label><input id="criteria-school-street-assessments" type="radio" name="section" value="school_street_candidate_assessments"> School Street Candidate Assessments</label>
+        <label><input id="criteria-topography" type="radio" name="section" value="topography"> Topography</label>
         <label><input id="criteria-atm-comparison" type="radio" name="section" value="atm_comparison"> ATM comparison</label>
       </fieldset>
 
@@ -52,7 +120,7 @@
       </nav>
 
       <section aria-labelledby="connection-heading">
-        <h2 id="connection-heading">Connections and gaps</h2>
+        <h2 id="connection-heading">Connections, gaps and profiles</h2>
         <div id="connection-list"></div>
       </section>
 

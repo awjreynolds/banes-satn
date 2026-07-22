@@ -4,37 +4,58 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import time
 from collections import Counter
 from pathlib import Path
 
 from satn.agents import runtime_for
-from satn.atm import compare_atm, load_atm, source_fingerprint
-from satn.cache import ConnectionCache
+from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
-from satn.models import CompilationResult, CouncilConfig, TrafficLight
-from satn.publisher import publish
+from satn.constants import SCHEMA_VERSION
+from satn.models import AgentRecord, CompilationResult, CouncilConfig, TrafficLight
+from satn.publisher import (
+    publication_artifacts,
+    publish,
+    validate_publication,
+)
 from satn.sources import load_snapshot
+
+LOGGER = logging.getLogger(__name__)
 
 
 def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     """Compile a council configuration into a complete current publication."""
+    started = time.perf_counter()
     council = config if isinstance(config, CouncilConfig) else CouncilConfig.from_yaml(config)
+    input_fingerprint = _compilation_input_fingerprint(council)
+    LOGGER.info(
+        "Compilation started council=%s snapshot=%s schema=%s",
+        council.council_id,
+        council.source.snapshot_id,
+        SCHEMA_VERSION,
+    )
+    reused = _reuse_validated_publication(council, input_fingerprint)
+    if reused is not None:
+        return reused
     source = load_snapshot(council)
+    LOGGER.info(
+        "Snapshot loaded places=%d road_edges=%d context_features=%d",
+        len(source["places"]),
+        len(source["network"]),
+        len(source.get("context", [])),
+    )
     runtime = runtime_for(council.compilation.agent)
     atm_reference = None
-    atm_seed = None
-    atm_hash = None
     if council.atm.enabled and council.atm.mode == "seeded":
         atm_reference = load_atm(council).to_crs(source["network"].crs)
-        atm_seed = atm_reference
-        atm_hash = source_fingerprint(council.atm.path)
-    cache = ConnectionCache(council, atm_fingerprint=atm_hash)
-    compiled = compile_network(
-        council,
-        source,
-        runtime,
-        cache=cache,
-        atm_seed=atm_seed,
+    compiled = compile_network(council, source, runtime)
+    compiled.compilation_input_fingerprint = input_fingerprint
+    LOGGER.info(
+        "Network compiled connections=%d gaps=%d status=%s",
+        compiled.connection_count,
+        len(compiled.gaps),
+        compiled.status,
     )
     if council.atm.enabled:
         if council.atm.mode == "blind":
@@ -51,22 +72,14 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         {
             "council": council.council_id,
             "snapshot": council.source.snapshot_id,
+            "schema_version": SCHEMA_VERSION,
+            "criteria_version": council.compilation.criteria_version,
+            "compilation_input_fingerprint": input_fingerprint,
             "snapshot_manifest": hashlib.sha256(
                 (
                     council.source.snapshot_dir / council.source.snapshot_id / "snapshot.json"
                 ).read_bytes()
             ).hexdigest(),
-            "connections": sorted(
-                (
-                    row.connection_id,
-                    row.classification,
-                    row.topography_comparison_status,
-                    row.topography_comparison_rationale,
-                    row.alignment_options,
-                    row.geometry.wkb_hex,
-                )
-                for row in compiled.connections.itertuples()
-            ),
             "context": sorted(
                 evidence_id
                 for frame in (
@@ -239,23 +252,32 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
     )
     run_id = f"run-{hashlib.sha256(run_fingerprint.encode()).hexdigest()[:12]}"
     artifacts = publish(council, compiled, run_id)
+    LOGGER.info(
+        "Publication validated output=%s elapsed_seconds=%.1f",
+        council.publication.output_dir,
+        time.perf_counter() - started,
+    )
     return CompilationResult(
         run_id=run_id,
         status=compiled.status,
         output_dir=council.publication.output_dir,
-        connections=len(compiled.connections),
+        connections=compiled.connection_count,
         gaps=len(compiled.gaps),
         artifacts=artifacts,
         criteria=compiled.criteria,
         agent_records=compiled.agent_records,
         metadata={
+            "network_model": "backbone-outward",
+            "compilation_input_fingerprint": input_fingerprint,
+            "compilation_diagnostics": compiled.compilation_diagnostics,
+            "human_intervention_requests": [
+                request.model_dump(mode="json") for request in compiled.human_intervention_requests
+            ],
             "network_units": compiled.network_units,
             "urban_classification_status": compiled.urban_classification_status,
             "elevation_evidence_status": compiled.elevation_evidence_status,
             "urban_spines": len(compiled.urban_spines),
-            "urban_classification_unknowns": len(
-                compiled.urban_classification_unknowns
-            ),
+            "urban_classification_unknowns": len(compiled.urban_classification_unknowns),
             "urban_spine_records": [
                 {
                     "structure_id": row.structure_id,
@@ -317,9 +339,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "school_access_obligations": int(
                 (compiled.access_obligations["obligation_kind"] == "school").sum()
             ),
-            "school_street_assessments": len(
-                compiled.school_street_assessments
-            ),
+            "school_street_assessments": len(compiled.school_street_assessments),
             "school_street_assessment_records": [
                 {
                     "assessment_id": row.assessment_id,
@@ -330,9 +350,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "rationale": row.rationale,
                     "qualification": row.qualification,
                     "access_point_status": row.access_point_status,
-                    "adjoining_road_classification": (
-                        row.adjoining_road_classification
-                    ),
+                    "adjoining_road_classification": (row.adjoining_road_classification),
                     "bus_access": row.bus_access,
                     "essential_access": row.essential_access,
                     "alternative_through_route": row.alternative_through_route,
@@ -347,19 +365,30 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "gradient_sections": len(compiled.gradient_sections),
             "topography_alternative_comparisons": [
                 {
-                    "connection_id": row.connection_id,
-                    "triggered": row.topography_alternative_trigger,
-                    "status": row.topography_comparison_status,
-                    "rationale": row.topography_comparison_rationale,
-                    "original_role": row.topography_original_role,
-                    "selected_role": row.topography_selected_role,
-                    "alignment_options": row.alignment_options,
+                    "connection_id": row[id_column],
+                    "connection_type": connection_type,
+                    "triggered": row["topography_alternative_trigger"],
+                    "status": row["topography_comparison_status"],
+                    "rationale": row["topography_comparison_rationale"],
+                    "original_role": row["topography_original_role"],
+                    "selected_role": row["topography_selected_role"],
+                    "alignment_options": row["alignment_options"],
                 }
-                for row in compiled.connections.itertuples()
+                for frame, id_column, connection_type in (
+                    (
+                        compiled.spine_access_connections,
+                        "access_connection_id",
+                        "spine-access-connection",
+                    ),
+                    (
+                        compiled.branch_meeting_connections,
+                        "meeting_connection_id",
+                        "branch-meeting-connection",
+                    ),
+                )
+                for _, row in frame.iterrows()
             ],
-            "elevation_corroboration_count": len(
-                compiled.elevation_corroboration
-            ),
+            "elevation_corroboration_count": len(compiled.elevation_corroboration),
             "topography_profile_records": [
                 {
                     "profile_id": row.profile_id,
@@ -372,9 +401,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "forward_descent_m": row.forward_descent_m,
                     "reverse_ascent_m": row.reverse_ascent_m,
                     "reverse_descent_m": row.reverse_descent_m,
-                    "steepest_sustained_gradient_pct": (
-                        row.steepest_sustained_gradient_pct
-                    ),
+                    "steepest_sustained_gradient_pct": (row.steepest_sustained_gradient_pct),
                     "steepest_sustained_gradient_rationale": (
                         row.steepest_sustained_gradient_rationale
                     ),
@@ -429,6 +456,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "spine_access_connection_records": [
                 {
                     "access_connection_id": row.access_connection_id,
+                    "network_role": row.network_role,
                     "place_id": row.place_id,
                     "place_kind": row.place_kind,
                     "community_id": row.community_id,
@@ -471,6 +499,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "branch_meeting_connection_records": [
                 {
                     "meeting_connection_id": row.meeting_connection_id,
+                    "network_role": row.network_role,
                     "from_place_id": row.from_place_id,
                     "to_place_id": row.to_place_id,
                     "from_root_spine_id": row.from_root_spine_id,
@@ -492,7 +521,6 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 for row in compiled.cross_spine_connectors.itertuples()
             ],
             "superseded_hypotheses": compiled.superseded_hypotheses,
-            "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
             "atm_geometry_included": compiled.atm_reference is not None,
             "divergence_counts": dict(
@@ -500,3 +528,106 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             ),
         },
     )
+
+
+def _compilation_input_fingerprint(council: CouncilConfig) -> str:
+    """Fingerprint every governed input required for safe whole-publication reuse."""
+    config_payload = council.model_dump(mode="json")
+    config_payload["compilation"].pop("full", None)
+    snapshot_manifest = council.source.snapshot_dir / council.source.snapshot_id / "snapshot.json"
+    # The superseded comparison is explanatory, never a correctness input. Its path is
+    # governed by configuration, but promoting this run to that path must not invalidate
+    # reuse of the authoritative network it just produced.
+    governed_paths = [
+        council.atm.path,
+        (
+            council.source.official_road_classification.path
+            if council.source.official_road_classification is not None
+            else None
+        ),
+        (
+            council.source.observed_through_traffic.path
+            if council.source.observed_through_traffic is not None
+            else None
+        ),
+        (
+            council.source.national_elevation.path
+            if council.source.national_elevation is not None
+            else None
+        ),
+    ]
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "configuration": config_payload,
+        "snapshot_manifest_sha256": _file_digest(snapshot_manifest),
+        "governed_file_sha256": {
+            str(path): _file_digest(path)
+            for path in governed_paths
+            if path is not None and path.is_file()
+        },
+        "compiler_sha256": _compiler_digest(),
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _file_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _compiler_digest() -> str:
+    digest = hashlib.sha256()
+    source_root = Path(__file__).parent
+    for path in sorted(source_root.glob("*.py")):
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _reuse_validated_publication(
+    council: CouncilConfig,
+    input_fingerprint: str,
+) -> CompilationResult | None:
+    if council.compilation.full:
+        LOGGER.info("Validated publication reuse disabled by --full")
+        return None
+    output = council.publication.output_dir
+    run_path = output / "run.json"
+    if not run_path.exists():
+        return None
+    try:
+        run = json.loads(run_path.read_text(encoding="utf-8"))
+        if run.get("compilation_input_fingerprint") != input_fingerprint:
+            LOGGER.info("Existing publication input fingerprint differs; recompiling")
+            return None
+        validate_publication(output, council)
+        agents_payload = json.loads((output / "agent-records.json").read_text(encoding="utf-8"))
+        criteria = {
+            section: {criterion: TrafficLight(status) for criterion, status in values.items()}
+            for section, values in run["criteria"].items()
+        }
+        LOGGER.info(
+            "Validated publication reused run_id=%s output=%s",
+            run["run_id"],
+            output,
+        )
+        return CompilationResult(
+            run_id=run["run_id"],
+            status=run["status"],
+            output_dir=output,
+            connections=run["connection_count"],
+            gaps=run["gap_count"],
+            artifacts=publication_artifacts(output),
+            criteria=criteria,
+            agent_records=[
+                AgentRecord.model_validate(record) for record in agents_payload["records"]
+            ],
+            metadata=run | {"publication_reused": True},
+        )
+    except (KeyError, OSError, ValueError, json.JSONDecodeError) as error:
+        LOGGER.warning(
+            "Existing publication failed reuse validation; recompiling reason=%s",
+            error,
+        )
+        return None
