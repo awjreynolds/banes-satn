@@ -222,8 +222,9 @@
 
   function renderCards() {
     const list = document.querySelector("#connection-list");
+    list.replaceChildren();
     network.features
-      .filter((feature) => ["gap", "strategic-spine", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "urban-spine", "urban-classification-unknown", "low-traffic-area", "low-traffic-area-portal", "crossing-warning", "topography-profile", "gradient-section"].includes(feature.properties.feature_type))
+      .filter((feature) => ["gap", "strategic-spine", "access-obligation", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "a-road-spine", "ncn-route", "urban-spine", "urban-classification-unknown", "low-traffic-area", "low-traffic-area-portal", "crossing-warning", "school", "topography-profile", "gradient-section", "retail-centre", "healthcare", "atm-reference"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -239,9 +240,9 @@
         const isAreaEvidence = ["low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type);
         const isTopographyProfile = feature.properties.feature_type === "topography-profile";
         const isGradientSection = feature.properties.feature_type === "gradient-section";
-        const isNamedNetworkEvidence = ["strategic-spine", "urban-spine", "urban-classification-unknown", "crossing-warning"].includes(feature.properties.feature_type);
+        const isNamedNetworkEvidence = ["strategic-spine", "access-obligation", "a-road-spine", "ncn-route", "urban-spine", "urban-classification-unknown", "crossing-warning", "school", "retail-centre", "healthcare", "atm-reference"].includes(feature.properties.feature_type);
         title.textContent = isNamedNetworkEvidence
-          ? value(feature.properties.name, feature.properties.feature_type.replaceAll("-", " "))
+          ? value(feature.properties.name, feature.properties.school_name || feature.properties.place_name || feature.properties.community_name || feature.properties.feature_type.replaceAll("-", " "))
           : isAreaEvidence
           ? value(feature.properties.name, "Unnamed Candidate Low-Traffic Area evidence")
           : isSchoolStreet
@@ -364,6 +365,7 @@
         control.disabled = false;
         control.checked = true;
         if (map.getLayer("atm-reference")) map.setLayoutProperty("atm-reference", "visibility", "visible");
+        renderCards();
         status.textContent = `${uploaded.features.length} local ATM features loaded; uncheck ATM reference for the before view.`;
       } catch (error) {
         status.textContent = `ATM file was not loaded: ${error.message}`;

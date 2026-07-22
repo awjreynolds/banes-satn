@@ -326,6 +326,22 @@ def test_cross_spine_roles_publish_consistently_to_spatial_and_review_artifacts(
     assert feature_by_id[connector.iloc[0]["cross_spine_connector_id"]]["properties"][
         "selection_reason"
     ] == connector.iloc[0]["selection_reason"]
+    connector_id = connector.iloc[0]["cross_spine_connector_id"]
+    run = json.loads(artifacts["run"].read_text())
+    assert {
+        "connection_id": connector_id,
+        "network_role": "cross-spine-connector",
+    } in run["authoritative_connections"]
+    agents = json.loads(artifacts["agents"].read_text())
+    assert any(
+        reference
+        == {
+            "feature_id": connector_id,
+            "network_role": "cross-spine-connector",
+        }
+        for record in agents["records"]
+        for reference in record["derived_features"]
+    )
     html = artifacts["review_map"].read_text()
     assert 'id="layer-cross-spine-connectors"' in html
     assert 'id="legend-cross-spine-connectors"' in html

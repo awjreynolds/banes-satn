@@ -59,6 +59,12 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         place_details = page.locator("#feature-details").inner_text()
         assert "Stable ID" in place_details
         assert "Place role" in place_details
+        assert page.locator('[data-feature-type="access-obligation"]').count() > 0
+        assert page.locator('[data-feature-type="a-road-spine"]').count() > 0
+        assert page.locator('[data-feature-type="ncn-route"]').count() > 0
+        assert page.locator('[data-feature-type="school"]').count() > 0
+        assert page.locator('[data-feature-type="retail-centre"]').count() > 0
+        assert page.locator('[data-feature-type="healthcare"]').count() > 0
 
         page.locator("#criteria-network").check()
         assert page.locator("#criteria-heading").inner_text() == "network criteria"
@@ -185,4 +191,7 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert atm_control.is_enabled()
         assert atm_control.is_checked()
         assert "1 local ATM features loaded" in page.locator("#atm-status").inner_text()
+        local_atm_card = page.locator('[data-feature-type="atm-reference"]').first
+        local_atm_card.focus()
+        assert "Stable ID" in page.locator("#feature-details").inner_text()
         browser.close()

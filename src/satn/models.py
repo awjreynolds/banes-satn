@@ -269,6 +269,11 @@ class CouncilConfig(BaseModel):
         return cls(config_path=config_path, **raw)
 
 
+class PublishedFeatureReference(BaseModel):
+    feature_id: str
+    network_role: str
+
+
 class AgentRecord(BaseModel):
     connection_id: str
     network_role: str | None = None
@@ -282,6 +287,7 @@ class AgentRecord(BaseModel):
     outcome_reason: str = ""
     attempts: list[dict[str, Any]] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)
+    derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

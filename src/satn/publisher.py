@@ -481,6 +481,12 @@ def _authoritative_connection_records(
             "network_role": str(row.network_role),
         }
         for row in compiled.branch_meeting_connections.itertuples()
+    ] + [
+        {
+            "connection_id": str(row.cross_spine_connector_id),
+            "network_role": str(row.network_role),
+        }
+        for row in compiled.cross_spine_connectors.itertuples()
     ]
     return sorted(records, key=lambda record: record["connection_id"])
 
@@ -1038,6 +1044,13 @@ def _draw_edge_register(
             f"{row.from_place_name} -> {row.to_place_name}",
         )
         for row in compiled.branch_meeting_connections.itertuples()
+    ] + [
+        (
+            str(row.cross_spine_connector_id),
+            str(row.network_role),
+            f"{row.from_root_spine_name} -> {row.to_root_spine_name}",
+        )
+        for row in compiled.cross_spine_connectors.itertuples()
     ]
     if not entries:
         return
@@ -1379,6 +1392,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "spine-access-connection",
         "school-access-connection",
         "branch-meeting-connection",
+        "cross-spine-connector",
     }
     geojson_registry = {
         str(feature["id"]): str(feature["properties"]["network_role"])
@@ -1415,16 +1429,36 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
                 strict=True,
             )
         )
+    if "cross_spine_connectors" in spatial_layer_names:
+        connector_rows = gpd.read_file(
+            output / "network.gpkg", layer="cross_spine_connectors"
+        )
+        geopackage_registry.update(
+            zip(
+                connector_rows["cross_spine_connector_id"].astype(str),
+                connector_rows["network_role"].astype(str),
+                strict=True,
+            )
+        )
     if geopackage_registry != geojson_registry:
         raise ValueError("authoritative connection identifiers or roles differ in GeoPackage")
     agent_payload = json.loads(
         (output / "agent-records.json").read_text(encoding="utf-8")
     )
+    accepted_agent_records = [
+        record for record in agent_payload["records"] if record["decision"] == "accept"
+    ]
     agent_registry = {
         str(record["connection_id"]): str(record.get("network_role"))
-        for record in agent_payload["records"]
-        if record["decision"] == "accept"
+        for record in accepted_agent_records
     }
+    agent_registry.update(
+        {
+            str(reference["feature_id"]): str(reference["network_role"])
+            for record in accepted_agent_records
+            for reference in record.get("derived_features", [])
+        }
+    )
     if agent_registry != geojson_registry:
         raise ValueError("authoritative connection identifiers or roles differ in agent records")
     review_network = json.loads(

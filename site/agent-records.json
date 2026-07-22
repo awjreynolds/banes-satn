@@ -45,7 +45,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:49.023693Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:36.326518Z"
     },
     {
       "connection_id": "spine-access-212a61e497c2",
@@ -90,7 +91,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:49.579230Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:36.873861Z"
     },
     {
       "connection_id": "spine-access-ce01bd1dded9",
@@ -135,7 +137,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:50.114390Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:37.391066Z"
     },
     {
       "connection_id": "spine-access-ba674d0420d9",
@@ -180,7 +183,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:50.620626Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:37.887845Z"
     },
     {
       "connection_id": "spine-access-16e61149c286",
@@ -225,7 +229,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:50.970520Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:38.230512Z"
     },
     {
       "connection_id": "spine-access-c26e1a7058e6",
@@ -270,7 +275,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:51.623191Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:38.871901Z"
     },
     {
       "connection_id": "spine-access-b7efee718574",
@@ -315,7 +321,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:51.947515Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:39.189964Z"
     },
     {
       "connection_id": "spine-access-178c4673ba72",
@@ -360,7 +367,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:52.700269Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:39.933813Z"
     },
     {
       "connection_id": "spine-access-786a04ff9679",
@@ -405,7 +413,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:53.140565Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:40.370499Z"
     },
     {
       "connection_id": "spine-access-c32d550cc97a",
@@ -450,7 +459,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:53.522888Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:40.749863Z"
     },
     {
       "connection_id": "spine-access-aa5cf45f865c",
@@ -495,7 +505,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:54.201220Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:41.426071Z"
     },
     {
       "connection_id": "spine-access-da2d6095b94f",
@@ -540,7 +551,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:54.669320Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:41.886767Z"
     },
     {
       "connection_id": "spine-access-0d8cdb36e927",
@@ -586,7 +598,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:55.071589Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:42.273723Z"
     },
     {
       "connection_id": "spine-access-a38cd2fcfa3b",
@@ -631,7 +644,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:55.609738Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:42.807466Z"
     },
     {
       "connection_id": "spine-access-5b349512887e",
@@ -676,7 +690,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:56.343838Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:43.521400Z"
     },
     {
       "connection_id": "spine-access-8fd581a5b19b",
@@ -721,7 +736,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:56.826245Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:43.989425Z"
     },
     {
       "connection_id": "spine-access-ec56c1e325bd",
@@ -766,7 +782,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:57.205698Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:44.362252Z"
     },
     {
       "connection_id": "spine-access-5d8e9e5648f1",
@@ -811,7 +828,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:57.735367Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:44.891472Z"
     },
     {
       "connection_id": "spine-access-6af2db7fcba6",
@@ -856,7 +874,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:58.019395Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:45.173485Z"
     },
     {
       "connection_id": "spine-access-3cc0ec992b39",
@@ -901,7 +920,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:58.477279Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:45.621653Z"
     },
     {
       "connection_id": "spine-access-d658f359ce19",
@@ -946,7 +966,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:58.856007Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:45.993672Z"
     },
     {
       "connection_id": "spine-access-508884f4152c",
@@ -991,7 +1012,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:59.190560Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:46.322469Z"
     },
     {
       "connection_id": "spine-access-37ca72c1dd80",
@@ -1036,7 +1058,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:59.702984Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:46.816579Z"
     },
     {
       "connection_id": "spine-access-6f3ced6523ef",
@@ -1081,7 +1104,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:49:59.959208Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:47.069101Z"
     },
     {
       "connection_id": "spine-access-ce3f4b167dc0",
@@ -1126,7 +1150,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:00.417883Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:47.519168Z"
     },
     {
       "connection_id": "spine-access-f8d958f09667",
@@ -1171,7 +1196,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:00.893860Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:47.980601Z"
     },
     {
       "connection_id": "spine-access-683a2b81df86",
@@ -1216,7 +1242,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:01.343688Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:48.420736Z"
     },
     {
       "connection_id": "spine-access-4161efed1d6e",
@@ -1261,7 +1288,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:01.591531Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:48.665199Z"
     },
     {
       "connection_id": "spine-access-64756e6cfad1",
@@ -1306,7 +1334,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:02.022696Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:49.083590Z"
     },
     {
       "connection_id": "spine-access-dd3dd5f9d9ff",
@@ -1351,7 +1380,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:02.234362Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:49.304217Z"
     },
     {
       "connection_id": "spine-access-a8943ffde6c1",
@@ -1396,7 +1426,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:02.562144Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:49.630453Z"
     },
     {
       "connection_id": "spine-access-ace2eeaebbd5",
@@ -1441,7 +1472,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:02.813195Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:49.881383Z"
     },
     {
       "connection_id": "spine-access-67676ac212b1",
@@ -1486,7 +1518,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:03.109203Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:50.173549Z"
     },
     {
       "connection_id": "spine-access-ca9607254ef1",
@@ -1531,7 +1564,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:03.323703Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:50.386350Z"
     },
     {
       "connection_id": "spine-access-280194e1ee76",
@@ -1576,7 +1610,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:03.638274Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:50.698438Z"
     },
     {
       "connection_id": "spine-access-e2afc8327be5",
@@ -1621,7 +1656,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:03.845516Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:50.903820Z"
     },
     {
       "connection_id": "spine-access-e020d611cfcb",
@@ -1666,7 +1702,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:04.091596Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:51.147779Z"
     },
     {
       "connection_id": "spine-access-18d9d6f6d746",
@@ -1711,7 +1748,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:04.272577Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:51.326495Z"
     },
     {
       "connection_id": "spine-access-a7c28bf6996e",
@@ -1756,7 +1794,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:04.410442Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:51.462485Z"
     },
     {
       "connection_id": "spine-access-5b41124c7fda",
@@ -1801,7 +1840,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:04.584837Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:51.637004Z"
     },
     {
       "connection_id": "spine-access-7fd82bc98824",
@@ -1847,7 +1887,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:04.819918Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:51.871866Z"
     },
     {
       "connection_id": "spine-access-4d0191213e49",
@@ -1893,7 +1934,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.052039Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.102420Z"
     },
     {
       "connection_id": "spine-access-44a6b64285fd",
@@ -1939,7 +1981,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.139672Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.188993Z"
     },
     {
       "connection_id": "spine-access-cb3913370bd0",
@@ -1986,7 +2029,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.231952Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.281276Z"
     },
     {
       "connection_id": "spine-access-b8431b5a437a",
@@ -2032,7 +2076,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.388690Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.437436Z"
     },
     {
       "connection_id": "spine-access-03a3898d64f4",
@@ -2078,7 +2123,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.466312Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.514824Z"
     },
     {
       "connection_id": "spine-access-67e42862fbae",
@@ -2124,7 +2170,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.532585Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.580629Z"
     },
     {
       "connection_id": "spine-access-610cda60d787",
@@ -2174,7 +2221,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.687455Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.735353Z"
     },
     {
       "connection_id": "spine-access-d64291b629df",
@@ -2222,7 +2270,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.857130Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.903391Z"
     },
     {
       "connection_id": "spine-access-06b8fd73006b",
@@ -2269,7 +2318,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.905989Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:52.951913Z"
     },
     {
       "connection_id": "spine-access-e1b055d1a1c4",
@@ -2315,7 +2365,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:05.965983Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:53.011930Z"
     },
     {
       "connection_id": "spine-access-90b26a1bbbee",
@@ -2372,7 +2423,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:06.001888Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:53.047377Z"
     },
     {
       "connection_id": "spine-access-ed621bfed81b",
@@ -2418,7 +2470,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:06.015650Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:53.060788Z"
     },
     {
       "connection_id": "spine-access-e5fa65b61567",
@@ -2464,7 +2517,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:06.026204Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:01:53.071400Z"
     },
     {
       "connection_id": "branch-meeting-40e1a3c8a057",
@@ -2510,7 +2564,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364247Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-27d4172ba594",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.359560Z"
     },
     {
       "connection_id": "branch-meeting-ffce4fea0140",
@@ -2563,7 +2623,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364352Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-cfd2023b52af",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.359665Z"
     },
     {
       "connection_id": "branch-meeting-a89732d2e4bc",
@@ -2610,7 +2676,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364435Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-b7cb5957e383",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.359766Z"
     },
     {
       "connection_id": "branch-meeting-7a5890201d6f",
@@ -2663,7 +2735,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364517Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-fc64adc180d5",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.359850Z"
     },
     {
       "connection_id": "branch-meeting-73dcf32298d8",
@@ -2719,7 +2797,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364600Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-e3f267093330",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.359925Z"
     },
     {
       "connection_id": "branch-meeting-9f59d3c886e0",
@@ -2775,7 +2859,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364678Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-718fb1160f3b",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.359995Z"
     },
     {
       "connection_id": "branch-meeting-c5dd6b428ced",
@@ -2826,7 +2916,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364752Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-e46227572776",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360063Z"
     },
     {
       "connection_id": "branch-meeting-28c5443f46c0",
@@ -2883,7 +2979,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364831Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-78edd775ee31",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360134Z"
     },
     {
       "connection_id": "branch-meeting-b8b952ee40be",
@@ -2955,7 +3057,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364912Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-b1071acd6bc8",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360206Z"
     },
     {
       "connection_id": "branch-meeting-c8932cb891ee",
@@ -3002,7 +3110,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.364980Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-08281c68ce7e",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360268Z"
     },
     {
       "connection_id": "branch-meeting-2d7743b1fee0",
@@ -3053,7 +3167,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.365065Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-165fd1eaac82",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360348Z"
     },
     {
       "connection_id": "branch-meeting-fd0a2f472bc0",
@@ -3111,7 +3231,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.365161Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-6b54993acc3b",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360438Z"
     },
     {
       "connection_id": "branch-meeting-69c3aab3db7a",
@@ -3164,7 +3290,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.365235Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-99a29ec82ca7",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360519Z"
     },
     {
       "connection_id": "branch-meeting-dee402f317a4",
@@ -3214,7 +3346,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.365407Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-7bd9c5868390",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360679Z"
     },
     {
       "connection_id": "branch-meeting-64e7ee2db0cd",
@@ -3290,7 +3428,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.365511Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-0a7f42633fb8",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.360779Z"
     },
     {
       "connection_id": "branch-meeting-106282dae331",
@@ -3430,7 +3574,13 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.365777Z"
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-4484aaffd0fa",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "created_at": "2026-07-22T08:02:03.361037Z"
     },
     {
       "connection_id": "spine-access-5244701de3fe",
@@ -3480,7 +3630,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.464666Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.459444Z"
     },
     {
       "connection_id": "spine-access-ac77e13444d1",
@@ -3539,7 +3690,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.478814Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.473863Z"
     },
     {
       "connection_id": "spine-access-9eac142a5537",
@@ -3596,7 +3748,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.496948Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.491978Z"
     },
     {
       "connection_id": "spine-access-7eec85415820",
@@ -3650,7 +3803,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.511414Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.506451Z"
     },
     {
       "connection_id": "spine-access-90dfdf0d49e7",
@@ -3701,7 +3855,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.525244Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.520306Z"
     },
     {
       "connection_id": "spine-access-fd8bcee1f24e",
@@ -3750,7 +3905,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.537008Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.532208Z"
     },
     {
       "connection_id": "spine-access-54643e90c46a",
@@ -3804,7 +3960,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.589849Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.584834Z"
     },
     {
       "connection_id": "spine-access-73215497844c",
@@ -3852,7 +4009,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:16.592659Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:03.587567Z"
     },
     {
       "connection_id": "spine-access-476d6c729ec7",
@@ -3915,7 +4073,8 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:50:17.902096Z"
+      "derived_features": [],
+      "created_at": "2026-07-22T08:02:04.893753Z"
     }
   ]
 }

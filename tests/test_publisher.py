@@ -128,6 +128,11 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         for feature in network["features"]
         if feature["properties"]["feature_type"] == "branch-meeting-connection"
     }
+    connector_ids = {
+        feature["id"]
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "cross-spine-connector"
+    }
 
     assert gated_access_ids == set(connections["access_connection_id"])
     assert gated_access_ids | meeting_ids == {
@@ -136,15 +141,23 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     authoritative_roles = {
         feature["id"]: feature["properties"]["network_role"]
         for feature in network["features"]
-        if feature["id"] in gated_access_ids | meeting_ids
+        if feature["id"] in gated_access_ids | meeting_ids | connector_ids
     }
     assert run["authoritative_connections"] == [
         {"connection_id": connection_id, "network_role": role}
         for connection_id, role in sorted(authoritative_roles.items())
     ]
-    assert {
+    agent_roles = {
         record["connection_id"]: record["network_role"] for record in agents["records"]
-    } == authoritative_roles
+    }
+    agent_roles.update(
+        {
+            reference["feature_id"]: reference["network_role"]
+            for record in agents["records"]
+            for reference in record["derived_features"]
+        }
+    )
+    assert agent_roles == authoritative_roles
     assert run["connection_count"] == len(gated_access_ids | meeting_ids)
     assert run["network_model"] == "backbone-outward"
     assert run["compilation_diagnostics"]["assembly_strategy"] == "backbone-outward"
@@ -205,6 +218,8 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     assert all(value in text for value in (DISCLAIMER, "Legend", "scale", "Compiled"))
     assert "Authoritative edge register" in text
     assert "spine-access-connection" in text
+    if connector_ids:
+        assert "cross-spine-connector" in text
     assert connections.iloc[0]["access_connection_id"] in text
 
 
