@@ -329,9 +329,9 @@ def test_cross_spine_roles_publish_consistently_to_spatial_and_review_artifacts(
     connector_id = connector.iloc[0]["cross_spine_connector_id"]
     run = json.loads(artifacts["run"].read_text())
     assert {
-        "connection_id": connector_id,
+        "feature_id": connector_id,
         "network_role": "cross-spine-connector",
-    } in run["authoritative_connections"]
+    } in run["authoritative_features"]
     agents = json.loads(artifacts["agents"].read_text())
     assert any(
         reference

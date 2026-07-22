@@ -143,9 +143,9 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         for feature in network["features"]
         if feature["id"] in gated_access_ids | meeting_ids | connector_ids
     }
-    assert run["authoritative_connections"] == [
-        {"connection_id": connection_id, "network_role": role}
-        for connection_id, role in sorted(authoritative_roles.items())
+    assert run["authoritative_features"] == [
+        {"feature_id": feature_id, "network_role": role}
+        for feature_id, role in sorted(authoritative_roles.items())
     ]
     agent_roles = {
         record["connection_id"]: record["network_role"] for record in agents["records"]

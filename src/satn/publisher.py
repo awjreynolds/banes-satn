@@ -388,7 +388,7 @@ def _write_json_records(
             for section, values in compiled.criteria.items()
         },
         "network_model": "backbone-outward",
-        "authoritative_connections": _authoritative_connection_records(compiled),
+        "authoritative_features": _authoritative_feature_records(compiled),
         "compilation_input_fingerprint": compiled.compilation_input_fingerprint,
         "compilation_diagnostics": compiled.compilation_diagnostics,
         "connection_count": compiled.connection_count,
@@ -466,29 +466,29 @@ def _write_json_records(
     )
 
 
-def _authoritative_connection_records(
+def _authoritative_feature_records(
     compiled: CompiledNetwork,
 ) -> list[dict[str, str]]:
     records = [
         {
-            "connection_id": str(row.access_connection_id),
+            "feature_id": str(row.access_connection_id),
             "network_role": str(row.network_role),
         }
         for row in compiled.spine_access_connections.itertuples()
     ] + [
         {
-            "connection_id": str(row.meeting_connection_id),
+            "feature_id": str(row.meeting_connection_id),
             "network_role": str(row.network_role),
         }
         for row in compiled.branch_meeting_connections.itertuples()
     ] + [
         {
-            "connection_id": str(row.cross_spine_connector_id),
+            "feature_id": str(row.cross_spine_connector_id),
             "network_role": str(row.network_role),
         }
         for row in compiled.cross_spine_connectors.itertuples()
     ]
-    return sorted(records, key=lambda record: record["connection_id"])
+    return sorted(records, key=lambda record: record["feature_id"])
 
 
 def _write_backbone_comparison(
@@ -1400,8 +1400,8 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         if feature["properties"].get("feature_type") in authoritative_types
     }
     run_registry = {
-        str(record["connection_id"]): str(record["network_role"])
-        for record in run.get("authoritative_connections", [])
+        str(record["feature_id"]): str(record["network_role"])
+        for record in run.get("authoritative_features", [])
     }
     if run_registry != geojson_registry:
         raise ValueError("authoritative connection identifiers or roles differ in run manifest")
