@@ -29,6 +29,7 @@ LOW_TRAFFIC = {
 MAIN_ROADS = {"motorway", "trunk", "primary", "secondary", "tertiary"}
 
 LOGGER = logging.getLogger(__name__)
+ATTACHMENT_TIE_BREAK_EPSILON = 1e-9
 
 
 @dataclass
@@ -459,6 +460,8 @@ class RoadGraph:
         search_heap: list[
             tuple[
                 float,
+                float,
+                float,
                 str,
                 str,
                 int,
@@ -477,11 +480,13 @@ class RoadGraph:
             routed = self._attachment_path(search_starts, search_ends)
             if routed is None:
                 return
-            total_m, _, start, _, end, _ = routed
+            total_m, _, start, start_snap, end, end_snap = routed
             heapq.heappush(
                 search_heap,
                 (
                     total_m,
+                    start_snap,
+                    end_snap,
                     start,
                     end,
                     sequence,
@@ -494,7 +499,7 @@ class RoadGraph:
 
         add_search(eligible_starts, ends)
         while search_heap:
-            _, _, _, _, search_starts, search_ends, routed = heapq.heappop(search_heap)
+            _, _, _, _, _, _, search_starts, search_ends, routed = heapq.heappop(search_heap)
             total_m, nodes, start, start_snap, end, end_snap = routed
             if start == end:
                 option = (
@@ -559,12 +564,20 @@ class RoadGraph:
                 start_connectors[connector] = (start, snap_m)
                 temporary_nodes.append(connector)
                 self._attachment_graph.add_edge(source, connector, length_m=0.0)
-                self._attachment_graph.add_edge(connector, start, length_m=snap_m)
+                self._attachment_graph.add_edge(
+                    connector,
+                    start,
+                    length_m=snap_m * (1.0 + ATTACHMENT_TIE_BREAK_EPSILON),
+                )
             for end, snap_m in ends:
                 connector = object()
                 end_connectors[connector] = (end, snap_m)
                 temporary_nodes.append(connector)
-                self._attachment_graph.add_edge(end, connector, length_m=snap_m)
+                self._attachment_graph.add_edge(
+                    end,
+                    connector,
+                    length_m=snap_m * (1.0 + ATTACHMENT_TIE_BREAK_EPSILON),
+                )
                 self._attachment_graph.add_edge(connector, sink, length_m=0.0)
             total_m, path = nx.single_source_dijkstra(
                 self._attachment_graph, source, target=sink, weight="length_m"

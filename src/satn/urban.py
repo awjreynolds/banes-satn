@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass
 
 import geopandas as gpd
@@ -16,10 +17,10 @@ from shapely.ops import polygonize, unary_union
 from satn.evidence import continuous_linework
 from satn.identifiers import coordinate_key as _coordinate
 from satn.models import OfficialRoadClassification, UrbanClassificationStatus
-from satn.routing import LOW_TRAFFIC
 from satn.tags import tag_values as _tag_values
 
-URBAN_PLACE_CLASSES = {"city", "town", "suburb", "quarter", "neighbourhood"}
+LOGGER = logging.getLogger(__name__)
+
 TOPOLOGY_PRECISION_GRID_M = 0.01
 # Absorb normal centreline/source topology offsets without annexing nearby rural corridors.
 URBAN_A_ROAD_EVIDENCE_TOLERANCE_M = 50.0
@@ -28,6 +29,14 @@ URBAN_SPINE_CLASSES = {
     OfficialRoadClassification.B_ROAD.value,
     OfficialRoadClassification.CLASSIFIED_UNNUMBERED.value,
 }
+URBAN_STREET_FABRIC_CLASSES = {
+    "living_street",
+    "residential",
+    "service",
+    "unclassified",
+}
+URBAN_STREET_FABRIC_BUFFER_M = 150.0
+URBAN_STREET_CLUSTER_OPENING_M = 200.0
 
 
 @dataclass(frozen=True)
@@ -95,13 +104,9 @@ def derive_urban_structure(
         "boundary_kind",
         "geometry",
     ]
-    place_class = places.get("place_class")
-    if place_class is None:
-        place_class = [""] * len(places)
-    urban = places[
-        (places["kind"] == "community")
-        & pd.Series(place_class, index=places.index).isin(URBAN_PLACE_CLASSES)
-    ]
+    # The compiler supplies the governed urban Community scope, including explicit
+    # council overrides for settlements whose OSM place class alone is insufficient.
+    urban = places[places["kind"] == "community"]
     if urban.empty or network.empty:
         return UrbanStructure(
             spines=gpd.GeoDataFrame([], columns=columns, geometry="geometry", crs=network.crs),
@@ -153,7 +158,7 @@ def derive_urban_structure(
 
     minor_mask = (
         projected_network["_classes"]
-        .map(lambda values: bool(set(values) & LOW_TRAFFIC))
+        .map(lambda values: bool(set(values) & URBAN_STREET_FABRIC_CLASSES))
         .astype(bool)
     )
     minor = projected_network.loc[minor_mask].copy()
@@ -289,8 +294,35 @@ def _minor_road_areas(
     boundaries["geometry"] = boundaries.geometry.map(_normalise_topology)
     minor = minor.copy()
     minor["geometry"] = minor.geometry.map(_normalise_topology)
-    boundary_linework = unary_union(boundaries.geometry.tolist())
-    cells = sorted(list(polygonize(boundary_linework)), key=lambda value: value.wkb_hex)
+    buffered_streets = minor.geometry.buffer(URBAN_STREET_FABRIC_BUFFER_M).union_all(
+        method="disjoint_subset"
+    )
+    clustered_fabric = buffered_streets.buffer(-URBAN_STREET_CLUSTER_OPENING_M).buffer(
+        URBAN_STREET_CLUSTER_OPENING_M
+    )
+    clustered_fabric = clustered_fabric.intersection(buffered_streets)
+    street_fabric = _normalise_topology(
+        clustered_fabric if not clustered_fabric.is_empty else buffered_streets
+    )
+    if street_fabric is None or street_fabric.is_empty:
+        return [], []
+    dividing_linework = [street_fabric.boundary]
+    for geometry in boundaries.geometry:
+        dividing_linework.extend(continuous_linework(geometry.intersection(street_fabric)))
+    boundary_linework = unary_union(dividing_linework)
+    cells = sorted(
+        (
+            _normalise_topology(cell.intersection(street_fabric))
+            for cell in polygonize(boundary_linework)
+        ),
+        key=lambda value: value.wkb_hex,
+    )
+    LOGGER.info(
+        "Urban LTA derivation started street_segments=%d boundaries=%d cells=%d",
+        len(minor),
+        len(boundaries),
+        len(cells),
+    )
     governed_observations = None
     if observed_through_traffic is not None and not observed_through_traffic.empty:
         governed_observations = observed_through_traffic.to_crs(27700)
@@ -298,7 +330,17 @@ def _minor_road_areas(
         governed_observations["geometry"] = governed_observations.geometry.map(_normalise_topology)
     rows: list[dict[str, object]] = []
     portals: list[dict[str, object]] = []
-    for cell in cells:
+    for cell_index, cell in enumerate(cells, start=1):
+        if cell_index % 250 == 0:
+            LOGGER.info(
+                "Urban LTA derivation progress assessed=%d/%d candidates=%d portals=%d",
+                cell_index,
+                len(cells),
+                len(rows),
+                len(portals),
+            )
+        if cell is None or cell.is_empty or cell.area <= 1.0:
+            continue
         evidence = _minor_evidence_in_cell(minor, cell, governed_observations)
         component_records = [
             record for component in _connected_components(evidence) for record in component
@@ -308,8 +350,10 @@ def _minor_road_areas(
         source_ids = sorted({record.source_id for record in component_records})
         structure_id = _geometry_id("low-traffic-area", cell, *source_ids)
         name = f"Candidate Low-Traffic Area {structure_id.rsplit('-', 1)[-1]}"
-        cell_boundaries = boundaries[
-            boundaries.geometry.intersection(cell.boundary).length > 0.01
+        boundary_positions = boundaries.sindex.query(cell.boundary, predicate="intersects")
+        cell_boundaries = boundaries.iloc[sorted(int(value) for value in boundary_positions)]
+        cell_boundaries = cell_boundaries[
+            cell_boundaries.geometry.intersection(cell.boundary).length > 0.01
         ].sort_values("boundary_id")
         area_portals = _low_traffic_area_portals(
             structure_id,
@@ -358,6 +402,12 @@ def _minor_road_areas(
             }
         )
         portals.extend(area_portals)
+    LOGGER.info(
+        "Urban LTA derivation completed cells=%d candidates=%d portals=%d",
+        len(cells),
+        len(rows),
+        len(portals),
+    )
     return rows, portals
 
 
@@ -367,7 +417,9 @@ def _minor_evidence_in_cell(
     governed_observations: gpd.GeoDataFrame | None,
 ) -> list[_MinorStreetEvidence]:
     evidence: list[_MinorStreetEvidence] = []
-    for index, row in minor.iterrows():
+    positions = minor.sindex.query(cell, predicate="intersects")
+    candidates = minor.iloc[sorted(int(value) for value in positions)]
+    for index, row in candidates.iterrows():
         for geometry in continuous_linework(row.geometry.intersection(cell)):
             if geometry.length <= 0.01:
                 continue

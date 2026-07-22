@@ -48,14 +48,21 @@
           <p>A road — major engineering/protected provision assumption</p>
           <p>B road — official through-road spine</p>
           <p>Classified Unnumbered (C) road — official through-road spine</p>
-          <p>Missing official classification — Explicit Unknown; OSM tags are not substituted</p>
-          <p>Grey dashed line — governed road with classification still unknown</p>
         </div>
-        <label><input id="layer-low-traffic-areas" type="checkbox" checked aria-describedby="legend-low-traffic-areas"> Candidate Low-Traffic Areas &amp; portals</label>
+        <label><input id="layer-urban-classification-unknowns" type="checkbox" aria-describedby="legend-urban-classification-unknowns"> Road-classification evidence gaps</label>
+        <div id="legend-urban-classification-unknowns" class="layer-summary" role="note" hidden>
+          <p>Grey dashed line — governed road with official classification still unknown</p>
+          <p>Diagnostic evidence only; OSM tags are not substituted</p>
+        </div>
+        <label><input id="layer-low-traffic-areas" type="checkbox" checked aria-describedby="legend-low-traffic-areas"> Candidate Low-Traffic Areas</label>
         <div id="legend-low-traffic-areas" class="layer-summary" role="note">
           <p>Blue area — Candidate Low-Traffic Area, not an existing LTN</p>
-          <p>Blue dot — named portal to a qualifying Circulation Boundary</p>
           <p>Area permeability only — no preferred residential cycling centreline asserted</p>
+        </div>
+        <label><input id="layer-low-traffic-area-portals" type="checkbox" aria-describedby="legend-low-traffic-area-portals"> LTA portal evidence</label>
+        <div id="legend-low-traffic-area-portals" class="layer-summary" role="note" hidden>
+          <p>Blue dot — street-to-boundary portal used by the urban access assessment</p>
+          <p>Diagnostic evidence; hidden by default to keep the circulation plan legible</p>
         </div>
         <label><input id="layer-places" type="checkbox" checked aria-describedby="legend-places"> Places</label>
         <div id="legend-places" class="layer-summary" role="note"><p>Dark dot — labelled place reference point.</p></div>

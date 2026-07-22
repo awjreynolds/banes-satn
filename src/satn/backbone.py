@@ -36,7 +36,10 @@ from satn.topography_alternatives import TopographyComparison, compare_alignment
 
 LOGGER = logging.getLogger(__name__)
 
-MAX_OBLIGATION_ATTACHMENT_M = 2000.0
+# A Community reference point may be slightly offset from the mapped street fabric, but
+# a multi-kilometre node snap is not a route.  Edge-interior attachment keeps this bound
+# tight without penalising long OSM ways whose nearest graph node is far away.
+MAX_OBLIGATION_ATTACHMENT_M = 250.0
 MAX_SPINE_ATTACHMENT_M = 20.0
 MAX_SCHOOL_ATTACHMENT_M = 20.0
 
@@ -749,57 +752,18 @@ def _candidate(
     elevation_evidence: gpd.GeoDataFrame | None = None,
     topography_config: TopographyConfig | None = None,
 ) -> _Candidate | None:
-    starts = graph.nodes_near(place.geometry, MAX_OBLIGATION_ATTACHMENT_M)
-    if not starts:
-        return None
     ends = [
         attachment for attachment in frontier.attachments if attachment[1] <= MAX_SPINE_ATTACHMENT_M
     ]
-    choices = []
-    end_snap_by_node: dict[str, float] = {}
-    for node_id, snap_m in ends:
-        end_snap_by_node[node_id] = min(
-            snap_m,
-            end_snap_by_node.get(node_id, float("inf")),
-        )
-    overlap_nodes = {node_id for node_id, _ in starts if node_id in end_snap_by_node}
-    routed_starts = (
-        [attachment for attachment in starts if attachment[0] not in overlap_nodes]
-        if allow_stationary
-        else starts
-    )
-    # An overlapping start can never improve upon its own zero-length attachment.
-    # Excluding those nodes keeps the multi-source search bounded without changing
-    # the selected route when a lower-snap routed start is genuinely preferable.
-    routed = graph.best_attachment(
-        routed_starts,
-        ends,
-        allow_stationary=allow_stationary,
-    )
-    if routed is not None:
-        choices.append(routed)
-    if allow_stationary:
-        for start_node, start_snap_m in starts:
-            if start_node not in end_snap_by_node:
-                continue
-            stationary = graph.best_attachment(
-                [(start_node, start_snap_m)],
-                [(start_node, end_snap_by_node[start_node])],
-                allow_stationary=True,
-            )
-            if stationary is not None:
-                choices.append(stationary)
-    if not choices:
+    if not ends:
         return None
-    choice = min(
-        choices,
-        key=lambda candidate: (
-            round(candidate.total_distance_km, 9),
-            round(candidate.start_snap_m, 9),
-            candidate.start_node,
-            candidate.end_node,
-        ),
+    choice = graph.best_point_attachment(
+        place.geometry,
+        MAX_OBLIGATION_ATTACHMENT_M,
+        ends,
     )
+    if choice is None or (not allow_stationary and choice.option.length_km <= 1e-9):
+        return None
     rank = (
         round(choice.total_distance_km, 9),
         str(place["place_id"]),
@@ -1211,10 +1175,11 @@ def _connection_row(
             else default_selection_reason
         ),
         "geometry_semantics": (
-            "routed OSM network alignment between canonical graph attachment points; "
-            "snap distances are evidence associations, not claimed paths or final design"
+            "continuous routed OSM alignment from a bounded road association to the "
+            "Strategic Spine network; the short reference-point association is evidence, "
+            "not a claimed path or final design"
         ),
-        "community_attachment_node": candidate.start_attachment_id,
+        "community_attachment_node": candidate.start_node,
         "community_attachment_distance_m": round(candidate.start_snap_m, 3),
         "community_attachment_point": candidate.start_point.wkt,
         "target_attachment_node": candidate.end_attachment_id,
@@ -1291,15 +1256,16 @@ def _gap_row(
     )
     bounded = (
         graph.has_point_attachment(place.geometry, attachment_bound_m)
-        if obligation_kind == "school" and not unresolved_school_access
-        else snap_distance_m <= attachment_bound_m
+        if not unresolved_school_access
+        else False
     )
     reason = gate_reason or (
         str(place.get("access_point_rationale"))
         if unresolved_school_access
         else (
             "No continuous bidirectional OSM cycling-network path reaches any Strategic Spine "
-            "or served branch frontier."
+            "or served branch frontier; a bounded local road attachment exists, but its "
+            f"nearest graph node is {snap_distance_m:.0f} metres from the reference point."
             if bounded
             else (
                 "The reference point has no routable graph attachment within the governed "
@@ -1380,6 +1346,10 @@ def _obligations(
     community_gap_ids = set(
         gaps.loc[gaps["network_role"] == "spine-access-gap", "from_place"].astype(str)
     )
+    community_gap_reasons = {
+        str(row["from_place"]): str(row["selection_reason"])
+        for _, row in gaps[gaps["network_role"] == "spine-access-gap"].iterrows()
+    }
     school_gap_ids = set(
         gaps.loc[gaps["network_role"] == "school-access-gap", "from_place"].astype(str)
     )
@@ -1418,7 +1388,9 @@ def _obligations(
                 "service_rationale": (
                     "Community has one governed parent access edge to the assembled backbone."
                     if access is not None
-                    else "Community remains exposed as a Network Gap."
+                    else community_gap_reasons.get(
+                        place_id, "Community remains exposed as a Network Gap."
+                    )
                 ),
                 "access_point_status": None,
                 "access_point_source_id": None,

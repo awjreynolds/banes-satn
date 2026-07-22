@@ -401,9 +401,7 @@ def test_distant_community_snap_cannot_become_a_served_access_obligation() -> No
     assert len(compiled.gaps[compiled.gaps["network_role"] == "spine-access-gap"]) == 2
 
 
-def test_bounded_off_network_community_uses_a_canonical_attachment_without_inventing_a_path() -> (
-    None
-):
+def test_off_network_community_beyond_the_governed_road_association_is_a_visible_gap() -> None:
     community_point = Point(0, 0.005)
     places = gpd.GeoDataFrame(
         [
@@ -462,14 +460,143 @@ def test_bounded_off_network_community_uses_a_canonical_attachment_without_inven
         FakeAgentRuntime(),
     )
 
+    obligation = compiled.access_obligations[
+        compiled.access_obligations["community_id"] == "a"
+    ].iloc[0]
+    assert obligation["service_status"] == "network-gap"
+    assert compiled.spine_access_connections.empty
+
+
+def test_edge_interior_attachment_routes_a_community_to_the_spine_without_a_distant_node_snap() -> (
+    None
+):
+    community_point = Point(0.05, 0.001)
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "a",
+                "name": "A",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": community_point,
+            },
+            {
+                "place_id": "b",
+                "name": "B",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.1, 0.03),
+            },
+        ],
+        crs=4326,
+    )
+    spine_geometry = LineString([(0, 0), (0.1, 0)])
+    network = edges(
+        [
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A1",
+                "geometry": spine_geometry,
+            }
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "rural-a1",
+                "feature_type": "a-road-spine",
+                "name": "A1",
+                "category": "A-road strategic spine",
+                "source_id": "a1",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": spine_geometry,
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
     access = compiled.spine_access_connections.iloc[0]
-    assert not access.geometry.intersects(community_point)
-    assert 0 < access["community_attachment_distance_m"] < 2000
+    assert 0 < access["community_attachment_distance_m"] < 250
+    assert access.geometry.distance(community_point) < 0.0025
     assert access["community_attachment_point"].startswith("POINT")
-    assert access["spine_attachment_distance_m"] == 0
-    assert access["spine_attachment_point"].startswith("POINT")
-    assert "canonical graph attachment points" in access["geometry_semantics"]
-    assert "not claimed paths" in access["geometry_semantics"]
+    assert "bounded road association" in access["geometry_semantics"]
+
+
+def test_edge_attached_but_disconnected_community_reports_a_continuity_gap() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "disconnected",
+                "name": "Disconnected",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0, 0.001),
+            },
+            {
+                "place_id": "on-spine",
+                "name": "On Spine",
+                "kind": "community",
+                "place_class": "village",
+                "geometry": Point(0.02, 0),
+            },
+        ],
+        crs=4326,
+    )
+    local_road = LineString([(-0.01, 0), (0.01, 0)])
+    spine_geometry = LineString([(0.02, 0), (0.03, 0)])
+    network = edges(
+        [
+            {"osmid": "local", "highway": "residential", "geometry": local_road},
+            {
+                "osmid": "a1",
+                "highway": "primary",
+                "ref": "A1",
+                "geometry": spine_geometry,
+            },
+        ]
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "rural-a1",
+                "feature_type": "a-road-spine",
+                "name": "A1",
+                "category": "A-road strategic spine",
+                "source_id": "a1",
+                "feature_count": 1,
+                "network_scope": "rural",
+                "geometry": spine_geometry,
+            }
+        ],
+        crs=4326,
+    )
+
+    compiled = compile_network(
+        config(),
+        {
+            "places": places,
+            "network": network,
+            "context": context,
+            "boundary": gpd.GeoDataFrame(),
+        },
+        FakeAgentRuntime(),
+    )
+
+    gap = compiled.gaps[compiled.gaps["from_place"] == "disconnected"].iloc[0]
+    assert "No continuous bidirectional" in gap["selection_reason"]
 
 
 def test_invalid_network_scope_is_rejected_at_the_compiler_boundary() -> None:

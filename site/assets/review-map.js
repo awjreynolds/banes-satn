@@ -5,7 +5,7 @@
   const places = data.places;
   const state = { pinned: null, active: null };
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "a-road-spines", "ncn-route-evidence", "ncn-link-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "a-road-spines", "ncn-route-evidence", "ncn-link-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-outlines", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -24,6 +24,7 @@
     center: [-2.5, 51.4],
     zoom: 10
   });
+  window.SATN_REVIEW_MAP = map;
   map.addControl(new maplibregl.NavigationControl());
 
   function value(value, fallback = "Not available") {
@@ -177,6 +178,10 @@
     }
     addDefinition(list, "Status", value(properties.status));
     addDefinition(list, "Length", properties.distance_km == null ? "Unknown" : `${properties.distance_km} km`);
+    if (properties.feature_type === "spine-access-connection") {
+      addDefinition(list, "Community road association", properties.community_attachment_distance_m == null ? "Unknown" : `${properties.community_attachment_distance_m} m`);
+      addDefinition(list, "Community road attachment", value(properties.community_attachment_point));
+    }
     addDefinition(list, "Route role", value(properties.classification, properties.network_role));
     addDefinition(list, "Indicative intervention", value(properties.intervention_archetype));
     addDefinition(list, "Geometry meaning", value(properties.geometry_semantics));
@@ -336,8 +341,10 @@
       "layer-cross-spine-connectors": ["cross-spine-connectors", "branch-meeting-connections", "branch-meeting-topography-warnings"],
       "layer-a-road-spines": ["a-road-spines"],
       "layer-ncn-routes": ["ncn-route-evidence", "ncn-link-evidence"],
-      "layer-urban-spines": ["urban-spines", "urban-classification-unknowns"],
-      "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-portals"],
+      "layer-urban-spines": ["urban-spines"],
+      "layer-urban-classification-unknowns": ["urban-classification-unknowns"],
+      "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-outlines"],
+      "layer-low-traffic-area-portals": ["low-traffic-area-portals"],
       "layer-places": ["places"],
       "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-topography-warnings", "school-access-gaps"],
       "layer-school-streets": ["school-street-assessments"],
@@ -393,8 +400,11 @@
 
   map.on("load", () => {
     map.addSource("network", { type: "geojson", data: network });
-    map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#85c1e9", "fill-opacity": .3, "fill-outline-color": "#2874a6" } });
-    map.addLayer({ id: "low-traffic-area-portals", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area-portal"], paint: { "circle-color": "#2874a6", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
+    map.addSource("places", { type: "geojson", data: places });
+    map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#5dade2", "fill-opacity": .45 } });
+    map.addLayer({ id: "low-traffic-area-outlines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "line-color": "#1b4f72", "line-width": 2.5, "line-opacity": .9 } });
+    map.addLayer({ id: "low-traffic-area-portals", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area-portal"], layout: { visibility: "none" }, paint: { "circle-color": "#2874a6", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
+    map.addLayer({ id: "places", type: "circle", source: "places", paint: { "circle-radius": 7, "circle-color": "#17202a", "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "strategic-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "strategic-spine"], paint: { "line-color": ["match", ["get", "spine_kind"], "a-road", "#a04000", "ncn", "#2471a3", "#566573"], "line-width": 8, "line-opacity": .85 } });
     map.addLayer({ id: "spine-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "spine-access-connection"], paint: { "line-color": "#16a085", "line-width": 6, "line-dasharray": [1, 1] } });
     map.addLayer({ id: "school-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "school-access-connection"], layout: { visibility: "none" }, paint: { "line-color": "#7d3c98", "line-width": 6, "line-dasharray": [1, 1] } });
@@ -414,15 +424,13 @@
     map.addLayer({ id: "ncn-link-evidence", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "ncn-link"], paint: { "line-color": "#1f618d", "line-width": 5, "line-dasharray": [2, 1], "line-opacity": .95 } });
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
     map.addLayer({ id: "urban-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-spine"], paint: { "line-color": ["match", ["get", "official_classification"], "a-road", "#a04000", "b-road", "#8e44ad", "classified-unnumbered", "#5b2c6f", "#7f8c8d"], "line-width": 6 } });
-    map.addLayer({ id: "urban-classification-unknowns", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-classification-unknown"], paint: { "line-color": "#7f8c8d", "line-width": 5, "line-dasharray": [1, 1] } });
+    map.addLayer({ id: "urban-classification-unknowns", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-classification-unknown"], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 5, "line-dasharray": [1, 1] } });
     map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["all", ["==", ["get", "feature_type"], "school"], ["!=", ["get", "school_obligation_eligible"], true]], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "retail-centres", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "retail-centre"], layout: { visibility: "none" }, paint: { "circle-color": "#d35400", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "healthcare", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "healthcare"], layout: { visibility: "none" }, paint: { "circle-color": "#c0392b", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "gap"], paint: { "circle-color": "#c0392b", "circle-radius": 8 } });
     map.addLayer({ id: "crossing-warnings", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "crossing-warning"], paint: { "circle-color": "#f39c12", "circle-radius": 7, "circle-stroke-color": "#17202a", "circle-stroke-width": 2 } });
     map.addLayer({ id: "connections-highlight", type: "line", source: "network", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 11 } });
-    map.addSource("places", { type: "geojson", data: places });
-    map.addLayer({ id: "places", type: "circle", source: "places", paint: { "circle-radius": 7, "circle-color": "#17202a", "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     const bounds = new maplibregl.LngLatBounds();
     [...network.features, ...places.features].forEach((feature) => {
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
@@ -441,6 +449,7 @@
       map.on("mouseleave", layer, clearTransient);
       map.on("click", layer, (event) => togglePin(event.features[0].id));
     });
+    document.documentElement.dataset.mapReady = "true";
   });
 
   renderCards();

@@ -5,28 +5,28 @@
   "previous_publication_available": true,
   "current_backbone": {
     "network_model": "backbone-outward",
-    "connection_count": 79,
-    "spine_access_connection_count": 63,
+    "connection_count": 76,
+    "spine_access_connection_count": 60,
     "branch_meeting_connection_count": 16,
     "cross_spine_connector_count": 16,
-    "served_obligation_count": 136,
-    "network_gap_count": 74,
-    "linework_length_m": 82939.8,
-    "typed_role_count": 79,
-    "selection_rationale_count": 79
+    "served_obligation_count": 150,
+    "network_gap_count": 60,
+    "linework_length_m": 123259.2,
+    "typed_role_count": 76,
+    "selection_rationale_count": 76
   },
   "topology": {
     "current": {
       "strategic_spine_count": 64,
-      "network_unit_count": 55,
-      "spine_access_branch_count": 55,
-      "spine_access_connection_count": 63,
+      "network_unit_count": 48,
+      "spine_access_branch_count": 48,
+      "spine_access_connection_count": 60,
       "branch_meeting_connection_count": 16,
       "cross_spine_connector_count": 16,
-      "node_count": 90,
-      "edge_count": 79,
-      "component_count": 11,
-      "degree_one_node_count": 51
+      "node_count": 92,
+      "edge_count": 76,
+      "component_count": 16,
+      "degree_one_node_count": 52
     },
     "previous": {
       "network_model": "legacy-pairwise",
@@ -46,8 +46,8 @@
     "linework_length_m": 319649.0
   },
   "visual_noise": {
-    "connection_count_delta": -84,
-    "linework_length_m_delta": -236709.2
+    "connection_count_delta": -87,
+    "linework_length_m_delta": -196389.8
   },
   "explainability": {
     "all_current_connections_have_typed_roles": true,

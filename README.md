@@ -391,8 +391,10 @@ The map presents Strategic Spines, Spine Access Connections and Cross-Spine
 Connectors as the core rural network, with NCN evidence as a distinct overlay.
 Schools, derived high-street/retail
 centres and healthcare facilities default off to avoid noise; each has its own
-control. Places, urban structure, gaps/warnings and ATM comparison are independently
-toggleable. Gradient Sections use a separately selectable sequential blue terrain
+control. Road-classification evidence gaps and LTA portal evidence also default off,
+keeping the circulation-plan view legible while remaining independently auditable.
+Places, urban structure, gaps/warnings and ATM comparison are independently toggleable.
+Gradient Sections use a separately selectable sequential blue terrain
 palette with a text-labelled legend distinct from Criterion Status colours; Grey
 dashed profiles expose unavailable Elevation Evidence. Connections, Network,
 Topography and ATM criteria remain separate. Hover or keyboard

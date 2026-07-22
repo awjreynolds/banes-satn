@@ -4,6 +4,7 @@ from pathlib import Path
 
 import geopandas as gpd
 from shapely.geometry import LineString, Point
+from shapely.ops import unary_union
 
 from satn.agents import FakeAgentRuntime
 from satn.compiler import compile_network
@@ -68,6 +69,11 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
                 "highway": "residential",
                 "geometry": LineString([(0.005, 0), (0.005, 0.005)]),
             },
+            {
+                "osmid": "misclassified-overlap",
+                "highway": "residential",
+                "geometry": LineString([(0, -0.005), (0, 0.005)]),
+            },
         ],
         crs=4326,
     )
@@ -118,6 +124,135 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     assert portals["portal_id"].is_unique
     assert set(portals["area_id"]) == set(areas["structure_id"])
     assert all("A road" in name for name in portals["name"])
+
+
+def test_open_urban_street_fabric_uses_its_built_up_edge_to_form_candidate_areas() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "town",
+                "name": "Town",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(400000, 200000),
+            }
+        ],
+        crs=27700,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "west-1",
+                "highway": "residential",
+                "geometry": LineString([(399600, 200000), (400000, 200000)]),
+            },
+            {
+                "osmid": "west-2",
+                "highway": "residential",
+                "geometry": LineString([(399800, 199800), (399800, 200200)]),
+            },
+            {
+                "osmid": "east-1",
+                "highway": "residential",
+                "geometry": LineString([(400000, 200000), (400400, 200000)]),
+            },
+            {
+                "osmid": "east-2",
+                "highway": "unclassified",
+                "geometry": LineString([(400200, 199800), (400200, 200200)]),
+            },
+        ],
+        crs=27700,
+    )
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": "classified-divider",
+                "official_classification": "b-road",
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "Open Government Licence v3.0",
+                "content_fingerprint": "divider",
+                "geometry": LineString([(400000, 199500), (400000, 200500)]),
+            }
+        ],
+        crs=27700,
+    )
+
+    urban = derive_urban_structure(places, network, official)
+
+    assert len(urban.low_traffic_areas) >= 2
+    divider = official.geometry.iloc[0]
+    assert all(not area.crosses(divider) for area in urban.low_traffic_areas.geometry)
+    assert urban.low_traffic_area_portals["area_id"].nunique() >= 2
+
+
+def test_candidate_area_geometry_does_not_annex_open_land_between_sparse_streets() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "town",
+                "name": "Town",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(400000, 200000),
+            }
+        ],
+        crs=27700,
+    )
+    minor_lines = [
+        LineString([(399000, 200000), (400000, 200000), (401000, 200000)]),
+        LineString([(400000, 199000), (400000, 200000), (400000, 201000)]),
+        LineString([(399800, 199800), (400200, 199800)]),
+        LineString([(399800, 200200), (400200, 200200)]),
+    ]
+    network = gpd.GeoDataFrame(
+        [
+            {"osmid": f"minor-{index}", "highway": "residential", "geometry": geometry}
+            for index, geometry in enumerate(minor_lines)
+        ],
+        crs=27700,
+    )
+    boundary = LineString(
+        [
+            (399000, 199000),
+            (401000, 199000),
+            (401000, 201000),
+            (399000, 201000),
+            (399000, 199000),
+        ]
+    )
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": "outer-boundary",
+                "official_classification": "classified-unnumbered",
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "Open Government Licence v3.0",
+                "content_fingerprint": "outer",
+                "geometry": boundary,
+            },
+            {
+                "official_feature_id": "classified-divider",
+                "official_classification": "b-road",
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "Open Government Licence v3.0",
+                "content_fingerprint": "divider",
+                "geometry": LineString([(400000, 199000), (400000, 201000)]),
+            },
+        ],
+        crs=27700,
+    )
+
+    urban = derive_urban_structure(places, network, official)
+    areas = urban.low_traffic_areas.to_crs(27700)
+    street_fabric = unary_union(minor_lines).buffer(150)
+
+    assert not areas.empty
+    assert all(area.difference(street_fabric).area < 1 for area in areas.geometry)
+    assert not areas.geometry.union_all().covers(Point(400000, 200800))
 
 
 def test_geojson_array_tags_preserve_urban_fabric_and_a_road_routing(tmp_path: Path) -> None:
@@ -613,7 +748,7 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
     assert area["permeability_representation"] == "area-no-internal-centreline"
     assert "built-edge" in area["boundary_ids"]
     assert "ward-line" not in area["boundary_ids"]
-    assert list(portals["boundary_id"]) == ["built-edge", "built-edge", "built-edge"]
+    assert set(portals["boundary_id"]) == {"built-edge"}
     assert portals["portal_id"].is_unique
 
 

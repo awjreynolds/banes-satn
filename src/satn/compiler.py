@@ -111,6 +111,7 @@ def compile_network(
     road_graph = RoadGraph(routable_network)
     gate = CompilationGate(runtime, config.compilation.agent)
     strategic_spines = _strategic_spines(context)
+    urban_communities = _urban_communities(communities, config)
     rural_communities = _rural_communities(communities, config)
     rural_schools = _rural_schools(context)
     backbone = assemble_backbone_outward(
@@ -133,7 +134,7 @@ def compile_network(
     crs = source["network"].crs
     official_road_classification = source.get("official_road_classification")
     urban = derive_urban_structure(
-        places,
+        urban_communities,
         source["network"],
         official_road_classification,
         context,
@@ -143,7 +144,6 @@ def compile_network(
     urban_classification_unknowns = urban.classification_unknowns
     low_traffic_areas = urban.low_traffic_areas
     low_traffic_area_portals = urban.low_traffic_area_portals
-    urban_communities = _urban_communities(communities, config)
     urban_community_access = assess_urban_community_access(
         urban_communities,
         source["network"],
@@ -763,10 +763,8 @@ def _rural_communities(
     communities: gpd.GeoDataFrame,
     config: CouncilConfig,
 ) -> gpd.GeoDataFrame:
-    place_class = communities.get(
-        "place_class", pd.Series("", index=communities.index, dtype=object)
-    )
-    return communities[~place_class.isin(config.source.urban_place_types)].copy()
+    urban_ids = set(_urban_communities(communities, config).index)
+    return communities[~communities.index.isin(urban_ids)].copy()
 
 
 def _urban_communities(
@@ -777,7 +775,13 @@ def _urban_communities(
     place_class = communities.get(
         "place_class", pd.Series("", index=communities.index, dtype=object)
     )
-    return communities[place_class.isin(config.source.urban_place_types)].copy()
+    source_id = communities.get(
+        "source_id", pd.Series("", index=communities.index, dtype=object)
+    ).astype(str)
+    return communities[
+        place_class.isin(config.source.urban_place_types)
+        | source_id.isin(config.source.urban_place_source_ids)
+    ].copy()
 
 
 def _community_coverage(

@@ -1,30 +1,30 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-38e001bb8fb5",
+  "run_id": "run-5b745c705e9d",
   "status": "reviewable",
   "network_model": "backbone-outward",
-  "connection_count": 79,
-  "gap_count": 74,
+  "connection_count": 76,
+  "gap_count": 60,
   "human_intervention_request_count": 0,
   "superseded_hypotheses": 0,
   "layer_counts": {
     "strategic_spines": 64,
     "access_obligations": 210,
     "school_access_obligations": 93,
-    "gaps": 74,
-    "spine_access_connections": 63,
-    "spine_access_branches": 55,
+    "gaps": 60,
+    "spine_access_connections": 60,
+    "spine_access_branches": 48,
     "branch_meeting_connections": 16,
     "cross_spine_connectors": 16,
     "a_road_spines": 2393,
     "ncn_routes": 255,
-    "urban_spines": 1515,
-    "urban_classification_unknowns": 1956,
-    "candidate_low_traffic_areas": 92,
-    "low_traffic_area_portals": 1706,
+    "urban_spines": 1672,
+    "urban_classification_unknowns": 2087,
+    "candidate_low_traffic_areas": 115,
+    "low_traffic_area_portals": 2162,
     "schools": 104,
     "school_street_assessments": 93,
-    "topography_profiles": 1674,
+    "topography_profiles": 1828,
     "gradient_sections": 0,
     "elevation_corroboration": 0,
     "retail_centres": 55,
@@ -65,7 +65,7 @@
       "stable_named_area_portals": "green",
       "area_permeability_without_centreline": "green",
       "urban_school_area_access": "red",
-      "urban_community_area_access": "amber"
+      "urban_community_area_access": "red"
     },
     "school_street_candidate_assessments": {
       "all_in_scope_schools_assessed": "green",
@@ -82,19 +82,19 @@
   },
   "compilation_diagnostics": {
     "assembly_strategy": "backbone-outward",
-    "candidate_evaluations": 4887,
+    "candidate_evaluations": 4654,
     "initial_frontiers": 64,
-    "final_frontiers": 118,
-    "served_communities": 54,
-    "unserved_communities": 0,
+    "final_frontiers": 115,
+    "served_communities": 51,
+    "unserved_communities": 1,
     "optimization_findings": [
       {
         "finding_id": "serial-frontier-candidate-evaluation",
         "finding": "Backbone candidates were evaluated serially across a large finite frontier-obligation search space.",
         "evidence": {
-          "candidate_evaluations": 4887,
+          "candidate_evaluations": 4654,
           "initial_frontiers": 64,
-          "final_frontiers": 118
+          "final_frontiers": 115
         },
         "potential_optimization": "Batch or safely parallelise independent initial-frontier searches while preserving deterministic candidate ranking."
       },
@@ -103,8 +103,8 @@
         "status": "optimized-during-compilation-development",
         "finding": "Multiple spine candidates reused the same community-to-node association set.",
         "evidence": {
-          "unique_candidate_sets": 64,
-          "candidate_set_reuses": 4950
+          "unique_candidate_sets": 62,
+          "candidate_set_reuses": 3869
         },
         "applied_optimization": "Cache immutable point-to-node candidate sets for the duration of a run."
       },
@@ -113,7 +113,7 @@
         "status": "bounded-and-visible",
         "finding": "Some graph paths could not be merged into valid governed linework.",
         "evidence": {
-          "path_count": 42
+          "path_count": 69
         },
         "applied_optimization": "Reject the affected candidate pair without exhaustive start/end retries; continue evaluating other governed frontiers.",
         "potential_optimization": "Normalize disconnected OSM edge geometry at snapshot ingestion."
@@ -123,19 +123,19 @@
     "road_graph_edges": 40745,
     "reciprocal_routing_nodes": 18517,
     "reciprocal_routing_edges": 39369,
-    "nearby_node_candidate_sets": 64,
-    "nearby_node_candidate_set_reuses": 4950,
-    "unmaterializable_attachment_paths": 42,
+    "nearby_node_candidate_sets": 62,
+    "nearby_node_candidate_set_reuses": 3869,
+    "unmaterializable_attachment_paths": 69,
     "community_coverage": {
-      "identified_rural": 54,
-      "served_rural": 54,
-      "gaps_rural": 0,
-      "identified_urban": 63,
-      "served_urban": 63,
-      "gaps_urban": 0,
+      "identified_rural": 52,
+      "served_rural": 51,
+      "gaps_rural": 1,
+      "identified_urban": 65,
+      "served_urban": 64,
+      "gaps_urban": 1,
       "identified_total": 117,
-      "served_total": 117,
-      "gaps_total": 0
+      "served_total": 115,
+      "gaps_total": 2
     },
     "urban_a_road_spine_coverage": {
       "source_alignment_tolerance_m": 100.0,
