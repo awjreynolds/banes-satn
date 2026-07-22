@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
@@ -24,6 +24,26 @@ class NetworkScope(StrEnum):
     UNRESOLVED = "unresolved"
 
 
+class OfficialRoadClassification(StrEnum):
+    A_ROAD = "a-road"
+    B_ROAD = "b-road"
+    CLASSIFIED_UNNUMBERED = "classified-unnumbered"
+    UNCLASSIFIED = "unclassified"
+    UNKNOWN = "unknown"
+
+
+class UrbanClassificationStatus(StrEnum):
+    GOVERNED_OFFICIAL = "governed-official"
+    EXPLICIT_UNKNOWN = "explicit-unknown"
+
+
+class OfficialRoadClassificationConfig(BaseModel):
+    path: Path
+    source_id: str = Field(min_length=1)
+    effective_date: date
+    licence: str = Field(min_length=1)
+
+
 class SourceConfig(BaseModel):
     kind: Literal["fixture", "osm"] = "fixture"
     fixture_dir: Path | None = None
@@ -42,6 +62,7 @@ class SourceConfig(BaseModel):
     )
     urban_scope_buffer_km: float = Field(default=2.0, gt=0)
     strategic_destination_source_ids: list[str] = Field(default_factory=list)
+    official_road_classification: OfficialRoadClassificationConfig | None = None
 
 
 class AgentConfig(BaseModel):
@@ -94,6 +115,9 @@ class CouncilConfig(BaseModel):
             self.source.fixture_dir = (root / self.source.fixture_dir).resolve()
         if not self.source.snapshot_dir.is_absolute():
             self.source.snapshot_dir = (root / self.source.snapshot_dir).resolve()
+        classification = self.source.official_road_classification
+        if classification is not None and not classification.path.is_absolute():
+            classification.path = (root / classification.path).resolve()
         if not self.publication.output_dir.is_absolute():
             self.publication.output_dir = (root / self.publication.output_dir).resolve()
         if not self.compilation.cache_dir.is_absolute():

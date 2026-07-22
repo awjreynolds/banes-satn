@@ -7,7 +7,7 @@ import json
 import shutil
 import tempfile
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from html import escape
 from importlib.resources import files
 from pathlib import Path
@@ -101,6 +101,10 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.gaps.to_file(path, layer="gaps", driver="GPKG")
     if not compiled.urban_spines.empty:
         compiled.urban_spines.to_file(path, layer="urban_spines", driver="GPKG")
+    if not compiled.urban_classification_unknowns.empty:
+        compiled.urban_classification_unknowns.to_file(
+            path, layer="urban_classification_unknowns", driver="GPKG"
+        )
     if not compiled.low_traffic_areas.empty:
         compiled.low_traffic_areas.to_file(path, layer="candidate_low_traffic_areas", driver="GPKG")
     if not compiled.crossing_warnings.empty:
@@ -199,6 +203,8 @@ def _json_value(value: object) -> object:
         return {str(key): _json_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_value(item) for item in value]
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
     if value is None or (not isinstance(value, str) and bool(pd.isna(value))):
         return None
     if hasattr(value, "item"):
@@ -228,6 +234,7 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "type": "FeatureCollection",
         "name": "SATN compiled network",
         "disclaimer": DISCLAIMER,
+        "urban_classification_status": compiled.urban_classification_status,
         "features": (
             _features(compiled.connections, "connection")
             + _features(compiled.strategic_spines, "strategic-spine")
@@ -241,6 +248,10 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(other_gaps, "gap")
             + _features(school_gaps, "school-access-gap")
             + _features(compiled.urban_spines, "urban-spine")
+            + _features(
+                compiled.urban_classification_unknowns,
+                "urban-classification-unknown",
+            )
             + _features(compiled.low_traffic_areas, "low-traffic-area")
             + _features(compiled.crossing_warnings, "crossing-warning")
             + _features(compiled.a_road_spines, "a-road-spine")
@@ -275,6 +286,9 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
         "cross_spine_connectors": len(compiled.cross_spine_connectors),
         "a_road_spines": len(compiled.a_road_spines),
         "ncn_routes": len(compiled.ncn_routes),
+        "urban_spines": len(compiled.urban_spines),
+        "urban_classification_unknowns": len(compiled.urban_classification_unknowns),
+        "candidate_low_traffic_areas": len(compiled.low_traffic_areas),
         "schools": len(compiled.schools),
         "retail_centres": len(compiled.retail_centres),
         "healthcare": len(compiled.healthcare),
@@ -299,6 +313,7 @@ def _write_json_records(
         "connection_count": len(compiled.connections),
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
+        "urban_classification_status": compiled.urban_classification_status,
         "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
         "superseded_hypotheses": compiled.superseded_hypotheses,
@@ -901,6 +916,9 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "gaps": ("gap", "school-access-gap"),
         "a_road_spines": ("a-road-spine",),
         "ncn_routes": ("ncn-route",),
+        "urban_spines": ("urban-spine",),
+        "urban_classification_unknowns": ("urban-classification-unknown",),
+        "candidate_low_traffic_areas": ("low-traffic-area",),
         "schools": ("school",),
         "retail_centres": ("retail-centre",),
         "healthcare": ("healthcare",),

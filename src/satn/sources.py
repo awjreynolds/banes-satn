@@ -21,11 +21,21 @@ from shapely.ops import unary_union
 
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
 from satn.evidence import derive_context_layers, empty_context, govern_network_scope
-from satn.models import CouncilConfig
+from satn.models import CouncilConfig, OfficialRoadClassification
 
 CORE_SOURCE_FILES = ("boundary.geojson", "places.geojson", "network.geojson")
 OSM_ATTRIBUTION = "© OpenStreetMap contributors; data available under the ODbL"
 NCN_ATTRIBUTION = "Walk Wheel Cycle Trust National Cycle Network; Open Government Licence v3.0"
+ROAD_CLASSIFICATION_FILENAME = "official-road-classification.geojson"
+ROAD_CLASSIFICATION_COLUMNS = [
+    "official_feature_id",
+    "official_classification",
+    "source_id",
+    "effective_date",
+    "licence",
+    "content_fingerprint",
+    "geometry",
+]
 
 
 @dataclass
@@ -152,6 +162,9 @@ def snapshot(
             "evidence_sources": {
                 "osm": config.source.osm_place_query,
                 "ncn": config.source.ncn_feature_service_url,
+                "official_road_classification": _road_classification_manifest(
+                    config, temporary
+                ),
             },
             "files": files,
             "file_sha256": {
@@ -184,7 +197,10 @@ def _write_fixture_snapshot(config: CouncilConfig, temporary: Path) -> tuple[str
     else:
         network = gpd.read_file(temporary / "network.geojson")
         derive_context_layers(network).to_file(temporary / "context.geojson", driver="GeoJSON")
-    return str(config.source.fixture_dir), [*CORE_SOURCE_FILES, "context.geojson"]
+    files = [*CORE_SOURCE_FILES, "context.geojson"]
+    if _snapshot_official_road_classification(config, temporary):
+        files.append(ROAD_CLASSIFICATION_FILENAME)
+    return str(config.source.fixture_dir), files
 
 
 def _write_osm_snapshot(
@@ -227,11 +243,122 @@ def _write_osm_snapshot(
     }
     for filename, frame in frames.items():
         frame.to_file(temporary / filename, driver="GeoJSON")
+    if _snapshot_official_road_classification(config, temporary):
+        frames[ROAD_CLASSIFICATION_FILENAME] = gpd.read_file(
+            temporary / ROAD_CLASSIFICATION_FILENAME
+        )
     if data.graph is not None:
         import osmnx as ox
 
         ox.save_graphml(data.graph, temporary / "network.graphml")
     return str(config.source.osm_place_query), list(frames)
+
+
+def _snapshot_official_road_classification(
+    config: CouncilConfig,
+    temporary: Path,
+) -> bool:
+    governed = config.source.official_road_classification
+    if governed is None:
+        return False
+    if not governed.path.exists():
+        raise ValueError(f"official road classification source is missing: {governed.path}")
+    source_bytes = governed.path.read_bytes()
+    fingerprint = hashlib.sha256(source_bytes).hexdigest()
+    source = gpd.read_file(governed.path)
+    if source.crs is None:
+        raise ValueError("official road classification source has no CRS")
+    classification_column = next(
+        (
+            column
+            for column in ("official_classification", "road_classification", "classification")
+            if column in source
+        ),
+        None,
+    )
+    if classification_column is None:
+        raise ValueError(
+            "official road classification requires an official_classification column"
+        )
+    rows: list[dict[str, object]] = []
+    for _, feature in source.iterrows():
+        if not isinstance(feature.geometry, (LineString, MultiLineString)):
+            continue
+        classification = _normalise_official_classification(
+            feature.get(classification_column)
+        )
+        feature_id = _official_road_identifier(feature, classification)
+        rows.append(
+            {
+                "official_feature_id": feature_id,
+                "official_classification": classification,
+                "source_id": governed.source_id,
+                "effective_date": governed.effective_date.isoformat(),
+                "licence": governed.licence,
+                "content_fingerprint": fingerprint,
+                "geometry": feature.geometry,
+            }
+        )
+    if not rows:
+        raise ValueError("official road classification source has no line features")
+    frame = gpd.GeoDataFrame(
+        rows,
+        columns=ROAD_CLASSIFICATION_COLUMNS,
+        geometry="geometry",
+        crs=source.crs,
+    )
+    frame.to_crs(4326).to_file(
+        temporary / ROAD_CLASSIFICATION_FILENAME, driver="GeoJSON"
+    )
+    return True
+
+
+def _normalise_official_classification(value: object) -> str:
+    text = str(value or "").strip().lower().replace("_", " ").replace("-", " ")
+    if text in {"a", "a road", "class a"}:
+        return OfficialRoadClassification.A_ROAD.value
+    if text in {"b", "b road", "class b"}:
+        return OfficialRoadClassification.B_ROAD.value
+    if text in {
+        "c",
+        "c road",
+        "class c",
+        "cu",
+        "classified unnumbered",
+        "classified unnumbered road",
+    }:
+        return OfficialRoadClassification.CLASSIFIED_UNNUMBERED.value
+    if text in {"unclassified", "u", "unclassified road"}:
+        return OfficialRoadClassification.UNCLASSIFIED.value
+    return OfficialRoadClassification.UNKNOWN.value
+
+
+def _official_road_identifier(feature: pd.Series, classification: str) -> str:
+    for key in ("official_feature_id", "road_id", "osmid", "osm_id", "id"):
+        value = feature.get(key)
+        if value is not None and not (isinstance(value, float) and pd.isna(value)):
+            return str(value)
+    identity = f"{classification}:{feature.geometry.wkb_hex}"
+    return f"official-road-{hashlib.sha256(identity.encode()).hexdigest()[:16]}"
+
+
+def _road_classification_manifest(
+    config: CouncilConfig,
+    snapshot_path: Path,
+) -> dict[str, object] | None:
+    governed = config.source.official_road_classification
+    path = snapshot_path / ROAD_CLASSIFICATION_FILENAME
+    if governed is None or not path.exists():
+        return None
+    snapshotted = gpd.read_file(path)
+    fingerprint = str(snapshotted.iloc[0]["content_fingerprint"])
+    return {
+        "source_id": governed.source_id,
+        "effective_date": governed.effective_date.isoformat(),
+        "licence": governed.licence,
+        "content_fingerprint": fingerprint,
+        "snapshot_file": ROAD_CLASSIFICATION_FILENAME,
+    }
 
 
 def _load_ncn_features(
@@ -571,6 +698,7 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
     if context.empty:
         context = empty_context(network.crs)
     place_features_path = path / "osm-place-features.geojson"
+    classification_path = path / ROAD_CLASSIFICATION_FILENAME
     return {
         "boundary": gpd.read_file(path / "boundary.geojson"),
         "places": gpd.read_file(path / "places.geojson"),
@@ -581,4 +709,13 @@ def load_snapshot(config: CouncilConfig) -> dict[str, gpd.GeoDataFrame]:
         ),
         "network": network,
         "context": context,
+        "official_road_classification": (
+            gpd.read_file(classification_path)
+            if classification_path.exists()
+            else gpd.GeoDataFrame(
+                columns=ROAD_CLASSIFICATION_COLUMNS,
+                geometry="geometry",
+                crs=network.crs,
+            )
+        ),
     }

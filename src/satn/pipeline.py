@@ -76,6 +76,27 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 for evidence_id in frame.get("evidence_id", [])
             ),
             "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
+            "urban_classification_status": compiled.urban_classification_status,
+            "urban_spines": sorted(
+                (
+                    row.structure_id,
+                    row.official_classification,
+                    row.source_id,
+                    row.content_fingerprint,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.urban_spines.itertuples()
+            ),
+            "urban_classification_unknowns": sorted(
+                (
+                    row.structure_id,
+                    row.official_feature_id,
+                    row.source_id,
+                    row.content_fingerprint,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.urban_classification_unknowns.itertuples()
+            ),
             "access_obligations": sorted(
                 (
                     row.obligation_id,
@@ -150,6 +171,37 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         agent_records=compiled.agent_records,
         metadata={
             "network_units": compiled.network_units,
+            "urban_classification_status": compiled.urban_classification_status,
+            "urban_spines": len(compiled.urban_spines),
+            "urban_classification_unknowns": len(
+                compiled.urban_classification_unknowns
+            ),
+            "urban_spine_records": [
+                {
+                    "structure_id": row.structure_id,
+                    "official_classification": row.official_classification,
+                    "official_feature_id": row.official_feature_id,
+                    "source_id": row.source_id,
+                    "effective_date": row.effective_date,
+                    "licence": row.licence,
+                    "content_fingerprint": row.content_fingerprint,
+                    "classification_status": row.classification_status,
+                    "intervention_assumption": row.intervention_assumption,
+                }
+                for row in compiled.urban_spines.itertuples()
+            ],
+            "urban_classification_unknown_records": [
+                {
+                    "structure_id": row.structure_id,
+                    "official_feature_id": row.official_feature_id,
+                    "source_id": row.source_id,
+                    "effective_date": row.effective_date,
+                    "licence": row.licence,
+                    "content_fingerprint": row.content_fingerprint,
+                    "classification_status": row.classification_status,
+                }
+                for row in compiled.urban_classification_unknowns.itertuples()
+            ],
             "strategic_spines": len(compiled.strategic_spines),
             "access_obligations": len(compiled.access_obligations),
             "school_access_obligations": int(
