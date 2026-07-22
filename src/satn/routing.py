@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import heapq
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -216,24 +217,52 @@ class RoadGraph:
         ]
         if not eligible_starts or not ends:
             return None
-        excluded_stationary_starts: set[str] = set()
-        while True:
-            routed = self._attachment_path(
-                [
-                    attachment
-                    for attachment in eligible_starts
-                    if attachment[0] not in excluded_stationary_starts
-                ],
-                ends,
-            )
+        search_heap: list[
+            tuple[
+                float,
+                str,
+                str,
+                int,
+                list[tuple[str, float]],
+                list[tuple[str, float]],
+                tuple[float, list[str], str, float, str, float],
+            ]
+        ] = []
+        sequence = 0
+
+        def add_search(
+            search_starts: list[tuple[str, float]],
+            search_ends: list[tuple[str, float]],
+        ) -> None:
+            nonlocal sequence
+            routed = self._attachment_path(search_starts, search_ends)
             if routed is None:
-                return None
+                return
+            total_m, _, start, _, end, _ = routed
+            heapq.heappush(
+                search_heap,
+                (
+                    total_m,
+                    start,
+                    end,
+                    sequence,
+                    search_starts,
+                    search_ends,
+                    routed,
+                ),
+            )
+            sequence += 1
+
+        add_search(eligible_starts, ends)
+        while search_heap:
+            _, _, _, _, search_starts, search_ends, routed = heapq.heappop(search_heap)
             total_m, nodes, start, start_snap, end, end_snap = routed
             if start == end:
-                if not allow_stationary:
-                    excluded_stationary_starts.add(start)
-                    continue
-                option = _stationary_route_option(self.node_points[start])
+                option = (
+                    _stationary_route_option(self.node_points[start])
+                    if allow_stationary
+                    else None
+                )
             else:
                 option = self._option_from_nodes(nodes, "direct")
             if option is not None and option.bidirectional:
@@ -245,7 +274,15 @@ class RoadGraph:
                     end_snap_m=end_snap,
                     total_distance_km=total_m / 1000,
                 )
-            return None
+            add_search(
+                [attachment for attachment in search_starts if attachment[0] != start],
+                search_ends,
+            )
+            add_search(
+                [attachment for attachment in search_starts if attachment[0] == start],
+                [attachment for attachment in search_ends if attachment[0] != end],
+            )
+        return None
 
     def _attachment_path(
         self,

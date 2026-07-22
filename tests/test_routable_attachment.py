@@ -85,3 +85,66 @@ def test_dense_attachment_uses_one_path_search_without_growing_route_cache(
     assert attachment is not None
     assert searches == 1
     assert graph._shortest_lengths == {}
+
+
+def test_attachment_search_continues_after_shorter_asymmetric_corridor() -> None:
+    rows = [
+        {
+            "osmid": "short-forward",
+            "u": "short-start",
+            "v": "end",
+            "length": 2000,
+            "highway": "unclassified",
+            "geometry": LineString([(0, 0), (2000, 0)]),
+        },
+        {
+            "osmid": "return-up",
+            "u": "end",
+            "v": "return-one",
+            "length": 2000,
+            "highway": "unclassified",
+            "geometry": LineString([(2000, 0), (2000, 2000)]),
+        },
+        {
+            "osmid": "return-across",
+            "u": "return-one",
+            "v": "return-two",
+            "length": 2000,
+            "highway": "unclassified",
+            "geometry": LineString([(2000, 2000), (0, 2000)]),
+        },
+        {
+            "osmid": "return-down",
+            "u": "return-two",
+            "v": "short-start",
+            "length": 2000,
+            "highway": "unclassified",
+            "geometry": LineString([(0, 2000), (0, 0)]),
+        },
+        {
+            "osmid": "long-forward",
+            "u": "valid-start",
+            "v": "end",
+            "length": 4500,
+            "highway": "unclassified",
+            "geometry": LineString([(-2000, -2000), (2000, 0)]),
+        },
+        {
+            "osmid": "long-reverse",
+            "u": "end",
+            "v": "valid-start",
+            "length": 4500,
+            "highway": "unclassified",
+            "geometry": LineString([(2000, 0), (-2000, -2000)]),
+        },
+    ]
+    graph = RoadGraph(gpd.GeoDataFrame(rows, geometry="geometry", crs=27700))
+
+    attachment = graph.best_attachment(
+        [("short-start", 0.0), ("valid-start", 0.0)],
+        [("end", 0.0)],
+    )
+
+    assert attachment is not None
+    assert attachment.start_node == "valid-start"
+    assert attachment.option.bidirectional
