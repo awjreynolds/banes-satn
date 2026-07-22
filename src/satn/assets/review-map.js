@@ -5,7 +5,7 @@
   const places = data.places;
   const state = { pinned: null, active: null };
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "a-road-spines", "urban-ncn-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "a-road-spines", "urban-ncn-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -77,6 +77,18 @@
       addDefinition(list, "Design status", value(properties.design_status));
       addDefinition(list, "Mapped features", value(properties.feature_count, 1));
       addDefinition(list, "Source identifiers", value(properties.source_id));
+      if (properties.feature_type === "low-traffic-area") {
+        addDefinition(list, "Candidate status", value(properties.status));
+        addDefinition(list, "Intervention need", value(properties.intervention_need));
+        addDefinition(list, "Boundary identifiers", parseList(properties.boundary_ids).join(", ") || "None");
+        addDefinition(list, "Named portals", value(properties.portal_count, 0));
+        addDefinition(list, "Geometry meaning", value(properties.permeability_representation));
+      }
+      if (properties.feature_type === "low-traffic-area-portal") {
+        addDefinition(list, "Candidate area", value(properties.area_id));
+        addDefinition(list, "Circulation Boundary", value(properties.boundary_name));
+        addDefinition(list, "Boundary kind", value(properties.boundary_kind));
+      }
       if (["urban-spine", "urban-classification-unknown"].includes(properties.feature_type)) {
         addDefinition(list, "Official classification", value(properties.official_classification));
         addDefinition(list, "Classification status", value(properties.classification_status));
@@ -150,7 +162,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector"].includes(feature.properties.feature_type))
+      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -160,11 +172,18 @@
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
         const isSchoolObligation = feature.properties.feature_type === "school-access-obligation";
-        title.textContent = isSchoolObligation
+        const isAreaEvidence = ["low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type);
+        title.textContent = isAreaEvidence
+          ? value(feature.properties.name, "Unnamed Candidate Low-Traffic Area evidence")
+          : isSchoolObligation
           ? value(feature.properties.name, "Unnamed School")
           : `${value(feature.properties.from_place_name, feature.properties.school_name || feature.properties.place_name || feature.properties.community_name || feature.properties.from_root_spine_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.parent_target_name || feature.properties.spine_name || feature.properties.to_root_spine_name || feature.properties.to_place)}`;
         const summary = document.createElement("span");
-        summary.textContent = isSchoolObligation
+        summary.textContent = feature.properties.feature_type === "low-traffic-area"
+          ? `candidate · ${value(feature.properties.portal_count, 0)} named portals`
+          : feature.properties.feature_type === "low-traffic-area-portal"
+          ? `portal · ${value(feature.properties.boundary_kind)}`
+          : isSchoolObligation
           ? `${value(feature.properties.service_status)} · ${value(feature.properties.access_point_status)} access point`
           : `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
@@ -197,7 +216,8 @@
       "layer-a-road-spines": ["a-road-spines"],
       "layer-community-connections": ["connections"],
       "layer-ncn-routes": ["urban-ncn-evidence"],
-      "layer-urban-structure": ["low-traffic-areas", "urban-spines", "urban-classification-unknowns"],
+      "layer-urban-spines": ["urban-spines", "urban-classification-unknowns"],
+      "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-portals"],
       "layer-places": ["places"],
       "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-gaps"],
       "layer-retail-centres": ["retail-centres"],
@@ -251,6 +271,7 @@
   map.on("load", () => {
     map.addSource("network", { type: "geojson", data: network });
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#85c1e9", "fill-opacity": .3, "fill-outline-color": "#2874a6" } });
+    map.addLayer({ id: "low-traffic-area-portals", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area-portal"], paint: { "circle-color": "#2874a6", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "strategic-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "strategic-spine"], paint: { "line-color": ["match", ["get", "spine_kind"], "a-road", "#a04000", "ncn", "#2471a3", "#566573"], "line-width": 8, "line-opacity": .85 } });
     map.addLayer({ id: "spine-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "spine-access-connection"], paint: { "line-color": "#16a085", "line-width": 6, "line-dasharray": [1, 1] } });
     map.addLayer({ id: "school-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "school-access-connection"], layout: { visibility: "none" }, paint: { "line-color": "#7d3c98", "line-width": 6, "line-dasharray": [1, 1] } });
@@ -299,7 +320,7 @@
   const counts = data.layer_counts || {};
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +
-    `${counts.cross_spine_connectors || 0} Cross-Spine Connectors · ${counts.urban_spines || 0} Urban Main-Road Spines · ` +
+    `${counts.cross_spine_connectors || 0} Cross-Spine Connectors · ${counts.urban_spines || 0} Urban Main-Road Spines · ${counts.candidate_low_traffic_areas || 0} Candidate Low-Traffic Areas · ${counts.low_traffic_area_portals || 0} area portals · ` +
     `${counts.school_access_obligations || 0} School Access Obligations · ${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
     `${counts.healthcare || 0} healthcare sites`;
 })();

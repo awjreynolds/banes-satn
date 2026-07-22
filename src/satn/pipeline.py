@@ -97,6 +97,26 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for row in compiled.urban_classification_unknowns.itertuples()
             ),
+            "candidate_low_traffic_areas": sorted(
+                (
+                    row.structure_id,
+                    row.boundary_ids,
+                    row.intervention_need,
+                    row.observed_through_traffic_evidence_ids,
+                    row.observed_through_traffic_source_ids,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.low_traffic_areas.itertuples()
+            ),
+            "low_traffic_area_portals": sorted(
+                (
+                    row.portal_id,
+                    row.area_id,
+                    row.boundary_id,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.low_traffic_area_portals.itertuples()
+            ),
             "access_obligations": sorted(
                 (
                     row.obligation_id,
@@ -201,6 +221,36 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "classification_status": row.classification_status,
                 }
                 for row in compiled.urban_classification_unknowns.itertuples()
+            ],
+            "candidate_low_traffic_areas": len(compiled.low_traffic_areas),
+            "low_traffic_area_portals": len(compiled.low_traffic_area_portals),
+            "candidate_low_traffic_area_records": [
+                {
+                    "structure_id": row.structure_id,
+                    "name": row.name,
+                    "status": row.status,
+                    "intervention_need": row.intervention_need,
+                    "boundary_ids": row.boundary_ids,
+                    "observed_through_traffic_evidence_ids": (
+                        row.observed_through_traffic_evidence_ids
+                    ),
+                    "observed_through_traffic_source_ids": (
+                        row.observed_through_traffic_source_ids
+                    ),
+                    "portal_count": row.portal_count,
+                }
+                for row in compiled.low_traffic_areas.itertuples()
+            ],
+            "low_traffic_area_portal_records": [
+                {
+                    "portal_id": row.portal_id,
+                    "area_id": row.area_id,
+                    "name": row.name,
+                    "boundary_id": row.boundary_id,
+                    "boundary_name": row.boundary_name,
+                    "boundary_kind": row.boundary_kind,
+                }
+                for row in compiled.low_traffic_area_portals.itertuples()
             ],
             "strategic_spines": len(compiled.strategic_spines),
             "access_obligations": len(compiled.access_obligations),
