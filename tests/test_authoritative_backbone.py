@@ -20,8 +20,6 @@ def test_default_compilation_exposes_only_backbone_outward_connections(
     config.publication.output_dir = tmp_path / "publication"
 
     compiled = compile_network(config, parallel_spine_source(), FakeAgentRuntime())
-    assert compiled.connections.empty
-    assert compiled.cache_hits == compiled.cache_misses == 0
     assert set(compiled.spine_access_connections["parent_role"]) <= {
         "strategic-spine",
         "spine-access-connection",
@@ -136,5 +134,11 @@ def test_comparison_labels_previous_pairwise_output_as_a_non_truth_reference(
     assert report["comparison_role"] == "superseded-reference-not-ground-truth"
     assert report["superseded_pairwise_reference"]["network_model"] == "legacy-pairwise"
     assert report["superseded_pairwise_reference"]["connection_count"] == 1
+    assert report["topology"]["current"]["strategic_spine_count"] == len(compiled.strategic_spines)
+    previous_topology = report["topology"]["previous"]
+    assert previous_topology["network_model"] == "legacy-pairwise"
+    assert previous_topology["network_gap_count"] == 0
+    assert previous_topology["feature_role_counts"] == {"connection": 1}
+    assert previous_topology["edge_count"] == 0
     assert report["current_backbone"]["connection_count"] == compiled.connection_count
     assert report["explainability"]["all_current_connections_have_typed_roles"]

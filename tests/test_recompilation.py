@@ -34,14 +34,10 @@ def test_backbone_recompilation_is_deterministic_without_legacy_pairwise_cache(
     first = compile(config)
     second = compile(config)
 
-    assert (
-        first.metadata["cache"]
-        == second.metadata["cache"]
-        == {
-            "hits": 0,
-            "misses": 0,
-        }
-    )
+    assert "cache" not in first.metadata
+    assert "cache" not in second.metadata
+    assert "publication_reused" not in first.metadata
+    assert second.metadata["publication_reused"] is True
     assert first.run_id == second.run_id
     assert "connections" not in set(gpd.list_layers(second.artifacts["geopackage"])["name"])
 
@@ -53,7 +49,8 @@ def test_full_directive_ignores_reusable_connections(tmp_path: Path) -> None:
 
     forced = compile(config)
 
-    assert forced.metadata["cache"] == {"hits": 0, "misses": 0}
+    assert "cache" not in forced.metadata
+    assert "publication_reused" not in forced.metadata
     assert forced.metadata["network_model"] == "backbone-outward"
 
 
@@ -64,11 +61,11 @@ def test_criteria_change_invalidates_all_reuse(tmp_path: Path) -> None:
 
     changed = compile(config)
 
-    assert changed.metadata["cache"] == {"hits": 0, "misses": 0}
+    assert "cache" not in changed.metadata
     assert changed.run_id != original.run_id
 
 
-def test_changed_elevation_evidence_invalidates_cache_and_run_fingerprint(
+def test_changed_elevation_evidence_changes_run_fingerprint(
     tmp_path: Path,
 ) -> None:
     config = prepared_config(tmp_path)
@@ -82,7 +79,7 @@ def test_changed_elevation_evidence_invalidates_cache_and_run_fingerprint(
 
     changed = compile(config)
 
-    assert changed.metadata["cache"] == {"hits": 0, "misses": 0}
+    assert "cache" not in changed.metadata
     assert changed.run_id != first.run_id
 
 
@@ -90,19 +87,28 @@ def test_cli_full_directive_forces_recompilation(tmp_path: Path) -> None:
     config = prepared_config(tmp_path)
     compile(config)
 
-    subprocess.run(
+    completed = subprocess.run(
         [
             str(PROJECT / ".venv" / "bin" / "satn"),
             "compile",
             str(config.config_path),
             "--full",
+            "--log-level",
+            "DEBUG",
         ],
         cwd=PROJECT,
         check=True,
         capture_output=True,
         text=True,
     )
+    assert "INFO satn.pipeline: Compilation started" in completed.stderr
+    assert "INFO satn.backbone: Backbone assembly started" in completed.stderr
+    assert "INFO satn.publisher: Publication atomically replaced" in completed.stderr
 
     run = json.loads((config.publication.output_dir / "run.json").read_text())
-    assert run["cache"] == {"hits": 0, "misses": 0}
+    assert "cache" not in run
     assert run["network_model"] == "backbone-outward"
+    diagnostics = run["compilation_diagnostics"]
+    assert diagnostics["assembly_strategy"] == "backbone-outward"
+    assert diagnostics["candidate_evaluations"] > 0
+    assert diagnostics["road_graph_edges"] >= diagnostics["reciprocal_routing_edges"]

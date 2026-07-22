@@ -135,6 +135,8 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     }
     assert run["connection_count"] == len(gated_access_ids | meeting_ids)
     assert run["network_model"] == "backbone-outward"
+    assert run["compilation_diagnostics"]["assembly_strategy"] == "backbone-outward"
+    assert run["compilation_diagnostics"]["candidate_evaluations"] > 0
     profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
     profile_features = [
         feature
@@ -189,6 +191,9 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     assert width == pytest.approx(1190.55, abs=1)
     text = "\n".join(page.extract_text() or "" for page in pdf.pages)
     assert all(value in text for value in (DISCLAIMER, "Legend", "scale", "Compiled"))
+    assert "Authoritative edge register" in text
+    assert "spine-access-connection" in text
+    assert connections.iloc[0]["access_connection_id"] in text
 
 
 def test_failed_publication_preserves_the_previous_complete_output(
@@ -202,6 +207,7 @@ def test_failed_publication_preserves_the_previous_complete_output(
         raise RuntimeError("simulated print failure")
 
     monkeypatch.setattr("satn.publisher._write_pdf", fail_pdf)
+    config.compilation.full = True
     with pytest.raises(RuntimeError, match="simulated print failure"):
         compile(config)
 

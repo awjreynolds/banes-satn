@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import heapq
 import json
-from dataclasses import dataclass
+import logging
+import time
+from dataclasses import dataclass, replace
 
 import geopandas as gpd
 import networkx as nx
@@ -30,6 +32,8 @@ from satn.routing import (
     stationary_route_option,
 )
 from satn.topography_alternatives import TopographyComparison, compare_alignment_topography
+
+LOGGER = logging.getLogger(__name__)
 
 MAX_OBLIGATION_ATTACHMENT_M = 2000.0
 MAX_SPINE_ATTACHMENT_M = 20.0
@@ -208,6 +212,7 @@ class BackboneAssembly:
     gateway_count: int
     connected_gateway_count: int
     agent_records: list[AgentRecord]
+    compilation_diagnostics: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -282,10 +287,21 @@ def assemble_backbone_outward(
     rejected_by_place: dict[str, list[AgentRecord]] = {}
     candidate_heap: list[tuple[tuple[object, ...], int, _Candidate]] = []
     sequence = 0
+    candidate_evaluations = 0
+    total_communities = len(unserved)
+    assembly_started = time.perf_counter()
+    LOGGER.info(
+        "Backbone assembly started strategic_spines=%d communities=%d schools=%d gateways=%d",
+        len(strategic_spines),
+        total_communities,
+        len(schools),
+        len(gateways),
+    )
 
     def add_frontier_candidates(frontier: _Frontier) -> None:
-        nonlocal sequence
+        nonlocal candidate_evaluations, sequence
         for place_id in sorted(unserved):
+            candidate_evaluations += 1
             candidate = _candidate(
                 unserved[place_id],
                 frontier,
@@ -297,7 +313,20 @@ def assemble_backbone_outward(
             if candidate is not None:
                 heapq.heappush(candidate_heap, (candidate.rank, sequence, candidate))
                 sequence += 1
+            if candidate_evaluations % 250 == 0:
+                elapsed_seconds = time.perf_counter() - assembly_started
+                LOGGER.info(
+                    "Backbone candidate heartbeat evaluated=%d served=%d/%d queue=%d "
+                    "elapsed=%.1fs rate=%.1f/s",
+                    candidate_evaluations,
+                    total_communities - len(unserved),
+                    total_communities,
+                    len(candidate_heap),
+                    elapsed_seconds,
+                    candidate_evaluations / max(elapsed_seconds, 0.001),
+                )
 
+    initial_frontier_count = len(frontiers)
     for frontier in frontiers:
         add_frontier_candidates(frontier)
 
@@ -306,6 +335,12 @@ def assemble_backbone_outward(
         place_id = str(selected.place["place_id"])
         if place_id not in unserved:
             continue
+        selected = _with_topography(
+            selected,
+            graph,
+            elevation_evidence,
+            topography_config,
+        )
         row = _connection_row(selected, graph, obligation_kind="community")
         record = _evaluate(row, gate)
         agent_records.append(record)
@@ -318,6 +353,22 @@ def assemble_backbone_outward(
             rejected.outcome_reason = "A different governed frontier attachment was accepted."
         rows.append(row)
         del unserved[place_id]
+        served_count = total_communities - len(unserved)
+        LOGGER.debug(
+            "Community access accepted place_id=%s served=%d/%d parent_role=%s",
+            place_id,
+            served_count,
+            total_communities,
+            row["parent_role"],
+        )
+        if served_count == 1 or served_count % 10 == 0 or not unserved:
+            LOGGER.info(
+                "Backbone community progress served=%d/%d remaining=%d candidate_queue=%d",
+                served_count,
+                total_communities,
+                len(unserved),
+                len(candidate_heap),
+            )
         served_frontier = _served_frontier(row, graph)
         frontiers.append(served_frontier)
         frontiers.sort(key=_frontier_key)
@@ -333,6 +384,8 @@ def assemble_backbone_outward(
                 gate_reason=rejected[-1].outcome_reason if rejected else None,
             )
         )
+    if unserved:
+        LOGGER.warning("Unserved communities emitted as Network Gaps count=%d", len(unserved))
 
     community_connections = gpd.GeoDataFrame(
         rows, columns=ACCESS_COLUMNS, geometry="geometry", crs=crs
@@ -347,6 +400,11 @@ def assemble_backbone_outward(
         topography_config=topography_config,
     )
     agent_records.extend(meeting_records)
+    LOGGER.info(
+        "Cross-spine assembly completed meetings=%d connectors=%d",
+        len(meeting_connections),
+        len(cross_spine_connectors),
+    )
 
     school_frontiers = _school_attachment_frontiers(
         strategic_spines,
@@ -354,7 +412,7 @@ def assemble_backbone_outward(
         cross_spine_connectors,
         graph,
     )
-    for _, school in schools.sort_values("place_id").iterrows():
+    for school_index, (_, school) in enumerate(schools.sort_values("place_id").iterrows(), start=1):
         if str(school.get("access_point_status")) == "unresolved":
             gap_rows.append(_gap_row(school, graph, obligation_kind="school"))
             continue
@@ -396,6 +454,12 @@ def assemble_backbone_outward(
                     ),
                 )
             )
+        if school_index == 1 or school_index % 10 == 0 or school_index == len(schools):
+            LOGGER.info(
+                "School access progress assessed=%d/%d",
+                school_index,
+                len(schools),
+            )
 
     connected_gateways = 0
     for _, gateway in gateways.sort_values("place_id").iterrows():
@@ -422,6 +486,12 @@ def assemble_backbone_outward(
             gap_rows.append(_gap_row(gateway, graph, obligation_kind="gateway"))
             continue
         for selected in sorted(candidates, key=lambda candidate: candidate.rank):
+            selected = _with_topography(
+                selected,
+                graph,
+                elevation_evidence,
+                topography_config,
+            )
             row = _connection_row(selected, graph, obligation_kind="gateway")
             record = _evaluate(row, gate)
             agent_records.append(record)
@@ -440,6 +510,17 @@ def assemble_backbone_outward(
                 )
             )
 
+    LOGGER.info(
+        "Backbone assembly completed access_connections=%d gaps=%d "
+        "connected_gateways=%d/%d elapsed=%.1fs",
+        len(rows),
+        len(gap_rows),
+        connected_gateways,
+        len(gateways),
+        time.perf_counter() - assembly_started,
+    )
+    LOGGER.debug("Backbone candidate evaluations total=%d", candidate_evaluations)
+
     connections = gpd.GeoDataFrame(
         rows, columns=ACCESS_COLUMNS, geometry="geometry", crs=crs
     ).sort_values("access_connection_id")
@@ -448,6 +529,70 @@ def assemble_backbone_outward(
     ).sort_values("connection_id")
     obligations = _obligations(communities, schools, connections, gaps)
     branches = _branches(connections, strategic_spines, crs)
+    graph_diagnostics = graph.compilation_diagnostics()
+    optimization_findings: list[dict[str, object]] = []
+    if candidate_evaluations >= 1_000:
+        optimization_findings.append(
+            {
+                "finding_id": "serial-frontier-candidate-evaluation",
+                "finding": (
+                    "Backbone candidates were evaluated serially across a large finite "
+                    "frontier-obligation search space."
+                ),
+                "evidence": {
+                    "candidate_evaluations": candidate_evaluations,
+                    "initial_frontiers": initial_frontier_count,
+                    "final_frontiers": len(frontiers),
+                },
+                "potential_optimization": (
+                    "Batch or safely parallelise independent initial-frontier searches while "
+                    "preserving deterministic candidate ranking."
+                ),
+            }
+        )
+    if graph_diagnostics["nearby_node_candidate_set_reuses"]:
+        optimization_findings.append(
+            {
+                "finding_id": "repeated-node-association-search",
+                "status": "optimized-during-compilation-development",
+                "finding": (
+                    "Multiple spine candidates reused the same community-to-node association set."
+                ),
+                "evidence": {
+                    "unique_candidate_sets": graph_diagnostics["nearby_node_candidate_sets"],
+                    "candidate_set_reuses": graph_diagnostics["nearby_node_candidate_set_reuses"],
+                },
+                "applied_optimization": (
+                    "Cache immutable point-to-node candidate sets for the duration of a run."
+                ),
+            }
+        )
+    if graph_diagnostics["unmaterializable_attachment_paths"]:
+        optimization_findings.append(
+            {
+                "finding_id": "unmaterializable-osm-attachment-paths",
+                "status": "bounded-and-visible",
+                "finding": ("Some graph paths could not be merged into valid governed linework."),
+                "evidence": {"path_count": graph_diagnostics["unmaterializable_attachment_paths"]},
+                "applied_optimization": (
+                    "Reject the affected candidate pair without exhaustive start/end retries; "
+                    "continue evaluating other governed frontiers."
+                ),
+                "potential_optimization": (
+                    "Normalize disconnected OSM edge geometry at snapshot ingestion."
+                ),
+            }
+        )
+    compilation_diagnostics: dict[str, object] = {
+        "assembly_strategy": "backbone-outward",
+        "candidate_evaluations": candidate_evaluations,
+        "initial_frontiers": initial_frontier_count,
+        "final_frontiers": len(frontiers),
+        "served_communities": total_communities - len(unserved),
+        "unserved_communities": len(unserved),
+        "optimization_findings": optimization_findings,
+        **graph_diagnostics,
+    }
     return BackboneAssembly(
         connections=connections,
         obligations=obligations,
@@ -458,6 +603,7 @@ def assemble_backbone_outward(
         gateway_count=len(gateways),
         connected_gateway_count=connected_gateways,
         agent_records=agent_records,
+        compilation_diagnostics=compilation_diagnostics,
     )
 
 
@@ -608,12 +754,40 @@ def _candidate(
     ends = [
         attachment for attachment in frontier.attachments if attachment[1] <= MAX_SPINE_ATTACHMENT_M
     ]
-    choices = [
-        choice
-        for start in starts
-        if (choice := graph.best_attachment([start], ends, allow_stationary=allow_stationary))
-        is not None
-    ]
+    choices = []
+    end_snap_by_node: dict[str, float] = {}
+    for node_id, snap_m in ends:
+        end_snap_by_node[node_id] = min(
+            snap_m,
+            end_snap_by_node.get(node_id, float("inf")),
+        )
+    overlap_nodes = {node_id for node_id, _ in starts if node_id in end_snap_by_node}
+    routed_starts = (
+        [attachment for attachment in starts if attachment[0] not in overlap_nodes]
+        if allow_stationary
+        else starts
+    )
+    # An overlapping start can never improve upon its own zero-length attachment.
+    # Excluding those nodes keeps the multi-source search bounded without changing
+    # the selected route when a lower-snap routed start is genuinely preferable.
+    routed = graph.best_attachment(
+        routed_starts,
+        ends,
+        allow_stationary=allow_stationary,
+    )
+    if routed is not None:
+        choices.append(routed)
+    if allow_stationary:
+        for start_node, start_snap_m in starts:
+            if start_node not in end_snap_by_node:
+                continue
+            stationary = graph.best_attachment(
+                [(start_node, start_snap_m)],
+                [(start_node, end_snap_by_node[start_node])],
+                allow_stationary=True,
+            )
+            if stationary is not None:
+                choices.append(stationary)
     if not choices:
         return None
     choice = min(
@@ -624,14 +798,6 @@ def _candidate(
             candidate.start_node,
             candidate.end_node,
         ),
-    )
-    option, options, comparison = _topography_choice(
-        graph,
-        choice.start_node,
-        choice.end_node,
-        choice.option,
-        elevation_evidence,
-        topography_config,
     )
     rank = (
         round(choice.total_distance_km, 9),
@@ -647,9 +813,9 @@ def _candidate(
         rank=rank,
         place=place,
         frontier=frontier,
-        option=option,
-        options=tuple(options),
-        topography=comparison,
+        option=choice.option,
+        options=(choice.option,),
+        topography=None,
         start_node=choice.start_node,
         start_snap_m=choice.start_snap_m,
         end_node=choice.end_node,
@@ -658,6 +824,29 @@ def _candidate(
         end_point=choice.end_point,
         start_attachment_id=choice.start_attachment_id,
         end_attachment_id=choice.end_attachment_id,
+    )
+
+
+def _with_topography(
+    candidate: _Candidate,
+    graph: RoadGraph,
+    elevation_evidence: gpd.GeoDataFrame | None,
+    topography_config: TopographyConfig | None,
+) -> _Candidate:
+    """Evaluate governed alternatives only after a ranked candidate is selected."""
+    option, options, comparison = _topography_choice(
+        graph,
+        candidate.start_node,
+        candidate.end_node,
+        candidate.option,
+        elevation_evidence,
+        topography_config,
+    )
+    return replace(
+        candidate,
+        option=option,
+        options=tuple(options),
+        topography=comparison,
     )
 
 

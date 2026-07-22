@@ -21,6 +21,10 @@ def main() -> None:
     if not run_path.exists() or not (review_map / "index.html").exists() or not pdf_map.exists():
         raise SystemExit("compile config/banes.yaml before publishing the site")
     run = json.loads(run_path.read_text(encoding="utf-8"))
+    interventions = json.loads(
+        (review_map / "human-intervention-requests.json").read_text(encoding="utf-8")
+    )
+    comparison = json.loads((review_map / "backbone-comparison.json").read_text(encoding="utf-8"))
     if run["council_id"] != "bath-and-north-east-somerset":
         raise SystemExit("only the B&NES reference run may be promoted to this Pages site")
     if run["status"] not in {"complete", "reviewable"}:
@@ -35,13 +39,18 @@ def main() -> None:
         shutil.copy2(pdf_map, content / "network-map.pdf")
         (content / ".nojekyll").write_text("", encoding="utf-8")
         publication = {
+            "schema_version": run["schema_version"],
             "run_id": run["run_id"],
             "status": run["status"],
+            "network_model": run["network_model"],
             "connection_count": run["connection_count"],
             "gap_count": run["gap_count"],
+            "human_intervention_request_count": len(interventions["records"]),
             "superseded_hypotheses": run["superseded_hypotheses"],
             "layer_counts": run["layer_counts"],
             "criteria": run["criteria"],
+            "compilation_diagnostics": run["compilation_diagnostics"],
+            "comparison_role": comparison["comparison_role"],
             "disclaimer": DISCLAIMER,
         }
         (content / "publication.json").write_text(

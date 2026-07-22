@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 import shutil
 import tempfile
@@ -14,6 +15,7 @@ from importlib.resources import files
 from pathlib import Path
 
 import geopandas as gpd
+import networkx as nx
 import pandas as pd
 from pypdf import PdfReader
 from reportlab.lib.colors import HexColor
@@ -27,37 +29,11 @@ from satn.constants import DISCLAIMER, SCHEMA_VERSION
 from satn.models import CouncilConfig
 from satn.sources import NCN_ATTRIBUTION, OSM_ATTRIBUTION
 
+LOGGER = logging.getLogger(__name__)
 
-def publish(
-    config: CouncilConfig,
-    compiled: CompiledNetwork,
-    run_id: str,
-) -> dict[str, Path]:
-    output = config.publication.output_dir
-    output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=f".{output.name}-", dir=output.parent))
-    try:
-        _write_geopackage(temporary / "network.gpkg", compiled)
-        _write_geojson(temporary / "network.geojson", compiled)
-        _write_json_records(temporary, config, compiled, run_id)
-        _write_backbone_comparison(temporary / "backbone-comparison.json", compiled, output)
-        review = temporary / "review-map"
-        review.mkdir()
-        _write_review_map(review, config, compiled)
-        _zip_review_map(temporary / "review-map.zip", review)
-        _write_pdf(temporary / "network-map.pdf", config, compiled)
-        _validate_artifacts(temporary, config)
-        backup = output.with_name(f".{output.name}-previous")
-        if backup.exists():
-            shutil.rmtree(backup)
-        if output.exists():
-            output.replace(backup)
-        temporary.replace(output)
-        if backup.exists():
-            shutil.rmtree(backup)
-    finally:
-        if temporary.exists():
-            shutil.rmtree(temporary)
+
+def publication_artifacts(output: Path) -> dict[str, Path]:
+    """Return the stable artifact contract for a validated publication directory."""
     return {
         "geopackage": output / "network.gpkg",
         "geojson": output / "network.geojson",
@@ -70,6 +46,51 @@ def publish(
         "review_zip": output / "review-map.zip",
         "pdf": output / "network-map.pdf",
     }
+
+
+def validate_publication(output: Path, config: CouncilConfig) -> None:
+    """Validate an existing publication before any whole-run reuse."""
+    _validate_artifacts(output, config)
+
+
+def publish(
+    config: CouncilConfig,
+    compiled: CompiledNetwork,
+    run_id: str,
+) -> dict[str, Path]:
+    output = config.publication.output_dir
+    LOGGER.info("Publication started temporary_parent=%s", output.parent)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix=f".{output.name}-", dir=output.parent))
+    try:
+        _write_geopackage(temporary / "network.gpkg", compiled)
+        _write_geojson(temporary / "network.geojson", compiled)
+        _write_json_records(temporary, config, compiled, run_id)
+        _write_backbone_comparison(
+            temporary / "backbone-comparison.json",
+            compiled,
+            config.publication.comparison_reference or output,
+        )
+        review = temporary / "review-map"
+        review.mkdir()
+        _write_review_map(review, config, compiled)
+        _zip_review_map(temporary / "review-map.zip", review)
+        _write_pdf(temporary / "network-map.pdf", config, compiled)
+        _validate_artifacts(temporary, config)
+        LOGGER.info("Publication artifacts validated temporary=%s", temporary)
+        backup = output.with_name(f".{output.name}-previous")
+        if backup.exists():
+            shutil.rmtree(backup)
+        LOGGER.info("Publication atomically replaced output=%s", output)
+        if output.exists():
+            output.replace(backup)
+        temporary.replace(output)
+        if backup.exists():
+            shutil.rmtree(backup)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+    return publication_artifacts(output)
 
 
 def _metadata_frame(crs: object) -> gpd.GeoDataFrame:
@@ -189,7 +210,6 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "cross-spine-connector": "cross_spine_connector_id",
         "low-traffic-area-portal": "portal_id",
         "strategic-spine": "spine_id",
-        "connection": "connection_id",
         "gap": "connection_id",
         "school-access-gap": "connection_id",
     }.get(feature_type)
@@ -362,6 +382,8 @@ def _write_json_records(
             for section, values in compiled.criteria.items()
         },
         "network_model": "backbone-outward",
+        "compilation_input_fingerprint": compiled.compilation_input_fingerprint,
+        "compilation_diagnostics": compiled.compilation_diagnostics,
         "connection_count": compiled.connection_count,
         "gap_count": len(compiled.gaps),
         "crossing_warning_count": len(compiled.crossing_warnings),
@@ -406,7 +428,6 @@ def _write_json_records(
         "layer_counts": _layer_counts(compiled),
         "network_units": compiled.network_units,
         "superseded_hypotheses": compiled.superseded_hypotheses,
-        "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
         "atm_mode": config.atm.mode if config.atm.enabled else "disabled",
         "atm_geometry_included": compiled.atm_reference is not None,
         "disclaimer": DISCLAIMER,
@@ -441,7 +462,7 @@ def _write_json_records(
 def _write_backbone_comparison(
     path: Path,
     compiled: CompiledNetwork,
-    previous_output: Path,
+    previous_reference: Path,
 ) -> None:
     """Compare the current model with any superseded publication, never as truth."""
     current_lines = [
@@ -449,8 +470,13 @@ def _write_backbone_comparison(
         *compiled.branch_meeting_connections.geometry,
     ]
     current_length_m = _linework_length_m(current_lines, compiled.places.crs)
-    previous_path = previous_output / "network.geojson"
+    previous_path = (
+        previous_reference / "network.geojson"
+        if previous_reference.is_dir()
+        else previous_reference
+    )
     previous_features: list[dict[str, object]] = []
+    previous_gaps: list[dict[str, object]] = []
     previous_model = "unavailable"
     if previous_path.exists():
         previous = json.loads(previous_path.read_text(encoding="utf-8"))
@@ -481,6 +507,11 @@ def _write_backbone_comparison(
                 "branch-meeting-connection",
             }
         ]
+        previous_gaps = [
+            feature
+            for feature in previous.get("features", [])
+            if feature.get("properties", {}).get("feature_type") in {"gap", "school-access-gap"}
+        ]
     previous_lines = [
         shape(feature["geometry"])
         for feature in previous_features
@@ -503,6 +534,18 @@ def _write_backbone_comparison(
         )
         for _, row in frame.iterrows()
     )
+    current_endpoints = [
+        (str(row.place_id), str(row.parent_target_id))
+        for row in compiled.spine_access_connections.itertuples()
+    ] + [
+        (str(row.from_place_id), str(row.to_place_id))
+        for row in compiled.branch_meeting_connections.itertuples()
+    ]
+    previous_endpoints = [
+        endpoints
+        for feature in previous_features
+        if (endpoints := _feature_endpoints(feature)) is not None
+    ]
     report = {
         "schema_version": SCHEMA_VERSION,
         "disclaimer": DISCLAIMER,
@@ -524,6 +567,36 @@ def _write_backbone_comparison(
             "typed_role_count": typed_role_complete,
             "selection_rationale_count": rationale_complete,
         },
+        "topology": {
+            "current": {
+                "strategic_spine_count": len(compiled.strategic_spines),
+                "network_unit_count": len(compiled.network_units),
+                "spine_access_branch_count": len(compiled.spine_access_branches),
+                "spine_access_connection_count": len(compiled.spine_access_connections),
+                "branch_meeting_connection_count": len(compiled.branch_meeting_connections),
+                "cross_spine_connector_count": len(compiled.cross_spine_connectors),
+                **_topology_metrics(current_endpoints),
+            },
+            "previous": {
+                "network_model": previous_model,
+                "network_gap_count": len(previous_gaps),
+                **_topology_metrics(previous_endpoints),
+                "feature_role_counts": dict(
+                    sorted(
+                        pd.Series(
+                            [
+                                feature.get("properties", {}).get("feature_type", "unknown")
+                                for feature in previous_features
+                            ],
+                            dtype=object,
+                        )
+                        .value_counts()
+                        .to_dict()
+                        .items()
+                    )
+                ),
+            },
+        },
         "superseded_pairwise_reference": {
             "network_model": previous_model,
             "connection_count": len(previous_features),
@@ -543,6 +616,31 @@ def _write_backbone_comparison(
         },
     }
     path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def _feature_endpoints(feature: dict[str, object]) -> tuple[str, str] | None:
+    properties = feature.get("properties", {})
+    if not isinstance(properties, dict):
+        return None
+    for left, right in (
+        ("from_place", "to_place"),
+        ("place_id", "parent_target_id"),
+        ("from_place_id", "to_place_id"),
+    ):
+        if properties.get(left) is not None and properties.get(right) is not None:
+            return str(properties[left]), str(properties[right])
+    return None
+
+
+def _topology_metrics(endpoints: list[tuple[str, str]]) -> dict[str, int]:
+    graph = nx.Graph()
+    graph.add_edges_from(endpoints)
+    return {
+        "node_count": graph.number_of_nodes(),
+        "edge_count": graph.number_of_edges(),
+        "component_count": nx.number_connected_components(graph) if graph else 0,
+        "degree_one_node_count": sum(degree == 1 for _, degree in graph.degree()),
+    }
 
 
 def _linework_length_m(geometries: list[object], crs: object) -> float:
@@ -764,32 +862,22 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
             )
             canvas.setDash()
 
-        connection_geometries = [
-            *_clipped_linework(compiled.spine_access_connections, clip_shape),
-            *_clipped_linework(compiled.branch_meeting_connections, clip_shape),
-        ]
-        canvas.setStrokeColor(HexColor("#ffffff"))
-        canvas.setLineWidth(3.4)
-        _draw_line_collection(
-            canvas,
-            connection_geometries,
-            min_x,
-            min_y,
-            scale,
-            origin_x,
-            origin_y,
-        )
-        canvas.setStrokeColor(HexColor("#08783f"))
-        canvas.setLineWidth(1.8)
-        _draw_line_collection(
-            canvas,
-            connection_geometries,
-            min_x,
-            min_y,
-            scale,
-            origin_x,
-            origin_y,
-        )
+        school_mask = compiled.spine_access_connections["obligation_kind"] == "school"
+        for frame, colour in (
+            (compiled.spine_access_connections[~school_mask], "#08783f"),
+            (compiled.spine_access_connections[school_mask], "#7d3c98"),
+            (compiled.branch_meeting_connections, "#d47b00"),
+        ):
+            _draw_pdf_role_linework(
+                canvas,
+                _clipped_linework(frame, clip_shape),
+                colour,
+                min_x,
+                min_y,
+                scale,
+                origin_x,
+                origin_y,
+            )
 
         _draw_pdf_places(
             canvas,
@@ -811,21 +899,17 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
                 canvas.circle(px, py, 2.8, stroke=1, fill=1)
         _draw_scale(canvas, scale, origin_x, origin_y)
 
-    canvas.setFillColor(HexColor("#566573"))
-    canvas.setFont("Helvetica", 7.5)
-    canvas.drawString(
-        42,
-        24,
-        "Sources: OpenStreetMap contributors (ODbL); Walk Wheel Cycle Trust NCN (OGL v3.0).",
-    )
-    canvas.drawRightString(width - 42, 24, DISCLAIMER)
+    _draw_pdf_footer(canvas, width)
+    _draw_edge_register(canvas, width, height, compiled)
     canvas.save()
 
 
 def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool) -> None:
     entries = [
         ("#c56a1a", "A-road corridor"),
-        ("#08783f", "Backbone access connection"),
+        ("#08783f", "Spine Access Connection"),
+        ("#7d3c98", "School Access Connection"),
+        ("#d47b00", "Branch Meeting / Cross-Spine"),
         ("#187aa5", "National Cycle Network"),
         ("#f4b942", "Crossing warning"),
     ]
@@ -847,6 +931,82 @@ def _draw_legend(canvas: Canvas, width: float, height: float, include_atm: bool)
         canvas.line(item_x, item_y + 2, item_x + 22, item_y + 2)
         canvas.setFillColor(HexColor("#17202a"))
         canvas.drawString(item_x + 28, item_y, label)
+
+
+def _draw_pdf_role_linework(
+    canvas: Canvas,
+    geometries: list[object],
+    colour: str,
+    min_x: float,
+    min_y: float,
+    scale: float,
+    origin_x: float,
+    origin_y: float,
+) -> None:
+    canvas.setStrokeColor(HexColor("#ffffff"))
+    canvas.setLineWidth(3.4)
+    _draw_line_collection(canvas, geometries, min_x, min_y, scale, origin_x, origin_y)
+    canvas.setStrokeColor(HexColor(colour))
+    canvas.setLineWidth(1.8)
+    _draw_line_collection(canvas, geometries, min_x, min_y, scale, origin_x, origin_y)
+
+
+def _draw_pdf_footer(canvas: Canvas, width: float) -> None:
+    canvas.setFillColor(HexColor("#566573"))
+    canvas.setFont("Helvetica", 7.5)
+    canvas.drawString(
+        42,
+        24,
+        "Sources: OpenStreetMap contributors (ODbL); Walk Wheel Cycle Trust NCN (OGL v3.0).",
+    )
+    canvas.drawRightString(width - 42, 24, DISCLAIMER)
+
+
+def _draw_edge_register(
+    canvas: Canvas,
+    width: float,
+    height: float,
+    compiled: CompiledNetwork,
+) -> None:
+    """Append the stable identifiers and authoritative roles represented on the map."""
+    entries = [
+        (
+            str(row.access_connection_id),
+            str(row.network_role),
+            f"{row.place_name} -> {row.parent_target_name}",
+        )
+        for row in compiled.spine_access_connections.itertuples()
+    ] + [
+        (
+            str(row.meeting_connection_id),
+            str(row.network_role),
+            f"{row.from_place_name} -> {row.to_place_name}",
+        )
+        for row in compiled.branch_meeting_connections.itertuples()
+    ]
+    if not entries:
+        return
+    entries.sort()
+    rows_per_page = max(1, int((height - 112) // 11))
+    for offset in range(0, len(entries), rows_per_page):
+        canvas.showPage()
+        page_entries = entries[offset : offset + rows_per_page]
+        canvas.setFillColor(HexColor("#17202a"))
+        canvas.setFont("Helvetica-Bold", 16)
+        canvas.drawString(42, height - 42, "Authoritative edge register")
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(HexColor("#566573"))
+        canvas.drawString(
+            42,
+            height - 58,
+            "Stable identifier | feature role | represented connection",
+        )
+        y = height - 78
+        for identifier, role, description in page_entries:
+            canvas.setFillColor(HexColor("#17202a"))
+            canvas.drawString(42, y, f"{identifier} | {role} | {description}"[:180])
+            y -= 11
+        _draw_pdf_footer(canvas, width)
 
 
 def _is_pdf_context_road(value: object) -> bool:
@@ -1132,6 +1292,12 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     missing = [name for name in required if not (output / name).exists()]
     if missing:
         raise ValueError(f"publication incomplete: {', '.join(missing)}")
+    expected_top_level = {Path(name).parts[0] for name in required}
+    unexpected = sorted(
+        path.name for path in output.iterdir() if path.name not in expected_top_level
+    )
+    if unexpected:
+        raise ValueError(f"publication contains unexpected artifacts: {', '.join(unexpected)}")
     metadata = gpd.read_file(output / "network.gpkg", layer="metadata")
     if set(metadata["disclaimer"]) != {DISCLAIMER}:
         raise ValueError("GeoPackage metadata disclaimer mismatch")

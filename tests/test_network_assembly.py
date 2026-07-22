@@ -47,7 +47,6 @@ def test_missing_spine_evidence_exposes_every_rural_obligation_as_a_gap() -> Non
         FakeAgentRuntime(),
     )
 
-    assert compiled.connections.empty
     assert compiled.spine_access_connections.empty
     assert len(compiled.access_obligations) == len(places)
     assert set(compiled.access_obligations["service_status"]) == {"network-gap"}

@@ -54,6 +54,11 @@ and place derivation remain portable compiler behaviour:
 uv run satn snapshot config/banes.yaml
 ```
 
+OSM acquisition uses the governed `source.overpass_url` and
+`source.osm_timeout_seconds` settings. The B&NES configuration decomposes its broad
+evidence tags and uses a ten-minute per-request timeout because its buffered source
+queries can exceed the default three-minute budget.
+
 This retrieves the full governed boundary, cycling graph, named place features,
 public-transport stations and everyday amenities from OpenStreetMap, plus the current
 National Cycle Network from the Walk Wheel Cycle Trust public feature service. The
@@ -304,25 +309,42 @@ The previous pairwise network is absent from compilation, GeoPackage, GeoJSON, P
 review-map layers. If an earlier publication exists, `backbone-comparison.json`
 summarises topology, gaps, linework/noise and explainability differences under the
 explicit role `superseded-reference-not-ground-truth`; agreement with it is not a
-correctness criterion.
+correctness criterion. `publication.comparison_reference` may identify a governed
+tracked predecessor (the B&NES configuration points to `site/network.geojson`) so a
+clean full compile still produces that comparison before any new output is promoted.
 
 ## Deterministic recompilation
 
-Schema 2.0 does not read or write the legacy pairwise Connection cache. Every run
-reassembles the authoritative backbone from the immutable snapshot and governed
-configuration. Stable identifiers and ordering make unchanged runs topologically and
-fingerprint stable. Changing the snapshot, Elevation Evidence, schema or
-`compilation.criteria_version` changes the run fingerprint.
+Schema 2.0 does not read or write the legacy pairwise Connection cache. A default run
+may reuse only a complete, validated schema-2 publication whose source snapshot,
+governed configuration, criteria, schema and compiler implementation fingerprints all
+match. Otherwise it reassembles the authoritative backbone from the immutable snapshot.
+Stable identifiers and ordering make unchanged runs topologically and fingerprint stable.
+Changing any governed input invalidates whole-publication reuse.
 
 ```shell
 # compile the authoritative backbone
 uv run satn compile config/banes.yaml
 
-# compatibility directive: still performs a complete deterministic rebuild
+# force a complete deterministic rebuild
 uv run satn compile config/banes.yaml --full
 ```
 
-Changing `compilation.criteria_version` invalidates all version-one reuse.
+CLI commands emit timestamped standard-library logs to stderr. `INFO` is the default
+and reports acquisition groups, snapshot counts, periodic backbone and School progress,
+publication validation and elapsed time. Use `--log-level DEBUG` for selected frontier
+decisions and artifact diagnostics, or `WARNING`, `ERROR` or `CRITICAL` for quieter
+automation:
+
+```shell
+uv run satn compile config/banes.yaml --log-level DEBUG
+```
+
+`run.json` retains deterministic compilation diagnostics: graph/search dimensions,
+candidate evaluations, frontier growth and typed optimisation findings. Wall-clock
+timings and throughput remain in the logs because they are operational observations,
+not reproducible governed output. Changing `compilation.criteria_version` invalidates
+whole-publication reuse.
 
 ## ATM quality comparison
 

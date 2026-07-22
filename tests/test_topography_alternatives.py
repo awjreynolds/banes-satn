@@ -266,7 +266,6 @@ def test_gate_rejection_publishes_no_authoritative_alignment_selection() -> None
 
     compiled = compile_network(config, source, runtime)
 
-    assert compiled.connections.empty
     gap = compiled.gaps.iloc[0]
     assert gap["topography_selected_role"] is None
     assert gap["topography_comparison_status"] == "gate-rejected-selection"

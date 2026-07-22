@@ -43,7 +43,6 @@ class CompiledNetwork:
     road_context: gpd.GeoDataFrame
     label_places: gpd.GeoDataFrame
     places: gpd.GeoDataFrame
-    connections: gpd.GeoDataFrame
     gaps: gpd.GeoDataFrame
     urban_spines: gpd.GeoDataFrame
     urban_classification_unknowns: gpd.GeoDataFrame
@@ -72,10 +71,10 @@ class CompiledNetwork:
     network_units: list[dict[str, object]]
     atm_reference: gpd.GeoDataFrame | None
     divergence_records: list[DivergenceRecord]
-    cache_hits: int
-    cache_misses: int
     superseded_hypotheses: int
     human_intervention_requests: list[HumanInterventionRequest]
+    compilation_diagnostics: dict[str, object]
+    compilation_input_fingerprint: str = ""
 
     @property
     def connection_count(self) -> int:
@@ -125,40 +124,7 @@ def compile_network(
     spine_access_branches = backbone.branches
     branch_meeting_connections = backbone.meeting_connections
     cross_spine_connectors = backbone.cross_spine_connectors
-    # Schema 2 removes the legacy peer-to-peer compiler from the default path.  Keep
-    # the empty frame for one release as an in-process compatibility shim; it is not
-    # published and cannot be populated from the legacy cache.
-    connection_columns = [
-        "connection_id",
-        "from_place",
-        "to_place",
-        "from_place_name",
-        "to_place_name",
-        "distance_km",
-        "classification",
-        "intervention_archetype",
-        "geometry_semantics",
-        "status",
-        "selection_reason",
-        "agent_outcome",
-        "agent_attempt_count",
-        "agent_findings",
-        "source_ids",
-        "cache_status",
-        "alignment_options",
-        "criterion_endpoints",
-        "criterion_continuity",
-        "criterion_bidirectional",
-        "criterion_distance",
-        "topography_alternative_trigger",
-        "topography_comparison_status",
-        "topography_comparison_rationale",
-        "topography_original_role",
-        "topography_selected_role",
-        "geometry",
-    ]
     crs = source["network"].crs
-    connections = gpd.GeoDataFrame([], columns=connection_columns, geometry="geometry", crs=crs)
     official_road_classification = source.get("official_road_classification")
     urban = derive_urban_structure(
         places,
@@ -200,7 +166,6 @@ def compile_network(
         else UrbanClassificationStatus.EXPLICIT_UNKNOWN
     )
     topography_edge_frames = [
-        ("connection", "connection_id", connections),
         ("strategic-spine", "spine_id", strategic_spines),
         (
             "spine-access-connection",
@@ -390,7 +355,6 @@ def compile_network(
         road_context=source["network"].copy(),
         label_places=source.get("label_places", places).copy(),
         places=places,
-        connections=connections,
         gaps=gaps,
         urban_spines=urban_spines,
         urban_classification_unknowns=urban_classification_unknowns,
@@ -438,14 +402,13 @@ def compile_network(
         network_units=network_units,
         atm_reference=None,
         divergence_records=[],
-        cache_hits=0,
-        cache_misses=0,
         superseded_hypotheses=sum(
             record.decision == "superseded" for record in backbone.agent_records
         ),
         human_intervention_requests=_human_intervention_requests(
             backbone.agent_records, config.compilation.agent.max_attempts
         ),
+        compilation_diagnostics=backbone.compilation_diagnostics,
     )
 
 
@@ -837,11 +800,57 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         ("a-road-spine", "a-road"),
         ("ncn-route", "ncn"),
     ):
-        for _, evidence in candidates[candidates["feature_type"] == feature_type].iterrows():
-            evidence_id = str(evidence.get("evidence_id", evidence.get("source_id", "")))
-            source_id = str(evidence.get("source_id", evidence_id))
+        evidence_frame = candidates[candidates["feature_type"] == feature_type].copy()
+        evidence_frame["_corridor_key"] = evidence_frame.apply(
+            lambda evidence: (
+                str(evidence.get("name") or "").strip()
+                or f"unnamed::{evidence.get('category')}::{evidence.get('source_id')}"
+            ),
+            axis=1,
+        )
+        for corridor_key, corridor in evidence_frame.groupby("_corridor_key", sort=True):
+            evidence_ids = tuple(
+                sorted(
+                    {
+                        str(evidence_id)
+                        for evidence_id in corridor.get("evidence_id", [])
+                        if str(evidence_id).strip()
+                    }
+                )
+            )
+            source_ids = tuple(
+                sorted(
+                    {
+                        str(source_id)
+                        for source_id in corridor.get("source_id", [])
+                        if str(source_id).strip()
+                    }
+                )
+            )
+            evidence_id = _stable_role_id(
+                "strategic-spine-evidence", spine_kind, corridor_key, *evidence_ids
+            )
+            source_id = _stable_role_id(
+                "strategic-spine-sources", spine_kind, corridor_key, *source_ids
+            )
+            name = next(
+                (
+                    value
+                    for value in corridor.get("name", [])
+                    if value is not None and str(value).strip()
+                ),
+                None,
+            )
+            category = next(
+                (
+                    value
+                    for value in corridor.get("category", [])
+                    if value is not None and str(value).strip()
+                ),
+                None,
+            )
             is_a_road = spine_kind == "a-road"
-            for geometry in continuous_linework(evidence.geometry):
+            for geometry in continuous_linework(corridor.geometry.union_all()):
                 segment_key = hashlib.sha256(geometry.wkb).hexdigest()[:12]
                 rows.append(
                     {
@@ -854,8 +863,8 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         ),
                         "network_role": "strategic-spine",
                         "spine_kind": spine_kind,
-                        "name": evidence.get("name"),
-                        "category": evidence.get("category"),
+                        "name": name,
+                        "category": category,
                         "evidence_id": evidence_id,
                         "source_id": source_id,
                         "network_scope": NetworkScope.RURAL.value,
@@ -876,7 +885,9 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         "provenance": json.dumps(
                             {
                                 "evidence_id": evidence_id,
+                                "evidence_ids": evidence_ids,
                                 "source_id": source_id,
+                                "source_ids": source_ids,
                                 "source_feature_type": feature_type,
                                 "network_scope": NetworkScope.RURAL.value,
                             },

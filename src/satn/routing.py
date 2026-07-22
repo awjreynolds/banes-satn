@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import heapq
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import pairwise
@@ -25,6 +26,8 @@ LOW_TRAFFIC = {
     "cycleway",
 }
 MAIN_ROADS = {"motorway", "trunk", "primary", "secondary", "tertiary"}
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -92,6 +95,9 @@ class RoadGraph:
         self.graph = nx.DiGraph()
         self.node_points: dict[str, Point] = {}
         self._shortest_lengths: dict[str, dict[str, float]] = {}
+        self._nearby_node_cache: dict[tuple[str, float], tuple[tuple[str, float], ...]] = {}
+        self._nearby_node_cache_hits = 0
+        self._unmaterializable_attachment_paths = 0
         for index, row in sorted(edges.iterrows(), key=_edge_row_sort_key):
             geometry = row.geometry
             if not isinstance(geometry, LineString) or len(geometry.coords) < 2:
@@ -120,9 +126,16 @@ class RoadGraph:
             if not _present(row.get("u")) and not attrs["oneway"]:
                 reverse = attrs | {"geometry": LineString(list(geometry.coords)[::-1])}
                 self._add_best_edge(v, u, reverse)
-        self._node_ids = list(self.node_points)
+        # Access connections must work in both directions. Searching only edges
+        # with an explicit reciprocal prevents a one-way result from triggering
+        # a combinatorial retry across every possible start/end pairing.
+        self._attachment_graph = nx.DiGraph()
+        for u, v, attrs in self.graph.edges(data=True):
+            if self.graph.has_edge(v, u):
+                self._attachment_graph.add_edge(u, v, **attrs)
+        self._node_ids = list(self._attachment_graph.nodes)
         strong_components = sorted(
-            nx.strongly_connected_components(self.graph),
+            nx.strongly_connected_components(self._attachment_graph),
             key=lambda component: (-len(component), tuple(sorted(component))),
         )
         self._strong_component_by_node = {
@@ -131,7 +144,9 @@ class RoadGraph:
             for node in component
         }
         dominant = strong_components[0] if strong_components else set()
-        routable_share = len(dominant) / len(self.graph) if self.graph else 0
+        routable_share = (
+            len(dominant) / len(self._attachment_graph) if self._attachment_graph else 0
+        )
         if routable_share >= 0.9:
             self._node_ids = [node for node in self._node_ids if node in dominant]
         self._projected_nodes = gpd.GeoSeries(
@@ -152,6 +167,18 @@ class RoadGraph:
         if existing is None or float(attrs["length_m"]) < float(existing["length_m"]):
             self.graph.add_edge(u, v, **attrs)
 
+    def compilation_diagnostics(self) -> dict[str, int]:
+        """Return deterministic graph-search dimensions for run diagnostics."""
+        return {
+            "road_graph_nodes": self.graph.number_of_nodes(),
+            "road_graph_edges": self.graph.number_of_edges(),
+            "reciprocal_routing_nodes": self._attachment_graph.number_of_nodes(),
+            "reciprocal_routing_edges": self._attachment_graph.number_of_edges(),
+            "nearby_node_candidate_sets": len(self._nearby_node_cache),
+            "nearby_node_candidate_set_reuses": self._nearby_node_cache_hits,
+            "unmaterializable_attachment_paths": self._unmaterializable_attachment_paths,
+        }
+
     def nearest_node(self, point: Point) -> tuple[str, float]:
         if not self.node_points:
             raise ValueError("source network has no routable LineString edges")
@@ -169,21 +196,33 @@ class RoadGraph:
         """Return every bounded attachment candidate with deterministic tie-breaking."""
         if not self.node_points:
             raise ValueError("source network has no routable LineString edges")
+        cache_key = (point.wkb_hex, float(max_distance_m))
+        cached = self._nearby_node_cache.get(cache_key)
+        if cached is not None:
+            self._nearby_node_cache_hits += 1
+            return list(cached)
         target = gpd.GeoSeries([point], crs=self.crs).to_crs(27700).iloc[0]
         positions = self._projected_node_index.query(
             target.buffer(max_distance_m), predicate="intersects"
         )
+        ordered_positions = sorted(int(position) for position in positions)
+        selected_nodes = self._projected_nodes.iloc[ordered_positions]
+        distances = selected_nodes.distance(target)
         matches = [
             (
-                self._node_ids[int(position)],
-                float(self._projected_nodes.iloc[int(position)].distance(target)),
+                self._node_ids[position],
+                float(distance),
             )
-            for position in positions
+            for position, distance in zip(ordered_positions, distances, strict=True)
         ]
-        return sorted(
-            (match for match in matches if match[1] <= max_distance_m),
-            key=lambda match: (match[1], match[0]),
+        result = tuple(
+            sorted(
+                (match for match in matches if match[1] <= max_distance_m),
+                key=lambda match: (match[1], match[0]),
+            )
         )
+        self._nearby_node_cache[cache_key] = result
+        return list(result)
 
     def nodes_on_geometry(
         self,
@@ -254,8 +293,7 @@ class RoadGraph:
                 choice.start_attachment_id
                 if selected.edge_id is None
                 else (
-                    f"edge:{selected.edge_id}:"
-                    f"{_coordinate_id(selected.attachment_point.coords[0])}"
+                    f"edge:{selected.edge_id}:{_coordinate_id(selected.attachment_point.coords[0])}"
                 )
             ),
             end_attachment_id=choice.end_attachment_id,
@@ -308,10 +346,14 @@ class RoadGraph:
             attrs = self.graph[u][v]
             reverse = self.graph[v][u]
             reverse_geometry = reverse["geometry"]
-            if not isinstance(reverse_geometry, LineString) or min(
-                _corridor_share(attrs["geometry"], reverse_geometry, self.crs),
-                _corridor_share(reverse_geometry, attrs["geometry"], self.crs),
-            ) < 0.5:
+            if (
+                not isinstance(reverse_geometry, LineString)
+                or min(
+                    _corridor_share(attrs["geometry"], reverse_geometry, self.crs),
+                    _corridor_share(reverse_geometry, attrs["geometry"], self.crs),
+                )
+                < 0.5
+            ):
                 continue
             prefix_length_m = float(attrs["length_m"]) * (1 - fraction)
             prefix = substring(attrs["geometry"], fraction, 1, normalized=True)
@@ -455,17 +497,27 @@ class RoadGraph:
             total_m, nodes, start, start_snap, end, end_snap = routed
             if start == end:
                 option = (
-                    stationary_route_option(self.node_points[start])
-                    if allow_stationary
-                    else None
+                    stationary_route_option(self.node_points[start]) if allow_stationary else None
                 )
             else:
                 option = self._option_from_nodes(nodes, "direct")
-            if (
-                option is not None
-                and option.bidirectional
-                and (excluded_pairs is None or (start, end) not in excluded_pairs)
-            ):
+            if option is None:
+                self._unmaterializable_attachment_paths += 1
+                LOGGER.debug(
+                    "Attachment path could not be materialized start=%s end=%s",
+                    start,
+                    end,
+                )
+                return None
+            if excluded_pairs is None or (start, end) not in excluded_pairs:
+                if not option.bidirectional:
+                    LOGGER.debug(
+                        "Reciprocal attachment has insufficient reverse-corridor overlap "
+                        "start=%s end=%s share=%.3f",
+                        start,
+                        end,
+                        option.reverse_corridor_share,
+                    )
                 return RoutedAttachment(
                     option=option,
                     start_node=start,
@@ -505,21 +557,21 @@ class RoadGraph:
                 connector = object()
                 start_connectors[connector] = (start, snap_m)
                 temporary_nodes.append(connector)
-                self.graph.add_edge(source, connector, length_m=0.0)
-                self.graph.add_edge(connector, start, length_m=snap_m)
+                self._attachment_graph.add_edge(source, connector, length_m=0.0)
+                self._attachment_graph.add_edge(connector, start, length_m=snap_m)
             for end, snap_m in ends:
                 connector = object()
                 end_connectors[connector] = (end, snap_m)
                 temporary_nodes.append(connector)
-                self.graph.add_edge(end, connector, length_m=snap_m)
-                self.graph.add_edge(connector, sink, length_m=0.0)
+                self._attachment_graph.add_edge(end, connector, length_m=snap_m)
+                self._attachment_graph.add_edge(connector, sink, length_m=0.0)
             total_m, path = nx.single_source_dijkstra(
-                self.graph, source, target=sink, weight="length_m"
+                self._attachment_graph, source, target=sink, weight="length_m"
             )
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return None
         finally:
-            self.graph.remove_nodes_from(temporary_nodes)
+            self._attachment_graph.remove_nodes_from(temporary_nodes)
         start, start_snap = start_connectors[path[1]]
         end, end_snap = end_connectors[path[-2]]
         return float(total_m), path[2:-2], start, start_snap, end, end_snap
@@ -552,9 +604,7 @@ class RoadGraph:
         try:
             reverse_nodes = list(reversed(nodes))
             if not all(self.graph.has_edge(left, right) for left, right in pairwise(reverse_nodes)):
-                reverse_nodes = nx.shortest_path(
-                    self.graph, nodes[-1], nodes[0], weight=weight
-                )
+                reverse_nodes = nx.shortest_path(self.graph, nodes[-1], nodes[0], weight=weight)
             reverse_edges = [self.graph[left][right] for left, right in pairwise(reverse_nodes)]
             reverse_geometry = _merge_route([edge["geometry"] for edge in reverse_edges])
         except (nx.NetworkXNoPath, nx.NodeNotFound):

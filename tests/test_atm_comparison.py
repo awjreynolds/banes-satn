@@ -80,14 +80,8 @@ def test_seeded_reference_cannot_replace_the_authoritative_backbone(tmp_path: Pa
 
     seeded = compile(config)
 
-    assert (
-        blind.metadata["cache"]
-        == seeded.metadata["cache"]
-        == {
-            "hits": 0,
-            "misses": 0,
-        }
-    )
+    assert "cache" not in blind.metadata
+    assert "cache" not in seeded.metadata
     assert blind.run_id != seeded.run_id
     access = gpd.read_file(seeded.artifacts["geopackage"], layer="spine_access_connections")
     assert not access["selection_reason"].str.startswith("ATM-seeded").any()

@@ -335,12 +335,8 @@ def test_rural_school_reuses_branch_without_creating_peer_journey_pairs() -> Non
         ]
     )
     assert access["access_point_status"] == "mapped"
-    assert not any(
-        "mapped-school" in pair
-        for pair in compiled.connections[["from_place", "to_place"]].itertuples(
-            index=False, name=None
-        )
-    )
+    assert "mapped-school" not in set(compiled.branch_meeting_connections["from_place_id"])
+    assert "mapped-school" not in set(compiled.branch_meeting_connections["to_place_id"])
     assert not any(
         connection.parent_role == "school-access-connection"
         for connection in compiled.spine_access_connections.itertuples()
@@ -529,7 +525,6 @@ def test_configured_strategic_destination_participates_in_the_network() -> None:
     compiled = compile_network(config(), source, FakeAgentRuntime())
 
     assert "strategic-college" in set(compiled.places["place_id"])
-    assert compiled.connections.empty
     assert "strategic-college" not in set(compiled.access_obligations["place_id"])
 
 

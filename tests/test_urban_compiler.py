@@ -400,7 +400,6 @@ def test_urban_portals_do_not_create_internal_peer_to_peer_routes() -> None:
         FakeAgentRuntime(),
     )
 
-    assert compiled.connections.empty
     assert compiled.spine_access_connections.empty
     assert compiled.urban_spines.empty
     assert compiled.urban_classification_unknowns.empty
