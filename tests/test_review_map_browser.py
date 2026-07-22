@@ -43,7 +43,7 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         card.click()
         assert card.get_attribute("aria-pressed") == "false"
 
-        access_card = page.locator('[data-feature-id^="spine-access-"]')
+        access_card = page.locator('[data-feature-id^="spine-access-"]').first
         access_card.press("Enter")
         assert access_card.get_attribute("aria-pressed") == "true"
         access_card.press("Enter")

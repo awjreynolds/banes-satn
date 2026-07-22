@@ -128,12 +128,24 @@ SATN_TEST_AGENT_MODEL=openai:gpt-5-mini \
 
 ## Network assembly
 
-Compiled Connections are recursively joined into network units. The compiler first
-bridges disconnected components using the nearest viable untried pair, then repairs
-unexplained degree-one Communities. Cross-boundary Gateways remain legitimate
-termini. A pair is attempted at most once, every successful iteration changes the
-graph, and the finite pair set guarantees termination. Unjoinable components produce
-visible Network Gaps; unjoined route crossings produce non-blocking Amber warnings.
+The expand phase now compiles a complete rural Backbone-Outward Assembly alongside
+the legacy Community Connection output. Every governed Strategic Spine is available
+as a seed before growth begins. The compiler repeatedly selects the globally nearest
+reachable unserved Community by bidirectional cycling-network cost, then adds that
+Community's canonical graph attachment to the served frontier. A hinterland Community
+can therefore inherit its root spine and branch through an already served Community
+instead of originating another direct spine route.
+
+Every Spine Access Connection records its root spine, owning branch, immediate parent,
+attachment depth, source edge IDs and deterministic rationale. Degree-one served
+Communities are valid leaves. Unreachable Communities become point-only Network Gaps,
+and meaningful Cross-Boundary Gateways attach to the same served frontier without
+becoming Community Access Obligations. Stable sorting and identifiers make topology
+independent of source feature order.
+
+The previous pairwise network remains temporarily available as the migration's
+comparison contract. It will cease to be authoritative only at the final expand–contract
+step, after cross-spine, School, urban and topography behavior is present and validated.
 
 ## Incremental and full compilation
 

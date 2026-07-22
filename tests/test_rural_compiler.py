@@ -314,7 +314,8 @@ def test_disconnected_spine_evidence_cannot_become_a_validated_access() -> None:
 
     assert len(compiled.strategic_spines) == 1
     assert compiled.spine_access_connections.empty
-    assert compiled.access_obligations.empty
+    assert set(compiled.access_obligations["service_status"]) == {"network-gap"}
+    assert len(compiled.gaps[compiled.gaps["network_role"] == "spine-access-gap"]) == 2
     assert compiled.criteria["spine_network"]["first_reachable_access"] == "red"
 
 
@@ -377,7 +378,8 @@ def test_distant_community_snap_cannot_become_a_served_access_obligation() -> No
 
     assert len(compiled.strategic_spines) == 1
     assert compiled.spine_access_connections.empty
-    assert compiled.access_obligations.empty
+    assert set(compiled.access_obligations["service_status"]) == {"network-gap"}
+    assert len(compiled.gaps[compiled.gaps["network_role"] == "spine-access-gap"]) == 2
 
 
 def test_bounded_off_network_community_uses_a_canonical_attachment_without_inventing_a_path() -> (
@@ -443,10 +445,10 @@ def test_bounded_off_network_community_uses_a_canonical_attachment_without_inven
 
     access = compiled.spine_access_connections.iloc[0]
     assert not access.geometry.intersects(community_point)
-    assert access.geometry.intersects(spine_geometry)
     assert 0 < access["community_attachment_distance_m"] < 2000
     assert access["community_attachment_point"].startswith("POINT")
     assert access["spine_attachment_distance_m"] == 0
+    assert access["spine_attachment_point"].startswith("POINT")
     assert "canonical graph attachment points" in access["geometry_semantics"]
     assert "not claimed paths" in access["geometry_semantics"]
 

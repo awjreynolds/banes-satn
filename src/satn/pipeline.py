@@ -90,6 +90,15 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for row in compiled.spine_access_connections.itertuples()
             ),
+            "spine_access_branches": sorted(
+                (
+                    row.branch_id,
+                    row.root_spine_id,
+                    row.connection_ids,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.spine_access_branches.itertuples()
+            ),
             "atm_mode": council.atm.mode if council.atm.enabled else "disabled",
         },
         sort_keys=True,
@@ -110,6 +119,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "strategic_spines": len(compiled.strategic_spines),
             "access_obligations": len(compiled.access_obligations),
             "spine_access_connections": len(compiled.spine_access_connections),
+            "spine_access_branches": len(compiled.spine_access_branches),
             "strategic_spine_records": [
                 {
                     "spine_id": row.spine_id,
@@ -123,7 +133,10 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 {
                     "obligation_id": row.obligation_id,
                     "community_id": row.community_id,
+                    "service_status": row.service_status,
                     "access_connection_id": row.access_connection_id,
+                    "root_spine_id": row.root_spine_id,
+                    "branch_id": row.branch_id,
                     "provenance": row.provenance,
                 }
                 for row in compiled.access_obligations.itertuples()
@@ -131,8 +144,17 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "spine_access_connection_records": [
                 {
                     "access_connection_id": row.access_connection_id,
+                    "place_id": row.place_id,
+                    "place_kind": row.place_kind,
                     "community_id": row.community_id,
                     "spine_id": row.spine_id,
+                    "root_spine_id": row.root_spine_id,
+                    "branch_id": row.branch_id,
+                    "parent_branch_id": row.parent_branch_id,
+                    "parent_role": row.parent_role,
+                    "parent_place_id": row.parent_place_id,
+                    "parent_access_connection_id": row.parent_access_connection_id,
+                    "attachment_depth": row.attachment_depth,
                     "community_attachment_node": row.community_attachment_node,
                     "community_attachment_distance_m": row.community_attachment_distance_m,
                     "community_attachment_point": row.community_attachment_point,
@@ -140,8 +162,19 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "spine_attachment_distance_m": row.spine_attachment_distance_m,
                     "spine_attachment_point": row.spine_attachment_point,
                     "source_ids": row.source_ids,
+                    "provenance": row.provenance,
                 }
                 for row in compiled.spine_access_connections.itertuples()
+            ],
+            "spine_access_branch_records": [
+                {
+                    "branch_id": row.branch_id,
+                    "root_spine_id": row.root_spine_id,
+                    "connection_ids": row.connection_ids,
+                    "place_ids": row.place_ids,
+                    "provenance": row.provenance,
+                }
+                for row in compiled.spine_access_branches.itertuples()
             ],
             "superseded_hypotheses": compiled.superseded_hypotheses,
             "cache": {"hits": compiled.cache_hits, "misses": compiled.cache_misses},
