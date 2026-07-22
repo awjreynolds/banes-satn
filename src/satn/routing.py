@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import ast
 import heapq
 import json
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import pairwise
 
@@ -15,6 +14,8 @@ import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString, Point
 from shapely.ops import linemerge, substring, unary_union
+
+from satn.tags import tag_values as _tag_values
 
 LOW_TRAFFIC = {
     "living_street",
@@ -757,23 +758,6 @@ def _unique_options(options: list[RouteOption | None]) -> list[RouteOption]:
 
 def _is_a_road(refs: object) -> bool:
     return any(str(ref).upper().startswith("A") for ref in refs)
-
-
-def _tag_values(value: object) -> list[str]:
-    if not _present(value):
-        return []
-    if isinstance(value, str) and value.startswith(("[", "(", "{")):
-        try:
-            parsed = ast.literal_eval(value)
-            if isinstance(parsed, (list, tuple, set)):
-                value = parsed
-        except (SyntaxError, ValueError):
-            pass
-    if isinstance(value, set):
-        return sorted(str(item) for item in value)
-    if isinstance(value, Iterable) and not isinstance(value, (str, bytes, dict)):
-        return [str(item) for item in value]
-    return [str(value)]
 
 
 def _truthy(value: object) -> bool:

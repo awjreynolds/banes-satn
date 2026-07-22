@@ -39,6 +39,8 @@ from satn.urban import derive_urban_structure
 from satn.urban_community import assess_urban_community_access, urban_community_gaps
 from satn.urban_school import assess_urban_school_access
 
+URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M = 100.0
+
 
 @dataclass
 class CompiledNetwork:
@@ -147,6 +149,8 @@ def compile_network(
         source["network"],
         low_traffic_areas,
         low_traffic_area_portals,
+        urban_spines,
+        road_graph,
         attachment_maximum_m=config.source.urban_scope_buffer_km * 1000.0,
     )
     if not urban_community_access.empty:
@@ -242,6 +246,10 @@ def compile_network(
         rural_communities,
         urban_communities,
         access_obligations,
+    )
+    urban_a_road_coverage, urban_a_road_coverage_status = _urban_a_road_spine_coverage(
+        context,
+        urban_spines,
     )
     network_units = _backbone_network_units(
         spine_access_branches,
@@ -339,6 +347,7 @@ def compile_network(
                 if urban_classification_status == UrbanClassificationStatus.EXPLICIT_UNKNOWN
                 else TrafficLight.RED
             ),
+            "urban_a_road_evidence_coverage": urban_a_road_coverage_status,
             "ncn_kept_as_permeability_evidence": TrafficLight.GREEN,
             "candidate_low_traffic_areas": (
                 TrafficLight.GREEN if not low_traffic_areas.empty else TrafficLight.GREY
@@ -456,6 +465,7 @@ def compile_network(
         compilation_diagnostics={
             **backbone.compilation_diagnostics,
             "community_coverage": community_coverage,
+            "urban_a_road_spine_coverage": urban_a_road_coverage,
         },
     )
 
@@ -697,6 +707,56 @@ def _backbone_network_units(
 
 def _context_frame(context: gpd.GeoDataFrame, feature_type: str) -> gpd.GeoDataFrame:
     return context[context["feature_type"] == feature_type].copy()
+
+
+def _urban_a_road_spine_coverage(
+    context: gpd.GeoDataFrame,
+    urban_spines: gpd.GeoDataFrame,
+) -> tuple[dict[str, int | float], TrafficLight]:
+    """Measure governed urban A-road evidence represented by official A-road spines."""
+    feature_type = context.get("feature_type", pd.Series("", index=context.index, dtype=object))
+    network_scope = context.get("network_scope", pd.Series("", index=context.index, dtype=object))
+    evidence = context[
+        feature_type.eq("a-road-spine") & network_scope.eq(NetworkScope.URBAN.value)
+    ].copy()
+    evidence = evidence[evidence.geometry.notna() & ~evidence.geometry.is_empty]
+    if evidence.empty:
+        return (
+            {
+                "source_alignment_tolerance_m": (URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M),
+                "evidence_segment_count": 0,
+                "total_km": 0.0,
+                "unmatched_km": 0.0,
+            },
+            TrafficLight.GREY,
+        )
+
+    source_geometry = evidence.to_crs(27700).geometry.union_all()
+    official_a_roads = urban_spines[
+        urban_spines.get(
+            "official_classification",
+            pd.Series("", index=urban_spines.index, dtype=object),
+        ).eq("a-road")
+    ]
+    unmatched_geometry = source_geometry
+    if not official_a_roads.empty:
+        represented_corridor = (
+            official_a_roads.to_crs(27700)
+            .geometry.buffer(URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M)
+            .union_all()
+        )
+        unmatched_geometry = source_geometry.difference(represented_corridor)
+    unmatched_length_m = float(unmatched_geometry.length)
+    diagnostics: dict[str, int | float] = {
+        "source_alignment_tolerance_m": URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M,
+        "evidence_segment_count": len(evidence),
+        "total_km": round(float(source_geometry.length) / 1000.0, 3),
+        "unmatched_km": round(unmatched_length_m / 1000.0, 3),
+    }
+    return (
+        diagnostics,
+        TrafficLight.GREEN if unmatched_length_m <= 0.01 else TrafficLight.RED,
+    )
 
 
 def _rural_communities(

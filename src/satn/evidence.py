@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import ast
 import hashlib
 from collections import Counter
-from collections.abc import Iterable
 
 import geopandas as gpd
 import networkx as nx
@@ -14,6 +12,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 from shapely.ops import linemerge
 
 from satn.models import NetworkScope
+from satn.tags import tag_values as _tag_values
 
 SUBSTANTIAL_CIRCULATION_BOUNDARY_M = 250.0
 
@@ -600,26 +599,6 @@ def _source_id(row: pd.Series, fallback: object) -> str:
         if _text(value):
             return str(value)
     return str(fallback)
-
-
-def _tag_values(value: object) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str) and value.startswith(("[", "(", "{")):
-        try:
-            parsed = ast.literal_eval(value)
-            if isinstance(parsed, (list, tuple, set)):
-                value = parsed
-        except (SyntaxError, ValueError):
-            pass
-    if isinstance(value, set):
-        return sorted(str(item) for item in value)
-    if isinstance(value, Iterable) and not isinstance(value, (str, bytes, dict)):
-        return [str(item) for item in value]
-    missing = pd.isna(value)
-    if not hasattr(missing, "__iter__") and bool(missing):
-        return []
-    return [str(value)] if str(value).strip() else []
 
 
 def _text(value: object) -> str | None:

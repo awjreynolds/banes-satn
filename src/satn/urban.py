@@ -16,7 +16,8 @@ from shapely.ops import polygonize, unary_union
 from satn.evidence import continuous_linework
 from satn.identifiers import coordinate_key as _coordinate
 from satn.models import OfficialRoadClassification, UrbanClassificationStatus
-from satn.routing import LOW_TRAFFIC, _tag_values
+from satn.routing import LOW_TRAFFIC
+from satn.tags import tag_values as _tag_values
 
 URBAN_PLACE_CLASSES = {"city", "town", "suburb", "quarter", "neighbourhood"}
 TOPOLOGY_PRECISION_GRID_M = 0.01

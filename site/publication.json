@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-500c8cc952ab",
+  "run_id": "run-38e001bb8fb5",
   "status": "reviewable",
   "network_model": "backbone-outward",
   "connection_count": 79,
@@ -59,6 +59,7 @@
     "urban_network": {
       "official_road_classification": "grey",
       "official_main_road_spines": "green",
+      "urban_a_road_evidence_coverage": "green",
       "ncn_kept_as_permeability_evidence": "green",
       "candidate_low_traffic_areas": "green",
       "stable_named_area_portals": "green",
@@ -135,6 +136,12 @@
       "identified_total": 117,
       "served_total": 117,
       "gaps_total": 0
+    },
+    "urban_a_road_spine_coverage": {
+      "source_alignment_tolerance_m": 100.0,
+      "evidence_segment_count": 1597,
+      "total_km": 84.487,
+      "unmatched_km": 0.0
     }
   },
   "comparison_role": "superseded-reference-not-ground-truth",

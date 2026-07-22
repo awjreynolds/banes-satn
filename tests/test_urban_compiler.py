@@ -413,6 +413,117 @@ def test_governed_urban_a_road_evidence_extends_the_urban_spine_extent() -> None
     assert urban.spines.iloc[0]["role"] == "urban-main-road-spine"
 
 
+def test_compiler_requires_every_urban_a_road_evidence_segment_to_have_an_official_spine() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": place_id,
+                "name": name,
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(x, 0),
+            }
+            for place_id, name, x in (
+                ("west", "West", 0),
+                ("east", "East", 100),
+            )
+        ],
+        crs=27700,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "urban-street",
+                "highway": "residential",
+                "geometry": LineString([(0, 0), (100, 0)]),
+            }
+        ],
+        crs=27700,
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": f"urban-a-{index}",
+                "feature_type": "a-road-spine",
+                "name": f"A{index}",
+                "category": "A-road strategic spine",
+                "source_id": f"osm-a-{index}",
+                "network_scope": "urban",
+                "geometry": geometry,
+            }
+            for index, geometry in enumerate(
+                (
+                    LineString([(0, 0), (1000, 0)]),
+                    LineString([(0, 500), (1000, 500)]),
+                ),
+                start=1,
+            )
+        ],
+        crs=27700,
+    )
+
+    def official_roads(*, include_second_a_road: bool) -> gpd.GeoDataFrame:
+        roads = [
+            ("official-a-1", "a-road", LineString([(0, 40), (1000, 40)])),
+            ("official-b-extra", "b-road", LineString([(0, 900), (1000, 900)])),
+        ]
+        if include_second_a_road:
+            roads.append(("official-a-2", "a-road", LineString([(0, 540), (1000, 540)])))
+        return gpd.GeoDataFrame(
+            [
+                {
+                    "official_feature_id": feature_id,
+                    "official_classification": classification,
+                    "source_id": "official-roads",
+                    "effective_date": "2026-01-01",
+                    "licence": "OGL v3.0",
+                    "content_fingerprint": "abc123",
+                    "geometry": geometry,
+                }
+                for feature_id, classification, geometry in roads
+            ],
+            crs=27700,
+        )
+
+    config = CouncilConfig.from_yaml(
+        Path(__file__).parents[1] / "examples" / "fixture" / "council.yaml"
+    )
+    source = {
+        "places": places,
+        "network": network,
+        "boundary": gpd.GeoDataFrame(geometry=[], crs=27700),
+        "context": context,
+    }
+    missing = compile_network(
+        config,
+        source | {"official_road_classification": official_roads(include_second_a_road=False)},
+        FakeAgentRuntime(),
+    )
+    represented = compile_network(
+        config,
+        source | {"official_road_classification": official_roads(include_second_a_road=True)},
+        FakeAgentRuntime(),
+    )
+
+    assert missing.criteria["urban_network"]["official_main_road_spines"] == "green"
+    assert missing.criteria["urban_network"]["urban_a_road_evidence_coverage"] == "red"
+    assert missing.compilation_diagnostics["urban_a_road_spine_coverage"] == {
+        "source_alignment_tolerance_m": 100.0,
+        "evidence_segment_count": 2,
+        "total_km": 2.0,
+        "unmatched_km": 1.0,
+    }
+    assert represented.criteria["urban_network"]["official_main_road_spines"] == "green"
+    assert represented.criteria["urban_network"]["urban_a_road_evidence_coverage"] == "green"
+    assert represented.compilation_diagnostics["urban_a_road_spine_coverage"] == {
+        "source_alignment_tolerance_m": 100.0,
+        "evidence_segment_count": 2,
+        "total_km": 2.0,
+        "unmatched_km": 0.0,
+    }
+    assert "b-road" in set(represented.urban_spines["official_classification"])
+
+
 def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic() -> None:
     places = gpd.GeoDataFrame(
         [
