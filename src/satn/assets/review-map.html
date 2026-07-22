@@ -15,11 +15,16 @@
 
       <fieldset id="layer-controls">
         <legend>Map layers</legend>
-        <label><input id="layer-strategic-spines" type="checkbox" checked> Strategic Spines</label>
-        <p class="layer-summary">A-road Strategic Spine — major engineering required</p>
-        <p class="layer-summary">Established NCN Strategic Spine</p>
-        <label><input id="layer-spine-access-connections" type="checkbox" checked> Spine Access Connections</label>
-        <p class="layer-summary">Spine Access Connection — routed Community attachment</p>
+        <label><input id="layer-strategic-spines" type="checkbox" checked aria-describedby="legend-strategic-spines"> Strategic Spines</label>
+        <div id="legend-strategic-spines" class="layer-summary" role="note">
+          <p>A-road Strategic Spine — major engineering required</p>
+          <p>Established NCN Strategic Spine</p>
+        </div>
+        <label><input id="layer-spine-access-connections" type="checkbox" checked aria-describedby="legend-spine-access-connections"> Spine Access Connections</label>
+        <div id="legend-spine-access-connections" class="layer-summary" role="note">
+          <p>Spine Access Connection — routed Community attachment</p>
+          <p>Community Access Obligation — served reference point</p>
+        </div>
         <label><input id="layer-a-road-spines" type="checkbox"> Raw A-road evidence</label>
         <label><input id="layer-community-connections" type="checkbox" checked> Community connections</label>
         <label><input id="layer-ncn-routes" type="checkbox"> Raw National Cycle Network evidence</label>

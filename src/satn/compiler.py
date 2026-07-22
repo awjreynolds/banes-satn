@@ -11,7 +11,8 @@ from itertools import combinations
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString, MultiPoint, Point
+from shapely.geometry import LineString, MultiLineString, MultiPoint
+from shapely.ops import unary_union
 
 from satn.agents import AgentRuntime, CompilationGate
 from satn.atm import choose_seeded_alignment
@@ -34,6 +35,7 @@ class CompiledNetwork:
     low_traffic_areas: gpd.GeoDataFrame
     crossing_warnings: gpd.GeoDataFrame
     strategic_spines: gpd.GeoDataFrame
+    access_obligations: gpd.GeoDataFrame
     spine_access_connections: gpd.GeoDataFrame
     a_road_spines: gpd.GeoDataFrame
     ncn_routes: gpd.GeoDataFrame
@@ -87,10 +89,11 @@ def compile_network(
     road_graph = RoadGraph(routable_network)
     gate = CompilationGate(runtime, config.compilation.agent)
     attachments = _network_place_attachments(places, participants, road_graph)
-    strategic_spines = _strategic_spines(context)
+    strategic_spines = _strategic_spines(context, places)
     spine_access_connections = _first_spine_access_connection(
         communities, strategic_spines, road_graph, attachments
     )
+    access_obligations = _access_obligations(communities, spine_access_connections)
     candidate_pairs = _local_adjacency_pairs(communities, road_graph, attachments)
     candidate_pairs.update(_gateway_pairs(gateways, communities, road_graph, attachments))
     accepted: list[dict[str, object]] = []
@@ -272,6 +275,7 @@ def compile_network(
         low_traffic_areas=low_traffic_areas,
         crossing_warnings=crossing_warnings,
         strategic_spines=strategic_spines,
+        access_obligations=access_obligations,
         spine_access_connections=spine_access_connections,
         a_road_spines=_context_frame(context, "a-road-spine"),
         ncn_routes=_context_frame(context, "ncn-route"),
@@ -672,8 +676,11 @@ def _stable_role_id(prefix: str, *parts: object) -> str:
     return f"{prefix}-{hashlib.sha256(value.encode()).hexdigest()[:12]}"
 
 
-def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Promote governed rural A-road and established NCN evidence into one role."""
+def _strategic_spines(
+    context: gpd.GeoDataFrame,
+    places: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    """Promote only rural portions of governed A-road and established NCN evidence."""
     columns = [
         "spine_id",
         "network_role",
@@ -687,12 +694,35 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         "provenance",
         "geometry",
     ]
+    candidates = context[
+        context["feature_type"].isin(["a-road-spine", "ncn-route"])
+    ].to_crs(27700)
+    place_class = places.get("place_class", pd.Series(index=places.index, dtype=object))
+    urban = places[
+        (places["kind"] == "community")
+        & pd.Series(place_class, index=places.index).isin(
+            ["suburb", "quarter", "neighbourhood"]
+        )
+    ]
+    urban_zone = (
+        urban.to_crs(27700).geometry.buffer(2000).union_all()
+        if not urban.empty
+        else None
+    )
     rows: list[dict[str, object]] = []
     for feature_type, spine_kind in (
         ("a-road-spine", "a-road"),
         ("ncn-route", "ncn"),
     ):
-        for _, evidence in _context_frame(context, feature_type).iterrows():
+        for _, evidence in candidates[candidates["feature_type"] == feature_type].iterrows():
+            geometry = (
+                evidence.geometry.difference(urban_zone)
+                if urban_zone is not None
+                else evidence.geometry
+            )
+            geometry = _linework(geometry)
+            if geometry is None or geometry.is_empty:
+                continue
             evidence_id = str(evidence.get("evidence_id", evidence.get("source_id", "")))
             source_id = str(evidence.get("source_id", evidence_id))
             is_a_road = spine_kind == "a-road"
@@ -728,24 +758,26 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         },
                         sort_keys=True,
                     ),
-                    "geometry": evidence.geometry,
+                    "geometry": geometry,
                 }
             )
-    return gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=context.crs)
+    frame = gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=27700)
+    return frame.to_crs(context.crs)
 
 
-def _spine_attachment_points(geometry: object) -> list[Point]:
+def _linework(geometry: object) -> object | None:
     if geometry is None or geometry.is_empty:
-        return []
-    points: list[Point] = [geometry.representative_point()]
-    if isinstance(geometry, LineString):
-        points.extend((Point(geometry.coords[0]), Point(geometry.coords[-1])))
-    elif hasattr(geometry, "geoms"):
-        for part in geometry.geoms:
-            if isinstance(part, LineString):
-                points.extend((Point(part.coords[0]), Point(part.coords[-1])))
-    unique = {(point.x, point.y): point for point in points}
-    return list(unique.values())
+        return None
+    if isinstance(geometry, (LineString, MultiLineString)):
+        return geometry
+    if hasattr(geometry, "geoms"):
+        lines = [
+            part
+            for part in geometry.geoms
+            if isinstance(part, (LineString, MultiLineString)) and not part.is_empty
+        ]
+        return unary_union(lines) if lines else None
+    return None
 
 
 def _first_spine_access_connection(
@@ -773,63 +805,125 @@ def _first_spine_access_connection(
         "criterion_bidirectional",
         "geometry",
     ]
-    candidates: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    spine_rows = [spine for _, spine in strategic_spines.sort_values("spine_id").iterrows()]
+    spine_attachments = {
+        str(spine["spine_id"]): graph.nodes_on_geometry(spine.geometry)
+        for spine in spine_rows
+    }
+    pair_candidates: list[
+        tuple[tuple[object, ...], pd.Series, pd.Series, list[tuple[str, float]]]
+    ] = []
     for _, community in communities.sort_values("place_id").iterrows():
         community_id = str(community["place_id"])
-        for _, spine in strategic_spines.sort_values("spine_id").iterrows():
-            spine_attachments = [
-                graph.nearest_node(point) for point in _spine_attachment_points(spine.geometry)
-            ]
-            for start_node, start_snap in attachments[community_id]:
-                for end_node, end_snap in spine_attachments:
-                    option = graph.option(start_node, end_node, "direct")
-                    if option is None or not option.bidirectional:
-                        continue
-                    total_distance_km = option.length_km + (start_snap + end_snap) / 1000
-                    source_ids = sorted(
-                        {
-                            *option.edge_ids,
-                            str(spine["evidence_id"]),
-                            str(spine["source_id"]),
-                        }
-                    )
-                    access_id = _stable_role_id("spine-access", community_id, spine["spine_id"])
-                    row = {
-                        "access_connection_id": access_id,
-                        "community_id": community_id,
-                        "community_name": community.get("name"),
-                        "spine_id": spine["spine_id"],
-                        "spine_name": spine.get("name"),
-                        "spine_kind": spine["spine_kind"],
-                        "network_role": "spine-access-connection",
-                        "distance_km": round(total_distance_km, 3),
-                        "status": "validated",
-                        "intervention_archetype": (
-                            "community link to a high-quality Strategic Spine"
-                        ),
-                        "selection_reason": (
-                            "Nearest reachable governed Strategic Spine attachment selected "
-                            "over an arbitrary Community pair."
-                        ),
-                        "geometry_semantics": (
-                            "routed OSM network alignment; indicative, not final design"
-                        ),
-                        "source_ids": json.dumps(source_ids),
-                        "criterion_continuity": "green",
-                        "criterion_bidirectional": "green",
-                        "geometry": option.geometry,
-                    }
-                    rank = (
-                        round(total_distance_km, 9),
-                        0 if spine["spine_kind"] == "a-road" else 1,
-                        community_id,
-                        str(spine["spine_id"]),
-                        start_node,
-                        end_node,
-                    )
-                    candidates.append((rank, row))
-    rows = [min(candidates, key=lambda candidate: candidate[0])[1]] if candidates else []
-    return gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=communities.crs)
+        for spine in spine_rows:
+            targets = spine_attachments[str(spine["spine_id"])]
+            distance_m = graph.network_distance(attachments[community_id], targets)
+            if distance_m == float("inf"):
+                continue
+            rank = (
+                round(distance_m, 6),
+                0 if spine["spine_kind"] == "a-road" else 1,
+                community_id,
+                str(spine["spine_id"]),
+            )
+            pair_candidates.append((rank, community, spine, targets))
+
+    for _, community, spine, targets in sorted(
+        pair_candidates, key=lambda candidate: candidate[0]
+    ):
+        community_id = str(community["place_id"])
+        routes: list[tuple[tuple[object, ...], RouteOption, float]] = []
+        for start_node, start_snap in attachments[community_id]:
+            for end_node, end_snap in targets:
+                option = graph.option(start_node, end_node, "direct")
+                if option is None or not option.bidirectional:
+                    continue
+                total_distance_km = option.length_km + (start_snap + end_snap) / 1000
+                route_rank = (
+                    round(total_distance_km, 9),
+                    start_node,
+                    end_node,
+                )
+                routes.append((route_rank, option, total_distance_km))
+        if not routes:
+            continue
+        _, option, total_distance_km = min(routes, key=lambda candidate: candidate[0])
+        source_ids = sorted(
+            {
+                *option.edge_ids,
+                str(spine["evidence_id"]),
+                str(spine["source_id"]),
+            }
+        )
+        row = {
+            "access_connection_id": _stable_role_id(
+                "spine-access", community_id, spine["spine_id"]
+            ),
+            "community_id": community_id,
+            "community_name": community.get("name"),
+            "spine_id": spine["spine_id"],
+            "spine_name": spine.get("name"),
+            "spine_kind": spine["spine_kind"],
+            "network_role": "spine-access-connection",
+            "distance_km": round(total_distance_km, 3),
+            "status": "validated",
+            "intervention_archetype": "community link to a high-quality Strategic Spine",
+            "selection_reason": (
+                "Nearest reachable governed Strategic Spine attachment selected over an "
+                "arbitrary Community pair."
+            ),
+            "geometry_semantics": (
+                "routed OSM network alignment; indicative, not final design"
+            ),
+            "source_ids": json.dumps(source_ids),
+            "criterion_continuity": "green",
+            "criterion_bidirectional": "green",
+            "geometry": option.geometry,
+        }
+        return gpd.GeoDataFrame(
+            [row], columns=columns, geometry="geometry", crs=communities.crs
+        )
+    return gpd.GeoDataFrame([], columns=columns, geometry="geometry", crs=communities.crs)
+
+
+def _access_obligations(
+    communities: gpd.GeoDataFrame,
+    spine_access_connections: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    columns = [
+        "obligation_id",
+        "community_id",
+        "name",
+        "network_role",
+        "service_status",
+        "access_connection_id",
+        "spine_id",
+        "provenance",
+        "geometry",
+    ]
+    if spine_access_connections.empty:
+        return gpd.GeoDataFrame([], columns=columns, geometry="geometry", crs=communities.crs)
+    access = spine_access_connections.iloc[0]
+    community = communities[communities["place_id"] == access["community_id"]].iloc[0]
+    obligation_id = _stable_role_id("access-obligation", community["place_id"])
+    row = {
+        "obligation_id": obligation_id,
+        "community_id": community["place_id"],
+        "name": community.get("name"),
+        "network_role": "community-access-obligation",
+        "service_status": "served",
+        "access_connection_id": access["access_connection_id"],
+        "spine_id": access["spine_id"],
+        "provenance": json.dumps(
+            {
+                "community_id": community["place_id"],
+                "access_connection_id": access["access_connection_id"],
+            },
+            sort_keys=True,
+        ),
+        "geometry": community.geometry,
+    }
+    return gpd.GeoDataFrame([row], columns=columns, geometry="geometry", crs=communities.crs)
 
 
 def _a_road_assumptions_complete(strategic_spines: gpd.GeoDataFrame) -> bool:

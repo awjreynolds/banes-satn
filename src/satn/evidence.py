@@ -76,9 +76,8 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
         if not isinstance(geometry, (LineString, MultiLineString)):
             continue
         network_tags = {value.lower() for value in _tag_values(feature.get("network"))}
-        route_tags = {value.lower() for value in _tag_values(feature.get("route"))}
         route_type = (_text(feature.get("RouteType")) or "").lower()
-        if "ncn" not in network_tags and "bicycle" not in route_tags and route_type != "ncn":
+        if "ncn" not in network_tags and route_type != "ncn":
             continue
         source_id = _source_id(feature, index)
         ref = " / ".join(_tag_values(feature.get("ref")) or _tag_values(feature.get("RouteNo")))

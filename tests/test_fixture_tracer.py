@@ -59,6 +59,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert list(connections["classification"]) == ["low-traffic"]
     assert {
         "strategic_spines",
+        "access_obligations",
         "spine_access_connections",
         "a_road_spines",
         "ncn_routes",
@@ -83,12 +84,37 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert spine_access.iloc[0]["network_role"] == "spine-access-connection"
     assert json.loads(spine_access.iloc[0]["source_ids"])
     assert result.metadata["strategic_spines"] == 2
+    assert result.metadata["access_obligations"] == 1
     assert result.metadata["spine_access_connections"] == 1
+    obligation = gpd.read_file(result.artifacts["geopackage"], layer="access_obligations")
+    assert list(obligation["network_role"]) == ["community-access-obligation"]
+    assert obligation.iloc[0]["access_connection_id"] == spine_access.iloc[0][
+        "access_connection_id"
+    ]
+    assert result.metadata["strategic_spine_records"][0]["spine_id"] in set(
+        strategic_spines["spine_id"]
+    )
+    assert json.loads(result.metadata["strategic_spine_records"][0]["provenance"])[
+        "evidence_id"
+    ]
+    assert result.metadata["spine_access_connection_records"][0][
+        "access_connection_id"
+    ] in set(spine_access["access_connection_id"])
+    assert json.loads(
+        result.metadata["spine_access_connection_records"][0]["source_ids"]
+    )
+    assert result.metadata["access_obligation_records"][0]["obligation_id"] == obligation.iloc[
+        0
+    ]["obligation_id"]
+    assert json.loads(result.metadata["access_obligation_records"][0]["provenance"])[
+        "community_id"
+    ] == obligation.iloc[0]["community_id"]
     geojson = json.loads(result.artifacts["geojson"].read_text())
     assert geojson["disclaimer"] == DISCLAIMER
     geojson_ids = {feature["id"] for feature in geojson["features"]}
     assert set(strategic_spines["spine_id"]) <= geojson_ids
     assert set(spine_access["access_connection_id"]) <= geojson_ids
+    assert set(obligation["obligation_id"]) <= geojson_ids
     assert result.artifacts["pdf"].read_bytes().startswith(b"%PDF")
     html = result.artifacts["review_map"].read_text()
     assert DISCLAIMER in html
@@ -101,6 +127,8 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert "A-road Strategic Spine — major engineering required" in html
     assert "Established NCN Strategic Spine" in html
     assert "Spine Access Connection" in html
+    assert 'id="legend-strategic-spines"' in html
+    assert 'id="legend-spine-access-connections"' in html
     assert 'id="layer-schools"' in html
     assert 'id="layer-retail-centres"' in html
     assert 'id="layer-healthcare"' in html

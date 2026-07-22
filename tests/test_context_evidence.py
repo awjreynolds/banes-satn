@@ -27,7 +27,14 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
                 "route": "bicycle",
                 "ref": "24",
                 "geometry": LineString([(0, 0), (0.02, 0)]),
-            }
+            },
+            {
+                "osmid": "relation-local",
+                "network": "rcn",
+                "route": "bicycle",
+                "ref": "Local 4",
+                "geometry": LineString([(0, 0.01), (0.02, 0.01)]),
+            },
         ],
         crs=4326,
     )
@@ -80,6 +87,9 @@ def test_derives_a_road_ncn_and_quiet_optional_destination_layers() -> None:
     retail = context[context["feature_type"] == "retail-centre"].iloc[0]
     assert retail["name"] == "High Street retail centre"
     assert retail["feature_count"] == 3
+    assert list(context.loc[context["feature_type"] == "ncn-route", "source_id"]) == [
+        "relation-24"
+    ]
 
 
 def test_ncn_evidence_informs_alignment_without_overriding_an_a_road_spine() -> None:
