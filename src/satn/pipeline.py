@@ -75,6 +75,16 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 )
                 for evidence_id in frame.get("evidence_id", [])
             ),
+            "school_street_assessments": sorted(
+                (
+                    row.assessment_id,
+                    row.assessment_status,
+                    row.rationale,
+                    row.evidence,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.school_street_assessments.itertuples()
+            ),
             "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
             "urban_classification_status": compiled.urban_classification_status,
             "urban_spines": sorted(
@@ -261,6 +271,32 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "school_access_obligations": int(
                 (compiled.access_obligations["obligation_kind"] == "school").sum()
             ),
+            "school_street_assessments": len(
+                compiled.school_street_assessments
+            ),
+            "school_street_assessment_records": [
+                {
+                    "assessment_id": row.assessment_id,
+                    "school_id": row.school_id,
+                    "school_name": row.school_name,
+                    "assessment_status": row.assessment_status,
+                    "assessment_label": row.assessment_label,
+                    "rationale": row.rationale,
+                    "qualification": row.qualification,
+                    "access_point_status": row.access_point_status,
+                    "adjoining_road_classification": (
+                        row.adjoining_road_classification
+                    ),
+                    "bus_access": row.bus_access,
+                    "essential_access": row.essential_access,
+                    "alternative_through_route": row.alternative_through_route,
+                    "displacement_risk": row.displacement_risk,
+                    "missing_evidence": row.missing_evidence,
+                    "evidence": row.evidence,
+                    "source_ids": row.source_ids,
+                }
+                for row in compiled.school_street_assessments.itertuples()
+            ],
             "spine_access_connections": len(compiled.spine_access_connections),
             "spine_access_branches": len(compiled.spine_access_branches),
             "branch_meeting_connections": len(compiled.branch_meeting_connections),

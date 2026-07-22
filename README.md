@@ -127,6 +127,13 @@ record cites the candidate area, portal and supporting source identifiers; it ne
 draws a preferred route through residential streets. Unresolved entrances, missing
 main-road portals and discontinuous fabric remain visible findings.
 
+Every in-scope School also receives a separate preliminary School Street Candidate
+Assessment. Green/Promising, Amber/Needs Investigation, Red/Unlikely and Grey/Not
+Evaluated markers summarise entrance evidence, adjoining official road class, bus and
+essential access, alternative through-route evidence and displacement risk. Unknown
+inputs remain explicit; an inferred entrance cannot produce Green or Red. These are
+qualitative investigation prompts, never scheme feasibility or calibrated probability.
+
 Configure a council-governed classification dataset as follows. The source must be
 line geometry with an `official_classification`, `road_classification` or
 `classification` field; common A, B, C/Classified Unnumbered and Unclassified values

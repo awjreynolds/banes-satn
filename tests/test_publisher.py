@@ -211,6 +211,11 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
         for feature in network["features"]
         if feature["properties"]["feature_type"] == "school-access-connection"
     ]
+    school_street_assessments = [
+        feature
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "school-street-assessment"
+    ]
 
     assert network["urban_classification_status"] == "explicit-unknown"
     assert run["urban_classification_status"] == "explicit-unknown"
@@ -268,6 +273,14 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     )
     assert json.loads(urban_school["properties"]["fabric_source_ids"])
     assert not school_connections
+    assert len(school_street_assessments) == 1
+    school_street = school_street_assessments[0]
+    assert school_street["id"].startswith("school-street-assessment-")
+    assert school_street["properties"]["assessment_status"] == "red"
+    assert school_street["properties"]["assessment_label"] == "Unlikely"
+    assert "not scheme feasibility or calibrated probability" in school_street[
+        "properties"
+    ]["qualification"]
     assert all(
         "school-fixture"
         not in {
@@ -286,6 +299,7 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
         "urban_classification_unknowns",
         "candidate_low_traffic_areas",
         "low_traffic_area_portals",
+        "school_street_assessments",
     } <= published_layers
     published_portals = gpd.read_file(
         result.artifacts["geopackage"], layer="low_traffic_area_portals"
@@ -302,11 +316,21 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert published_urban_school["geometry_semantics"] == (
         "area-permeability-no-internal-centreline"
     )
+    published_school_streets = gpd.read_file(
+        result.artifacts["geopackage"], layer="school_street_assessments"
+    )
+    assert list(published_school_streets["assessment_id"]) == [school_street["id"]]
+    assert list(published_school_streets["rationale"]) == [
+        school_street["properties"]["rationale"]
+    ]
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
     assert "Urban Main-Road Spines" in review_html
     assert "not automatically a Circulation Boundary" in review_html
     assert "not an existing LTN" in review_html
     assert "no preferred residential cycling centreline" in review_html
+    assert "School Street Candidate Assessments" in review_html
+    assert "Green — Promising" in review_html
+    assert "Grey — Not Evaluated" in review_html
     assert '"network_scope"], "urban"' in review_js
     assert '"low-traffic-area-portal"].includes' in review_js

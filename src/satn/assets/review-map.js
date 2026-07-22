@@ -5,7 +5,7 @@
   const places = data.places;
   const state = { pinned: null, active: null };
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "a-road-spines", "urban-ncn-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "a-road-spines", "urban-ncn-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -66,7 +66,7 @@
     const isConnection = ["connection", "gap", "spine-access-connection", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector"].includes(properties.feature_type);
     heading.textContent = isConnection
       ? `${value(properties.from_place_name, properties.school_name || properties.place_name || properties.community_name || properties.from_root_spine_name || properties.from_place)} → ${value(properties.to_place_name, properties.parent_target_name || properties.spine_name || properties.to_root_spine_name || properties.to_place)}`
-      : value(properties.name, properties.feature_type.replaceAll("-", " "));
+      : value(properties.name, properties.school_name || properties.feature_type.replaceAll("-", " "));
     const list = document.createElement("dl");
     addDefinition(list, "Stable ID", id);
     addDefinition(list, "Layer", properties.feature_type.replaceAll("-", " "));
@@ -113,6 +113,19 @@
           addDefinition(list, "Finding", value(properties.finding, "None"));
           addDefinition(list, "Geometry meaning", value(properties.geometry_semantics));
         }
+      }
+      if (properties.feature_type === "school-street-assessment") {
+        addDefinition(list, "Assessment", `${value(properties.assessment_status)} — ${value(properties.assessment_label)}`);
+        addDefinition(list, "Rationale", value(properties.rationale));
+        addDefinition(list, "Qualification", value(properties.qualification));
+        addDefinition(list, "Entrance evidence", value(properties.access_point_status));
+        addDefinition(list, "Adjoining road", value(properties.adjoining_road_classification));
+        addDefinition(list, "Bus access", value(properties.bus_access));
+        addDefinition(list, "Essential access", value(properties.essential_access));
+        addDefinition(list, "Alternative through route", value(properties.alternative_through_route));
+        addDefinition(list, "Displacement risk", value(properties.displacement_risk));
+        addDefinition(list, "Missing evidence", parseList(properties.missing_evidence).join(", ") || "None");
+        addDefinition(list, "Source identifiers", parseList(properties.source_ids).join(", ") || "None");
       }
       panel.append(heading, list);
       setHighlight(null);
@@ -173,7 +186,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type))
+      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -183,9 +196,12 @@
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
         const isSchoolObligation = feature.properties.feature_type === "school-access-obligation";
+        const isSchoolStreet = feature.properties.feature_type === "school-street-assessment";
         const isAreaEvidence = ["low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type);
         title.textContent = isAreaEvidence
           ? value(feature.properties.name, "Unnamed Candidate Low-Traffic Area evidence")
+          : isSchoolStreet
+          ? value(feature.properties.school_name, "Unnamed School Street Candidate Assessment")
           : isSchoolObligation
           ? value(feature.properties.name, "Unnamed School")
           : `${value(feature.properties.from_place_name, feature.properties.school_name || feature.properties.place_name || feature.properties.community_name || feature.properties.from_root_spine_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.parent_target_name || feature.properties.spine_name || feature.properties.to_root_spine_name || feature.properties.to_place)}`;
@@ -194,6 +210,8 @@
           ? `candidate · ${value(feature.properties.portal_count, 0)} named portals`
           : feature.properties.feature_type === "low-traffic-area-portal"
           ? `portal · ${value(feature.properties.boundary_kind)}`
+          : isSchoolStreet
+          ? `${value(feature.properties.assessment_status)} · ${value(feature.properties.assessment_label)}`
           : isSchoolObligation
           ? `${value(feature.properties.service_status)} · ${value(feature.properties.access_point_status)} access point`
           : `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
@@ -231,6 +249,7 @@
       "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-portals"],
       "layer-places": ["places"],
       "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-gaps"],
+      "layer-school-streets": ["school-street-assessments"],
       "layer-retail-centres": ["retail-centres"],
       "layer-healthcare": ["healthcare"],
       "layer-gaps-warnings": warningLayers,
@@ -291,6 +310,7 @@
     map.addLayer({ id: "access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "access-obligation"], paint: { "circle-color": "#16a085", "circle-radius": 8, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "service_status"], "served", "#1e8449", "served-provisional", "#f39c12", "network-gap", ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "#c0392b"], "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
+    map.addLayer({ id: "school-street-assessments", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-street-assessment"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "assessment_status"], "green", "#1e8449", "amber", "#f39c12", "red", "#c0392b", "#7f8c8d"], "circle-radius": 12, "circle-stroke-color": "white", "circle-stroke-width": 3 } });
     map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
     map.addLayer({ id: "urban-ncn-evidence", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "ncn-route"], ["==", ["get", "network_scope"], "urban"]], layout: { visibility: "none" }, paint: { "line-color": "#2471a3", "line-width": 4, "line-dasharray": [2, 1] } });
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
@@ -332,6 +352,6 @@
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +
     `${counts.cross_spine_connectors || 0} Cross-Spine Connectors · ${counts.urban_spines || 0} Urban Main-Road Spines · ${counts.candidate_low_traffic_areas || 0} Candidate Low-Traffic Areas · ${counts.low_traffic_area_portals || 0} area portals · ` +
-    `${counts.school_access_obligations || 0} School Access Obligations · ${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
+    `${counts.school_access_obligations || 0} School Access Obligations · ${counts.school_street_assessments || 0} School Street Candidate Assessments · ${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
     `${counts.healthcare || 0} healthcare sites`;
 })();

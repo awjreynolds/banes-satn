@@ -83,6 +83,10 @@ def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
         compiled.strategic_spines.to_file(path, layer="strategic_spines", driver="GPKG")
     if not compiled.access_obligations.empty:
         compiled.access_obligations.to_file(path, layer="access_obligations", driver="GPKG")
+    if not compiled.school_street_assessments.empty:
+        compiled.school_street_assessments.to_file(
+            path, layer="school_street_assessments", driver="GPKG"
+        )
     if not compiled.spine_access_connections.empty:
         compiled.spine_access_connections.to_file(
             path, layer="spine_access_connections", driver="GPKG"
@@ -165,6 +169,7 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
     preferred = {
         "access-obligation": "obligation_id",
         "school-access-obligation": "obligation_id",
+        "school-street-assessment": "assessment_id",
         "spine-access-connection": "access_connection_id",
         "school-access-connection": "access_connection_id",
         "spine-access-branch": "branch_id",
@@ -263,6 +268,10 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
             + _features(compiled.a_road_spines, "a-road-spine")
             + _features(compiled.ncn_routes, "ncn-route")
             + _features(compiled.schools, "school")
+            + _features(
+                compiled.school_street_assessments,
+                "school-street-assessment",
+            )
             + _features(compiled.retail_centres, "retail-centre")
             + _features(compiled.healthcare, "healthcare")
             + (
@@ -297,6 +306,7 @@ def _layer_counts(compiled: CompiledNetwork) -> dict[str, int]:
         "candidate_low_traffic_areas": len(compiled.low_traffic_areas),
         "low_traffic_area_portals": len(compiled.low_traffic_area_portals),
         "schools": len(compiled.schools),
+        "school_street_assessments": len(compiled.school_street_assessments),
         "retail_centres": len(compiled.retail_centres),
         "healthcare": len(compiled.healthcare),
     }
@@ -928,6 +938,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "candidate_low_traffic_areas": ("low-traffic-area",),
         "low_traffic_area_portals": ("low-traffic-area-portal",),
         "schools": ("school",),
+        "school_street_assessments": ("school-street-assessment",),
         "retail_centres": ("retail-centre",),
         "healthcare": ("healthcare",),
     }
@@ -958,6 +969,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "layer-urban-spines",
         "layer-low-traffic-areas",
         "layer-schools",
+        "layer-school-streets",
         "layer-retail-centres",
         "layer-healthcare",
         "layer-atm",

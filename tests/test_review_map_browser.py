@@ -95,6 +95,25 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         assert "Candidate area" in school_details.inner_text()
         assert "Main-road portal" in school_details.inner_text()
         assert "Geometry meaning" in school_details.inner_text()
+        school_street_legend = page.locator("#legend-school-streets")
+        assert school_street_legend.is_hidden()
+        page.locator("#layer-school-streets").check()
+        assert school_street_legend.is_visible()
+        assert "Green — Promising" in school_street_legend.inner_text()
+        assert "Amber — Needs Investigation" in school_street_legend.inner_text()
+        assert "Red — Unlikely" in school_street_legend.inner_text()
+        assert "Grey — Not Evaluated" in school_street_legend.inner_text()
+        school_street_card = page.locator(
+            '[data-feature-id^="school-street-assessment-"]'
+        )
+        school_street_card.click()
+        assessment_details = page.locator("#feature-details")
+        assert "Assessment" in assessment_details.inner_text()
+        assert "Bus access" in assessment_details.inner_text()
+        assert "Displacement risk" in assessment_details.inner_text()
+        assert "not scheme feasibility or calibrated probability" in (
+            assessment_details.inner_text()
+        )
         school_connection = page.locator(
             '[data-feature-id^="spine-access-"]', has_text="Fixture School"
         )
