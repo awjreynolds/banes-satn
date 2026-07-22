@@ -7,10 +7,16 @@ source:
   snapshot_id: fixture-001
 compilation:
   max_connection_km: 15
+  topography:
+    gentle_max_pct: 3
+    noticeable_max_pct: 5
+    steep_max_pct: 8
+    very_steep_max_pct: 12.5
+    maximum_sample_spacing_m: 250
+    minimum_sustained_spacing_m: 10
   agent:
     provider: fake
 publication:
   output_dir: work/output
   title: Tiny Council SATN Review
   pdf_page_size: A3
-

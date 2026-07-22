@@ -133,6 +133,22 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
         record["connection_id"] for record in agents["records"]
     }
     assert run["connection_count"] == len(geojson_ids)
+    profiles = gpd.read_file(result.artifacts["geopackage"], layer="topography_profiles")
+    profile_features = [
+        feature
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "topography-profile"
+    ]
+    assert {feature["id"] for feature in profile_features} == set(profiles["profile_id"])
+    assert set(profiles["evidence_status"]) == {"available", "evidence-unavailable"}
+    unavailable_count = int(
+        (profiles["evidence_status"] == "evidence-unavailable").sum()
+    )
+    assert run["topography"] == {
+        "profile_count": len(profiles),
+        "gradient_section_count": run["layer_counts"]["gradient_sections"],
+        "evidence_unavailable_count": unavailable_count,
+    }
     assert run["criteria"] == {
         section: {criterion: status for criterion, status in values.items()}
         for section, values in result.criteria.items()

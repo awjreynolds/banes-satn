@@ -119,6 +119,37 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         )
         school_connection.click()
         assert "Fixture School" in page.locator("#details-heading").inner_text()
+        gradient_legend = page.locator("#legend-gradient-sections")
+        assert gradient_legend.is_hidden()
+        page.locator("#layer-gradient-sections").check()
+        assert gradient_legend.is_visible()
+        gradient_legend_text = gradient_legend.inner_text()
+        assert all(
+            label in gradient_legend_text
+            for label in ("Gentle", "Noticeable", "Steep", "Very Steep", "Severe")
+        )
+        assert "not Criterion Status or route rejection" in gradient_legend_text
+        topography_card = page.locator(
+            '[data-feature-id^="topography-profile-"]',
+            has_text="evidence-unavailable",
+        ).first
+        topography_card.press("Enter")
+        topography_details = page.locator("#feature-details").inner_text()
+        assert "Topography Profile" in topography_details
+        assert "Elevation Evidence" in topography_details
+        assert "evidence-unavailable" in topography_details
+        gradient_card = page.locator(
+            '[data-feature-id^="gradient-section-"]'
+        ).first
+        gradient_card.press("Enter")
+        gradient_details = page.locator("#feature-details").inner_text()
+        assert "Gradient band" in gradient_details
+        assert "Uphill direction" in gradient_details
+        assert "Sustained-window rationale" in gradient_details
+        assert "Generated edge" in gradient_details
+        page.locator("#criteria-topography").check()
+        assert page.locator("#criteria-heading").inner_text() == "topography criteria"
+        assert "elevation evidence coverage" in page.locator("#criteria-list").inner_text()
         atm_control = page.locator("#layer-atm")
         assert atm_control.is_disabled()
         local_atm = tmp_path / "local-atm.geojson"

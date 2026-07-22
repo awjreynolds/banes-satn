@@ -5,7 +5,7 @@
   const places = data.places;
   const state = { pinned: null, active: null };
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "a-road-spines", "urban-ncn-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "a-road-spines", "urban-ncn-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -55,6 +55,22 @@
     }
   }
 
+  function addTopographyDetails(list, properties) {
+    const profileId = properties.topography_profile_id || properties.profile_id;
+    if (!profileId) return;
+    addDefinition(list, "Topography Profile", profileId);
+    addDefinition(list, "Elevation Evidence", value(properties.topography_evidence_status, properties.evidence_status));
+    addDefinition(list, "Elevation rationale", value(properties.topography_evidence_rationale, properties.evidence_rationale));
+    addDefinition(list, "Measured distance", `${value(properties.topography_distance_m, properties.distance_m)} m`);
+    addDefinition(list, "Forward cumulative ascent", `${value(properties.forward_ascent_m)} m`);
+    addDefinition(list, "Forward cumulative descent", `${value(properties.forward_descent_m)} m`);
+    addDefinition(list, "Reverse cumulative ascent", `${value(properties.reverse_ascent_m)} m`);
+    addDefinition(list, "Reverse cumulative descent", `${value(properties.reverse_descent_m)} m`);
+    addDefinition(list, "Steepest sustained gradient", `${value(properties.steepest_sustained_gradient_pct)}%`);
+    addDefinition(list, "Sustained gradient rationale", value(properties.steepest_sustained_gradient_rationale));
+    addDefinition(list, "Gradient Sections", parseList(properties.gradient_section_ids).join(", ") || "None");
+  }
+
   function showDetails(id) {
     const feature = network.features.find((candidate) => candidate.id === id);
     if (!feature) return;
@@ -71,6 +87,20 @@
     addDefinition(list, "Stable ID", id);
     addDefinition(list, "Layer", properties.feature_type.replaceAll("-", " "));
     if (!isConnection) {
+      if (properties.feature_type === "gradient-section") {
+        addDefinition(list, "Gradient band", value(properties.gradient_band));
+        addDefinition(list, "Length", `${value(properties.length_m)} m`);
+        addDefinition(list, "Forward gradient", `${value(properties.forward_gradient_pct)}%`);
+        addDefinition(list, "Uphill direction", value(properties.uphill_direction));
+        addDefinition(list, "Sustained", value(properties.sustained));
+        addDefinition(list, "Sustained-window rationale", value(properties.sustained_rationale));
+        addDefinition(list, "Topography Profile", value(properties.profile_id));
+        addDefinition(list, "Generated edge", `${value(properties.edge_type)} · ${value(properties.edge_id)}`);
+        addDefinition(list, "Elevation Evidence", parseList(properties.elevation_evidence_ids).join(", ") || "None");
+        panel.append(heading, list);
+        setHighlight(id);
+        return;
+      }
       addDefinition(list, "Category", value(properties.category));
       addDefinition(list, "Network role", value(properties.network_role));
       addDefinition(list, "Intervention assumption", value(properties.intervention_assumption));
@@ -127,6 +157,7 @@
         addDefinition(list, "Missing evidence", parseList(properties.missing_evidence).join(", ") || "None");
         addDefinition(list, "Source identifiers", parseList(properties.source_ids).join(", ") || "None");
       }
+      addTopographyDetails(list, properties);
       panel.append(heading, list);
       setHighlight(null);
       return;
@@ -142,6 +173,7 @@
     addDefinition(list, "Distance criterion", value(properties.criterion_distance));
     addDefinition(list, "Rationale", value(properties.selection_reason));
     addDefinition(list, "Agent gate", value(properties.agent_outcome));
+    addTopographyDetails(list, properties);
     if (["school-access-connection", "school-access-gap"].includes(properties.feature_type)) {
       addDefinition(list, "School kind", value(properties.school_kind));
       addDefinition(list, "School access point", value(properties.access_point_status));
@@ -186,7 +218,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type))
+      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal", "topography-profile", "gradient-section"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -198,12 +230,18 @@
         const isSchoolObligation = feature.properties.feature_type === "school-access-obligation";
         const isSchoolStreet = feature.properties.feature_type === "school-street-assessment";
         const isAreaEvidence = ["low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type);
+        const isTopographyProfile = feature.properties.feature_type === "topography-profile";
+        const isGradientSection = feature.properties.feature_type === "gradient-section";
         title.textContent = isAreaEvidence
           ? value(feature.properties.name, "Unnamed Candidate Low-Traffic Area evidence")
           : isSchoolStreet
           ? value(feature.properties.school_name, "Unnamed School Street Candidate Assessment")
           : isSchoolObligation
           ? value(feature.properties.name, "Unnamed School")
+          : isTopographyProfile
+          ? `Topography Profile · ${value(feature.properties.edge_type)} · ${value(feature.properties.edge_id)}`
+          : isGradientSection
+          ? `Gradient Section · ${value(feature.properties.gradient_band)}`
           : `${value(feature.properties.from_place_name, feature.properties.school_name || feature.properties.place_name || feature.properties.community_name || feature.properties.from_root_spine_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.parent_target_name || feature.properties.spine_name || feature.properties.to_root_spine_name || feature.properties.to_place)}`;
         const summary = document.createElement("span");
         summary.textContent = feature.properties.feature_type === "low-traffic-area"
@@ -214,6 +252,10 @@
           ? `${value(feature.properties.assessment_status)} · ${value(feature.properties.assessment_label)}`
           : isSchoolObligation
           ? `${value(feature.properties.service_status)} · ${value(feature.properties.access_point_status)} access point`
+          : isTopographyProfile
+          ? `${value(feature.properties.evidence_status)} · ${value(feature.properties.distance_m)} m`
+          : isGradientSection
+          ? `${value(feature.properties.length_m)} m · ${value(feature.properties.forward_gradient_pct)}% forward`
           : `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
         button.addEventListener("mouseenter", () => { if (!state.pinned) showDetails(feature.id); });
@@ -250,6 +292,7 @@
       "layer-places": ["places"],
       "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-gaps"],
       "layer-school-streets": ["school-street-assessments"],
+      "layer-gradient-sections": ["gradient-sections", "topography-unavailable"],
       "layer-retail-centres": ["retail-centres"],
       "layer-healthcare": ["healthcare"],
       "layer-gaps-warnings": warningLayers,
@@ -311,6 +354,8 @@
     map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "service_status"], "served", "#1e8449", "served-provisional", "#f39c12", "network-gap", ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "#c0392b"], "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-street-assessments", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-street-assessment"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "assessment_status"], "green", "#1e8449", "amber", "#f39c12", "red", "#c0392b", "#7f8c8d"], "circle-radius": 12, "circle-stroke-color": "white", "circle-stroke-width": 3 } });
+    map.addLayer({ id: "gradient-sections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "gradient-section"], layout: { visibility: "none" }, paint: { "line-color": ["match", ["get", "gradient_band"], "gentle", "#eff3ff", "noticeable", "#bdd7e7", "steep", "#6baed6", "very-steep", "#3182bd", "severe", "#08519c", "#7f8c8d"], "line-width": 9, "line-opacity": .92 } });
+    map.addLayer({ id: "topography-unavailable", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "topography-profile"], ["==", ["get", "evidence_status"], "evidence-unavailable"]], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 8, "line-dasharray": [1, 1], "line-opacity": .9 } });
     map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
     map.addLayer({ id: "urban-ncn-evidence", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "ncn-route"], ["==", ["get", "network_scope"], "urban"]], layout: { visibility: "none" }, paint: { "line-color": "#2471a3", "line-width": 4, "line-dasharray": [2, 1] } });
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
@@ -352,6 +397,6 @@
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +
     `${counts.cross_spine_connectors || 0} Cross-Spine Connectors · ${counts.urban_spines || 0} Urban Main-Road Spines · ${counts.candidate_low_traffic_areas || 0} Candidate Low-Traffic Areas · ${counts.low_traffic_area_portals || 0} area portals · ` +
-    `${counts.school_access_obligations || 0} School Access Obligations · ${counts.school_street_assessments || 0} School Street Candidate Assessments · ${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
+    `${counts.school_access_obligations || 0} School Access Obligations · ${counts.school_street_assessments || 0} School Street Candidate Assessments · ${counts.topography_profiles || 0} Topography Profiles · ${counts.gradient_sections || 0} Gradient Sections · ${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
     `${counts.healthcare || 0} healthcare sites`;
 })();
