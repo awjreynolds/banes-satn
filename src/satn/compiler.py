@@ -25,6 +25,7 @@ from satn.identifiers import stable_id as _stable_id
 from satn.models import (
     AccessPointStatus,
     AccessServiceStatus,
+    AgentFinding,
     AgentRecord,
     CouncilConfig,
     DivergenceRecord,
@@ -590,20 +591,17 @@ def _review_urban_school_gaps(
         "bidirectional": "criterion_bidirectional",
         "distance": "criterion_distance",
     }
-    priority = (
-        TrafficLight.RED,
-        TrafficLight.AMBER,
-        TrafficLight.GREY,
-        TrafficLight.GREEN,
-    )
     for index, row in gaps.sort_values("connection_id").iterrows():
         checks = {
             criterion: TrafficLight(str(row[column]))
             for criterion, column in criterion_columns.items()
         }
-        governing_status = next(
-            status for status in priority if status in set(checks.values())
+        governing_criterion = (
+            "endpoints"
+            if str(row.get("access_point_status")) == AccessPointStatus.UNRESOLVED.value
+            else "continuity"
         )
+        governing_status = checks[governing_criterion]
         evidence_ids = tuple(json.loads(str(row.get("source_ids") or "[]")))
         record = gate.evaluate(
             str(row["connection_id"]),
@@ -612,7 +610,6 @@ def _review_urban_school_gaps(
                 "to_place": str(row.get("to_place") or ""),
                 "selection_reason": str(row["selection_reason"]),
                 "evidence_ids": evidence_ids,
-                "governing_status": governing_status,
                 "checks_by_role": {
                     "school-access-gap": {
                         criterion: status.value for criterion, status in checks.items()
@@ -621,14 +618,25 @@ def _review_urban_school_gaps(
             },
             "school-access-gap",
             ["school-access-gap"],
+            governing_criterion=governing_criterion,
+            governing_status=governing_status,
             deterministic_decision="gap",
         ).record
         record.network_role = str(row["network_role"])
-        latest = record.attempts[-1] if record.attempts else {}
+        latest = record.attempts[-1] if record.attempts else None
         reviewed_findings = [
-            *latest.get("deterministic_findings", []),
-            *latest.get("critique", {}).get("findings", []),
-            *latest.get("red_team", {}).get("findings", []),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.deterministic_findings if latest else [])
+            ),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.critique.findings if latest and latest.critique else [])
+            ),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.red_team.findings if latest and latest.red_team else [])
+            ),
         ]
         existing_findings = json.loads(str(row.get("agent_findings") or "[]"))
         gaps.at[index, "agent_outcome"] = record.outcome_reason
@@ -655,23 +663,23 @@ def _human_intervention_requests(
             continue
         latest = record.attempts[-1]
         findings = [
-            *latest.get("findings", []),
-            *latest.get("deterministic_findings", []),
-            *latest.get("critique", {}).get("findings", []),
-            *latest.get("red_team", {}).get("findings", []),
+            *latest.findings,
+            *latest.deterministic_findings,
+            *(latest.critique.findings if latest.critique else []),
+            *(latest.red_team.findings if latest.red_team else []),
         ]
         blocking = [
             finding
             for finding in findings
-            if finding.get("severity") == "blocking" and _is_material_ambiguity(finding)
+            if finding.severity == "blocking" and _is_material_ambiguity(finding)
         ]
         if not blocking:
             continue
         choices = sorted(
             {
-                str(attempt.get("proposal", {}).get("selected_role"))
+                str(attempt.proposal.selected_role)
                 for attempt in record.attempts
-                if attempt.get("proposal", {}).get("selected_role")
+                if attempt.proposal and attempt.proposal.selected_role
             }
         )
         requests.append(
@@ -679,13 +687,17 @@ def _human_intervention_requests(
                 request_id=f"human-intervention-{hashlib.sha256(record.connection_id.encode()).hexdigest()[:12]}",
                 connection_id=record.connection_id,
                 reason=record.outcome_reason,
-                attempted_revisions=record.attempts,
-                unresolved_findings=blocking,
+                attempted_revisions=[
+                    attempt.model_dump(mode="json") for attempt in record.attempts
+                ],
+                unresolved_findings=[
+                    finding.model_dump(mode="json") for finding in blocking
+                ],
                 missing_evidence=sorted(
                     {
                         str(evidence_id)
                         for finding in blocking
-                        for evidence_id in finding.get("evidence_ids", [])
+                        for evidence_id in finding.evidence_ids
                     }
                 ),
                 choices=choices,
@@ -698,9 +710,9 @@ def _human_intervention_requests(
     return requests
 
 
-def _is_material_ambiguity(finding: dict[str, object]) -> bool:
+def _is_material_ambiguity(finding: AgentFinding) -> bool:
     """Distinguish a missing human fact from an ordinary failed route criterion."""
-    text = " ".join(str(finding.get(field, "")).lower() for field in ("code", "message"))
+    text = f"{finding.code} {finding.message}".lower()
     return any(
         marker in text
         for marker in ("ambiguous", "ambiguity", "missing-evidence", "missing evidence")

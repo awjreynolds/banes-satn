@@ -1013,6 +1013,8 @@ def _evaluate(row: dict[str, object], gate: CompilationGate) -> AgentRecord:
         },
         "direct",
         ["direct"],
+        governing_criterion="continuity",
+        governing_status=TrafficLight(str(row["criterion_continuity"])),
     ).record
 
 
@@ -1028,11 +1030,12 @@ def _evaluate_gap(
             "to_place": str(row["to_place"]),
             "selection_reason": str(row["selection_reason"]),
             "evidence_ids": (),
-            "governing_status": governing_status,
             "checks_by_role": {"gap": {"availability": governing_status.value}},
         },
         "gap",
         ["gap"],
+        governing_criterion="availability",
+        governing_status=governing_status,
         deterministic_decision="gap",
     ).record
     _project_agent_record(row, record)
@@ -1043,12 +1046,21 @@ def _project_agent_record(row: dict[str, object], record: AgentRecord) -> None:
     record.network_role = str(row["network_role"])
     row["agent_outcome"] = record.outcome_reason
     row["agent_attempt_count"] = len(record.attempts)
-    latest = record.attempts[-1] if record.attempts else {}
+    latest = record.attempts[-1] if record.attempts else None
     row["agent_findings"] = json.dumps(
         [
-            *latest.get("deterministic_findings", []),
-            *latest.get("critique", {}).get("findings", []),
-            *latest.get("red_team", {}).get("findings", []),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.deterministic_findings if latest else [])
+            ),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.critique.findings if latest and latest.critique else [])
+            ),
+            *(
+                finding.model_dump(mode="json")
+                for finding in (latest.red_team.findings if latest and latest.red_team else [])
+            ),
         ],
         sort_keys=True,
     )
@@ -1780,6 +1792,8 @@ def _evaluate_meeting(row: dict[str, object], gate: CompilationGate) -> AgentRec
         },
         "cross-spine-connector",
         ["cross-spine-connector"],
+        governing_criterion="distance",
+        governing_status=TrafficLight(str(row["criterion_distance"])),
     ).record
 
 

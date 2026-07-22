@@ -11,9 +11,27 @@ from enum import StrEnum
 from threading import Lock
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
-from satn.models import AgentConfig, AgentRecord, AgentReviewDecision, TrafficLight
+from satn.models import (
+    AgentAttempt,
+    AgentConfig,
+    AgentRecord,
+    AgentReviewDecision,
+    TrafficLight,
+)
+from satn.models import (
+    AgentCritique as RoleReview,
+)
+from satn.models import (
+    AgentFinding as ChallengeFinding,
+)
+from satn.models import (
+    AgentProposal as RouteProposal,
+)
+from satn.models import (
+    AgentSynthesis as RouteSynthesis,
+)
 
 
 class AgentRole(StrEnum):
@@ -22,15 +40,6 @@ class AgentRole(StrEnum):
     NETWORK_RED_TEAM = "network-red-team"
     SYNTHESISER = "synthesiser"
     DIVERGENCE = "divergence"
-
-
-class ChallengeFinding(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    code: str
-    severity: str
-    message: str
-    evidence_ids: tuple[str, ...] = ()
 
 
 class EvidenceFacts(BaseModel):
@@ -57,28 +66,11 @@ class EvidencePacket(BaseModel):
     attempt: int
 
 
-class RouteProposal(BaseModel):
-    selected_role: str | None
-    rationale: str
-    evidence_ids: list[str] = Field(default_factory=list)
-
-
-class RoleReview(BaseModel):
-    summary: str
-    findings: list[ChallengeFinding] = Field(default_factory=list)
-
-
 class SynthesisInput(BaseModel):
     packet: EvidencePacket
     proposal: RouteProposal
     critique: RoleReview
     red_team: RoleReview
-
-
-class RouteSynthesis(BaseModel):
-    decision: str
-    selected_role: str | None
-    rationale: str
 
 
 class DivergenceInput(BaseModel):
@@ -270,9 +262,11 @@ class CompilationGate:
         facts: dict[str, Any],
         initial_role: str | None,
         available_roles: list[str],
+        *,
+        governing_criterion: str,
+        governing_status: TrafficLight,
         deterministic_decision: Literal["accept", "gap"] = "accept",
     ) -> GateOutcome:
-        governing_status = _governing_status(facts, initial_role)
         review = self.config.review_decision(governing_status)
         deterministic_outcome = deterministic_decision
         if not review.review_required:
@@ -288,12 +282,10 @@ class CompilationGate:
             return GateOutcome(
                 AgentRecord(
                     connection_id=connection_id,
+                    governing_criterion=governing_criterion,
                     **review.model_dump(),
                     runtime="not-invoked",
                     model="not-invoked",
-                    proposal="{}",
-                    critique="[]",
-                    revision="{}",
                     decision=deterministic_outcome,
                     selected_role=initial_role,
                     outcome_reason=reason,
@@ -303,7 +295,7 @@ class CompilationGate:
             )
 
         runtime = self._runtime()
-        attempts: list[dict[str, Any]] = []
+        attempts: list[AgentAttempt] = []
         feedback: list[ChallengeFinding] = []
         current_role = initial_role
         requests = 0
@@ -392,15 +384,15 @@ class CompilationGate:
                     message=str(error),
                 )
                 attempts.append(
-                    {
-                        "attempt": attempt_number,
-                        "selected_role": current_role,
-                        "findings": [schema_finding.model_dump()],
-                        "decision": "retry",
-                    }
+                    AgentAttempt(
+                        attempt=attempt_number,
+                        selected_role=current_role,
+                        findings=[schema_finding],
+                        decision="retry",
+                    )
                 )
                 fingerprint = json.dumps(
-                    {key: value for key, value in attempts[-1].items() if key != "attempt"},
+                    attempts[-1].model_dump(exclude={"attempt"}, mode="json"),
                     sort_keys=True,
                 )
                 if fingerprint in seen:
@@ -411,16 +403,14 @@ class CompilationGate:
                 continue
 
             all_findings = [*packet.deterministic_findings, *critique.findings, *red_team.findings]
-            attempt = {
-                "attempt": attempt_number,
-                "proposal": proposal.model_dump(),
-                "critique": critique.model_dump(),
-                "red_team": red_team.model_dump(),
-                "synthesis": synthesis.model_dump(),
-                "deterministic_findings": [
-                    finding.model_dump() for finding in packet.deterministic_findings
-                ],
-            }
+            attempt = AgentAttempt(
+                attempt=attempt_number,
+                proposal=proposal,
+                critique=critique,
+                red_team=red_team,
+                synthesis=synthesis,
+                deterministic_findings=list(packet.deterministic_findings),
+            )
             attempts.append(attempt)
             mandatory_pass = not any(finding.severity == "blocking" for finding in all_findings)
             if (
@@ -432,6 +422,7 @@ class CompilationGate:
                     _record(
                         runtime,
                         connection_id,
+                        governing_criterion,
                         "accept",
                         current_role,
                         "All mandatory checks and bounded agent reviews passed.",
@@ -448,7 +439,7 @@ class CompilationGate:
                 )
                 break
             fingerprint = json.dumps(
-                {key: value for key, value in attempt.items() if key != "attempt"},
+                attempt.model_dump(exclude={"attempt"}, mode="json"),
                 sort_keys=True,
             )
             if fingerprint in seen:
@@ -465,6 +456,7 @@ class CompilationGate:
             _record(
                 runtime,
                 connection_id,
+                governing_criterion,
                 "gap",
                 current_role,
                 outcome_reason,
@@ -520,42 +512,28 @@ def _deterministic_findings(
     ]
 
 
-def _governing_status(facts: dict[str, Any], role: str | None) -> TrafficLight:
-    if explicit := facts.get("governing_status"):
-        return TrafficLight(explicit)
-    checks = facts.get("checks_by_role", {}).get(role, {}) if role else {}
-    statuses = {TrafficLight(status) for status in checks.values()}
-    for status in (
-        TrafficLight.RED,
-        TrafficLight.AMBER,
-        TrafficLight.GREY,
-        TrafficLight.GREEN,
-    ):
-        if status in statuses:
-            return status
-    return TrafficLight.GREY
-
-
 def _record(
     runtime: AgentRuntime,
     connection_id: str,
+    governing_criterion: str,
     decision: str,
     selected_role: str | None,
     reason: str,
-    attempts: list[dict[str, Any]],
+    attempts: list[AgentAttempt],
     requests: int,
     tokens: int,
     review: AgentReviewDecision,
 ) -> AgentRecord:
-    latest = attempts[-1] if attempts else {}
+    latest = attempts[-1] if attempts else None
     return AgentRecord(
         connection_id=connection_id,
+        governing_criterion=governing_criterion,
         **review.model_dump(),
         runtime=runtime.name,
         model=runtime.model,
-        proposal=json.dumps(latest.get("proposal", {}), sort_keys=True),
-        critique=json.dumps(latest.get("critique", latest.get("findings", [])), sort_keys=True),
-        revision=json.dumps(latest.get("synthesis", {}), sort_keys=True),
+        proposal=latest.proposal if latest else None,
+        critique=latest.critique if latest else None,
+        revision=latest.synthesis if latest else None,
         decision=decision,
         selected_role=selected_role,
         outcome_reason=reason,

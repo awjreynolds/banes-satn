@@ -375,6 +375,7 @@ def test_public_route_compilation_reviews_only_configured_amber_decisions(
     ]
 
     assert amber_records
+    assert all(record.governing_criterion == "distance" for record in amber_records)
     assert all(record.review_required is True for record in amber_records)
     assert all(record.usage["requests"] > 0 for record in amber_records)
     assert all(
@@ -387,6 +388,14 @@ def test_public_route_compilation_reviews_only_configured_amber_decisions(
         "reviewed": len(amber_records),
         "skipped": 0,
     }
+    published_records = json.loads(reviewed.artifacts["agents"].read_text())["records"]
+    published_amber = [
+        record for record in published_records if record["governing_status"] == "amber"
+    ]
+    assert all(record["governing_criterion"] == "distance" for record in published_amber)
+    assert all(isinstance(record["proposal"], dict) for record in published_amber)
+    assert all(isinstance(record["critique"], dict) for record in published_amber)
+    assert all(isinstance(record["revision"], dict) for record in published_amber)
 
     config.compilation.agent.review_statuses = ()
     config.compilation.agent.provider = "provider-that-must-not-be-constructed"

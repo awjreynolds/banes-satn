@@ -348,18 +348,55 @@ class PublishedFeatureReference(BaseModel):
     network_role: str
 
 
+class AgentFinding(BaseModel):
+    code: str
+    severity: Literal["blocking", "revision-required", "advisory"]
+    message: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class AgentProposal(BaseModel):
+    selected_role: str | None
+    rationale: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class AgentCritique(BaseModel):
+    summary: str
+    findings: list[AgentFinding] = Field(default_factory=list)
+
+
+class AgentSynthesis(BaseModel):
+    decision: Literal["accept", "revise", "gap"]
+    selected_role: str | None
+    rationale: str
+
+
+class AgentAttempt(BaseModel):
+    attempt: int = Field(ge=1)
+    proposal: AgentProposal | None = None
+    critique: AgentCritique | None = None
+    red_team: AgentCritique | None = None
+    synthesis: AgentSynthesis | None = None
+    deterministic_findings: list[AgentFinding] = Field(default_factory=list)
+    findings: list[AgentFinding] = Field(default_factory=list)
+    selected_role: str | None = None
+    decision: Literal["retry"] | None = None
+
+
 class AgentRecord(AgentReviewAudit):
     connection_id: str
+    governing_criterion: str
     network_role: str | None = None
     runtime: str
     model: str
-    proposal: str
-    critique: str
-    revision: str
+    proposal: AgentProposal | None = None
+    critique: AgentCritique | None = None
+    revision: AgentSynthesis | None = None
     decision: Literal["accept", "gap", "superseded"]
     selected_role: str | None = None
     outcome_reason: str = ""
-    attempts: list[dict[str, Any]] = Field(default_factory=list)
+    attempts: list[AgentAttempt] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)
     derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
