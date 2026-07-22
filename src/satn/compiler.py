@@ -127,6 +127,7 @@ def compile_network(
     branch_meeting_connections = backbone.meeting_connections
     cross_spine_connectors = backbone.cross_spine_connectors
     gaps = backbone.gaps.copy()
+    agent_records = list(backbone.agent_records)
     crs = source["network"].crs
     official_road_classification = source.get("official_road_classification")
     urban = derive_urban_structure(
@@ -158,6 +159,7 @@ def compile_network(
         )
         urban_school_gaps = _urban_school_gaps(urban_school_access, crs)
         if not urban_school_gaps.empty:
+            agent_records.extend(_review_urban_school_gaps(urban_school_gaps, gate))
             gaps = gpd.GeoDataFrame(
                 pd.concat([gaps, urban_school_gaps], ignore_index=True, sort=False),
                 columns=GAP_COLUMNS,
@@ -407,16 +409,16 @@ def compile_network(
         ),
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
-        agent_records=backbone.agent_records,
+        agent_records=agent_records,
         criteria=criteria,
         network_units=network_units,
         atm_reference=None,
         divergence_records=[],
         superseded_hypotheses=sum(
-            record.decision == "superseded" for record in backbone.agent_records
+            record.decision == "superseded" for record in agent_records
         ),
         human_intervention_requests=_human_intervention_requests(
-            backbone.agent_records, config.compilation.agent.max_attempts
+            agent_records, config.compilation.agent.max_attempts
         ),
         compilation_diagnostics=backbone.compilation_diagnostics,
     )
@@ -493,6 +495,69 @@ def _urban_school_gaps(
             }
         )
     return gpd.GeoDataFrame(rows, columns=GAP_COLUMNS, geometry="geometry", crs=crs)
+
+
+def _review_urban_school_gaps(
+    gaps: gpd.GeoDataFrame,
+    gate: CompilationGate,
+) -> list[AgentRecord]:
+    """Apply the configured review policy to each deterministic urban School gap."""
+    records: list[AgentRecord] = []
+    criterion_columns = {
+        "endpoints": "criterion_endpoints",
+        "continuity": "criterion_continuity",
+        "bidirectional": "criterion_bidirectional",
+        "distance": "criterion_distance",
+    }
+    priority = (
+        TrafficLight.RED,
+        TrafficLight.AMBER,
+        TrafficLight.GREY,
+        TrafficLight.GREEN,
+    )
+    for index, row in gaps.sort_values("connection_id").iterrows():
+        checks = {
+            criterion: TrafficLight(str(row[column]))
+            for criterion, column in criterion_columns.items()
+        }
+        governing_status = next(
+            status for status in priority if status in set(checks.values())
+        )
+        evidence_ids = tuple(json.loads(str(row.get("source_ids") or "[]")))
+        record = gate.evaluate(
+            str(row["connection_id"]),
+            {
+                "from_place": str(row["from_place"]),
+                "to_place": str(row.get("to_place") or ""),
+                "selection_reason": str(row["selection_reason"]),
+                "evidence_ids": evidence_ids,
+                "governing_status": governing_status,
+                "checks_by_role": {
+                    "school-access-gap": {
+                        criterion: status.value for criterion, status in checks.items()
+                    }
+                },
+            },
+            "school-access-gap",
+            ["school-access-gap"],
+            deterministic_decision="gap",
+        ).record
+        record.network_role = str(row["network_role"])
+        latest = record.attempts[-1] if record.attempts else {}
+        reviewed_findings = [
+            *latest.get("deterministic_findings", []),
+            *latest.get("critique", {}).get("findings", []),
+            *latest.get("red_team", {}).get("findings", []),
+        ]
+        existing_findings = json.loads(str(row.get("agent_findings") or "[]"))
+        gaps.at[index, "agent_outcome"] = record.outcome_reason
+        gaps.at[index, "agent_attempt_count"] = len(record.attempts)
+        gaps.at[index, "agent_findings"] = json.dumps(
+            [*existing_findings, *reviewed_findings],
+            sort_keys=True,
+        )
+        records.append(record)
+    return records
 
 
 def _human_intervention_requests(

@@ -8,6 +8,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from threading import Lock
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -47,6 +48,7 @@ class EvidencePacket(BaseModel):
 
     schema_version: str = "1"
     connection_id: str
+    governing_status: TrafficLight
     current_role: str | None
     available_roles: tuple[str, ...]
     facts: EvidenceFacts
@@ -121,10 +123,13 @@ class AgentRuntimeProvider:
     def __init__(self, factory: Callable[[], AgentRuntime]):
         self._factory = factory
         self._runtime: AgentRuntime | None = None
+        self._lock = Lock()
 
     def get(self) -> AgentRuntime:
         if self._runtime is None:
-            self._runtime = self._factory()
+            with self._lock:
+                if self._runtime is None:
+                    self._runtime = self._factory()
         return self._runtime
 
 
@@ -269,10 +274,10 @@ class CompilationGate:
     ) -> GateOutcome:
         governing_status = _governing_status(facts, initial_role)
         review = self.config.review_decision(governing_status)
-        deterministic_outcome = (
-            "gap" if governing_status == TrafficLight.RED else deterministic_decision
-        )
+        deterministic_outcome = deterministic_decision
         if not review.review_required:
+            if governing_status == TrafficLight.RED:
+                deterministic_outcome = "gap"
             reason = (
                 "Deterministic Red prevents this connection entering the network; "
                 "agent review was skipped by policy."
@@ -297,6 +302,7 @@ class CompilationGate:
                 initial_role,
             )
 
+        runtime = self._runtime()
         attempts: list[dict[str, Any]] = []
         feedback: list[ChallengeFinding] = []
         current_role = initial_role
@@ -309,6 +315,7 @@ class CompilationGate:
             findings = _deterministic_findings(facts, current_role)
             packet = EvidencePacket(
                 connection_id=connection_id,
+                governing_status=governing_status,
                 current_role=current_role,
                 available_roles=tuple(available_roles),
                 facts=EvidenceFacts.model_validate(
@@ -423,7 +430,7 @@ class CompilationGate:
             ):
                 return GateOutcome(
                     _record(
-                        self._runtime(),
+                        runtime,
                         connection_id,
                         "accept",
                         current_role,
@@ -456,7 +463,7 @@ class CompilationGate:
 
         return GateOutcome(
             _record(
-                self._runtime(),
+                runtime,
                 connection_id,
                 "gap",
                 current_role,

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 
 class TrafficLight(StrEnum):
@@ -154,15 +154,34 @@ class SourceConfig(BaseModel):
     national_elevation: NationalElevationConfig | None = None
 
 
-class AgentReviewDecision(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
+class AgentReviewAudit(BaseModel):
     governing_status: TrafficLight
     review_policy: tuple[TrafficLight, ...]
     review_required: bool
 
+    @field_validator("review_policy")
+    @classmethod
+    def canonicalise_review_policy(
+        cls, value: tuple[TrafficLight, ...]
+    ) -> tuple[TrafficLight, ...]:
+        selected = set(value)
+        return tuple(status for status in TrafficLight if status in selected)
+
+    @model_validator(mode="after")
+    def validate_review_requirement(self) -> AgentReviewAudit:
+        required_by_policy = self.governing_status in self.review_policy
+        if self.review_required != required_by_policy:
+            raise ValueError("review_required must match governing_status membership in policy")
+        return self
+
+
+class AgentReviewDecision(AgentReviewAudit):
+    model_config = ConfigDict(frozen=True)
+
 
 class AgentConfig(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
     provider: str = "fake"
     model: str | None = None
     review_statuses: tuple[TrafficLight, ...] = (
@@ -179,7 +198,7 @@ class AgentConfig(BaseModel):
         if not isinstance(value, dict) or "enabled" not in value:
             return value
         migrated = dict(value)
-        enabled = bool(migrated.pop("enabled"))
+        enabled = TypeAdapter(bool).validate_python(migrated.pop("enabled"))
         if not enabled:
             configured = migrated.get("review_statuses")
             if configured:
@@ -187,11 +206,13 @@ class AgentConfig(BaseModel):
             migrated["review_statuses"] = ()
         return migrated
 
-    @model_validator(mode="after")
-    def canonicalise_review_statuses(self) -> AgentConfig:
-        selected = set(self.review_statuses)
-        self.review_statuses = tuple(status for status in TrafficLight if status in selected)
-        return self
+    @field_validator("review_statuses")
+    @classmethod
+    def canonicalise_review_statuses(
+        cls, value: tuple[TrafficLight, ...]
+    ) -> tuple[TrafficLight, ...]:
+        selected = set(value)
+        return tuple(status for status in TrafficLight if status in selected)
 
     def review_decision(self, governing_status: TrafficLight) -> AgentReviewDecision:
         return AgentReviewDecision(
@@ -312,12 +333,9 @@ class PublishedFeatureReference(BaseModel):
     network_role: str
 
 
-class AgentRecord(BaseModel):
+class AgentRecord(AgentReviewAudit):
     connection_id: str
     network_role: str | None = None
-    governing_status: TrafficLight
-    review_policy: tuple[TrafficLight, ...]
-    review_required: bool
     runtime: str
     model: str
     proposal: str
@@ -331,18 +349,35 @@ class AgentRecord(BaseModel):
     derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    @model_validator(mode="after")
+    def validate_review_execution(self) -> AgentRecord:
+        requests = self.usage.get("requests", 0)
+        tokens = self.usage.get("tokens", 0)
+        if self.review_required and (self.runtime == "not-invoked" or not self.attempts):
+            raise ValueError("required review must record an invoked runtime and attempt")
+        if not self.review_required and (
+            self.runtime != "not-invoked" or requests or tokens or self.attempts
+        ):
+            raise ValueError("skipped review must have no runtime, usage, or attempts")
+        return self
 
-class DivergenceRecord(BaseModel):
+
+class DivergenceRecord(AgentReviewAudit):
     connection_id: str
     status: Literal["match", "omission", "deviation", "addition"]
-    governing_status: TrafficLight
-    review_policy: tuple[TrafficLight, ...]
-    review_required: bool
     atm_feature_ids: list[str] = Field(default_factory=list)
     overlap_ratio: float = Field(ge=0, le=1)
     explanation: str
     resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
     resolved: bool = False
+
+    @model_validator(mode="after")
+    def validate_review_execution(self) -> DivergenceRecord:
+        if self.review_required and not self.resolution_attempts:
+            raise ValueError("required divergence review must record an attempt")
+        if not self.review_required and self.resolution_attempts:
+            raise ValueError("skipped divergence review cannot contain resolution attempts")
+        return self
 
 
 class HumanInterventionRequest(BaseModel):

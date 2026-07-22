@@ -17,6 +17,7 @@ from satn.models import (
     CouncilConfig,
     ObservedThroughTrafficConfig,
     OfficialRoadClassificationConfig,
+    TrafficLight,
 )
 from satn.sources import snapshot
 
@@ -423,3 +424,34 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert "Grey — Not Evaluated" in review_html
     assert '"network_scope"], "urban"' in review_js
     assert '"low-traffic-area-portal"].includes' in review_js
+
+
+def test_public_compile_reviews_configured_grey_urban_school_gap(tmp_path: Path) -> None:
+    config = prepared_governed_urban_config(tmp_path)
+    context_path = config.source.fixture_dir / "context.geojson"
+    context = gpd.read_file(context_path)
+    school = context["feature_type"] == "school"
+    context.loc[school, "access_point_status"] = "unresolved"
+    context.loc[school, "access_point_source_id"] = None
+    context.loc[school, "access_point_rationale"] = (
+        "No governed School Access Point is available."
+    )
+    context.to_file(context_path, driver="GeoJSON")
+    snapshot(config, replace=True)
+    config.compilation.agent.review_statuses = (TrafficLight.GREY,)
+
+    result = compile(config)
+
+    record = next(
+        record for record in result.agent_records if record.network_role == "school-access-gap"
+    )
+    assert record.governing_status == TrafficLight.GREY
+    assert record.review_policy == (TrafficLight.GREY,)
+    assert record.review_required is True
+    assert record.decision == "gap"
+    assert record.usage == {"requests": 4, "tokens": 4}
+    run = json.loads(result.artifacts["run"].read_text())
+    assert run["agent_review"]["decisions_by_status"]["grey"] == {
+        "reviewed": 1,
+        "skipped": 0,
+    }

@@ -10,7 +10,7 @@ from satn.agents import (
     FakeAgentRuntime,
     PydanticAIRuntime,
 )
-from satn.models import AgentConfig, TrafficLight
+from satn.models import AgentConfig, AgentRecord, DivergenceRecord, TrafficLight
 
 
 def facts(*, direct: str = "green", low_traffic: str = "green") -> dict[str, object]:
@@ -54,8 +54,61 @@ def test_agent_review_policy_defaults_to_amber_and_red_and_is_canonical() -> Non
         TrafficLight.GREY,
     )
     assert AgentConfig(enabled=False).review_statuses == ()
+    assert AgentConfig(enabled="false").review_statuses == ()
     with pytest.raises(ValueError, match="enabled: false conflicts"):
         AgentConfig(enabled=False, review_statuses=["amber"])
+    config = AgentConfig()
+    config.review_statuses = ["grey", "green", "grey"]
+    assert config.review_statuses == (TrafficLight.GREEN, TrafficLight.GREY)
+
+
+def test_review_audit_records_reject_contradictory_execution_state() -> None:
+    base_record = {
+        "connection_id": "connection-a-b",
+        "governing_status": TrafficLight.GREEN,
+        "review_policy": (TrafficLight.AMBER,),
+        "review_required": False,
+        "runtime": "not-invoked",
+        "model": "not-invoked",
+        "proposal": "{}",
+        "critique": "[]",
+        "revision": "{}",
+        "decision": "accept",
+    }
+    with pytest.raises(ValueError, match="membership in policy"):
+        AgentRecord(**{**base_record, "review_required": True})
+    with pytest.raises(ValueError, match="skipped review must have no runtime"):
+        AgentRecord(**{**base_record, "runtime": "fake"})
+    with pytest.raises(ValueError, match="required review must record"):
+        AgentRecord(
+            **{
+                **base_record,
+                "governing_status": TrafficLight.AMBER,
+                "review_required": True,
+                "runtime": "fake",
+            }
+        )
+    with pytest.raises(ValueError, match="required divergence review"):
+        DivergenceRecord(
+            connection_id="connection-a-b",
+            governing_status=TrafficLight.AMBER,
+            review_policy=(TrafficLight.AMBER,),
+            review_required=True,
+            status="deviation",
+            overlap_ratio=0.5,
+            explanation="Review was incorrectly omitted.",
+        )
+    with pytest.raises(ValueError, match="skipped divergence review"):
+        DivergenceRecord(
+            connection_id="connection-a-b",
+            governing_status=TrafficLight.GREEN,
+            review_policy=(TrafficLight.AMBER,),
+            review_required=False,
+            status="match",
+            overlap_ratio=1,
+            explanation="Deterministic match.",
+            resolution_attempts=[{"attempt": 1}],
+        )
 
 
 @pytest.mark.parametrize("status", tuple(TrafficLight))
@@ -203,6 +256,24 @@ def test_unresolved_mandatory_failure_cannot_be_overridden() -> None:
     assert outcome.record.decision == "gap"
     assert outcome.record.attempts[0]["deterministic_findings"]
     assert outcome.record.attempts[0]["synthesis"]["decision"] == "gap"
+
+
+def test_reviewed_red_candidate_can_be_repaired_to_a_green_alternative() -> None:
+    outcome = CompilationGate(
+        FakeAgentRuntime(),
+        AgentConfig(review_statuses=(TrafficLight.RED,)),
+    ).evaluate(
+        "connection-a-b",
+        facts(direct="red", low_traffic="green"),
+        "direct",
+        ["direct", "low-traffic"],
+    )
+
+    assert outcome.record.governing_status == TrafficLight.RED
+    assert outcome.record.review_required is True
+    assert outcome.record.decision == "accept"
+    assert outcome.selected_role == "low-traffic"
+    assert len(outcome.record.attempts) == 2
 
 
 @pytest.mark.live_agent
