@@ -102,10 +102,28 @@ validated as paths without traversable network evidence.
   straight line; and
 - a connection over 15 km is challenged Amber, not silently removed.
 
-In urban areas, main roads form protected-route spines. Connected fabrics of minor
-roads become Candidate Low-Traffic Area polygons, without claiming that an LTN
-already exists or asserting an artificial centreline. Community Centres, portals,
-spines and those areas stay in one routable and publishable representation.
+In urban areas, governed official A roads, B roads and Classified Unnumbered Roads
+form protected-route spines. Unclassified streets do not become through-traffic
+spines, and OSM functional tags do not silently replace missing official evidence.
+When no governed classification source is configured, the publication records an
+`explicit-unknown` classification status. Urban NCN Evidence remains a separate
+permeability layer rather than automatically becoming a Circulation Boundary. Connected
+fabrics of minor roads become Candidate Low-Traffic Area polygons, without claiming
+that an LTN already exists or asserting an artificial centreline.
+
+Configure a council-governed classification dataset as follows. The source must be
+line geometry with an `official_classification`, `road_classification` or
+`classification` field; common A, B, C/Classified Unnumbered and Unclassified values
+are normalised in the immutable snapshot.
+
+```yaml
+source:
+  official_road_classification:
+    path: data/local/official-road-classification.geojson
+    source_id: council-highways-list
+    effective_date: 2026-04-01
+    licence: Open Government Licence v3.0
+```
 
 ## Agent compilation gate
 

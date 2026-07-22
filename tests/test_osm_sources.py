@@ -8,7 +8,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import LineString, Point, Polygon
 
-from satn.models import CouncilConfig
+from satn.models import CouncilConfig, OfficialRoadClassificationConfig
 from satn.sources import OSMData, _load_ncn_features, derive_network_places, snapshot
 
 PROJECT = Path(__file__).parents[1]
@@ -208,6 +208,59 @@ def test_osm_snapshot_is_attributable_and_reloadable(tmp_path: Path) -> None:
     context = gpd.read_file(path / "context.geojson")
     assert "rural" in set(context["network_scope"])
     assert snapshot(config, osm_adapter=FakeOSMAdapter()) == path
+
+
+def test_osm_snapshot_governs_official_road_classification(tmp_path: Path) -> None:
+    classification_path = tmp_path / "classification.geojson"
+    gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "official-a",
+                "official_classification": "A road",
+                "geometry": LineString([(-2.5, 51.39), (-2.5, 51.45)]),
+            },
+            {
+                "osmid": "official-c",
+                "official_classification": "Classified Unnumbered",
+                "geometry": LineString([(-2.48, 51.39), (-2.48, 51.45)]),
+            },
+            {
+                "osmid": "official-u",
+                "official_classification": "Unclassified",
+                "geometry": LineString([(-2.46, 51.39), (-2.46, 51.45)]),
+            },
+        ],
+        crs=4326,
+    ).to_file(classification_path, driver="GeoJSON")
+    config = base_config()
+    config.source.snapshot_dir = tmp_path / "snapshots"
+    config.source.snapshot_id = "classified-osm"
+    config.source.official_road_classification = OfficialRoadClassificationConfig(
+        path=classification_path,
+        source_id="banes-highways-list",
+        effective_date="2026-04-01",
+        licence="Open Government Licence v3.0",
+    )
+
+    path = snapshot(config, osm_adapter=FakeOSMAdapter())
+
+    manifest = json.loads((path / "snapshot.json").read_text())
+    governed = manifest["evidence_sources"]["official_road_classification"]
+    assert governed["source_id"] == "banes-highways-list"
+    assert governed["effective_date"] == "2026-04-01"
+    assert governed["licence"] == "Open Government Licence v3.0"
+    assert len(governed["content_fingerprint"]) == 64
+    assert "official-road-classification.geojson" in manifest["files"]
+    snapshotted = gpd.read_file(path / "official-road-classification.geojson")
+    assert set(snapshotted["official_classification"]) == {
+        "a-road",
+        "classified-unnumbered",
+        "unclassified",
+    }
+    assert set(snapshotted["source_id"]) == {"banes-highways-list"}
+    assert set(snapshotted["content_fingerprint"]) == {
+        governed["content_fingerprint"]
+    }
 
 
 @pytest.mark.live_osm

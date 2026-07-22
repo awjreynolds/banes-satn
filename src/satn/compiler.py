@@ -25,6 +25,7 @@ from satn.models import (
     DivergenceRecord,
     NetworkScope,
     TrafficLight,
+    UrbanClassificationStatus,
 )
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
 from satn.urban import derive_urban_structure
@@ -39,6 +40,8 @@ class CompiledNetwork:
     connections: gpd.GeoDataFrame
     gaps: gpd.GeoDataFrame
     urban_spines: gpd.GeoDataFrame
+    urban_classification_unknowns: gpd.GeoDataFrame
+    urban_classification_status: UrbanClassificationStatus
     low_traffic_areas: gpd.GeoDataFrame
     crossing_warnings: gpd.GeoDataFrame
     strategic_spines: gpd.GeoDataFrame
@@ -216,7 +219,21 @@ def compile_network(
     connections = gpd.GeoDataFrame(
         accepted, columns=connection_columns, geometry="geometry", crs=crs
     )
-    urban_spines, low_traffic_areas = derive_urban_structure(places, source["network"])
+    official_road_classification = source.get("official_road_classification")
+    urban_spines, urban_classification_unknowns, low_traffic_areas = (
+        derive_urban_structure(
+        places,
+        source["network"],
+        official_road_classification,
+        )
+    )
+    urban_classification_status = (
+        UrbanClassificationStatus.GOVERNED_OFFICIAL
+        if official_road_classification is not None
+        and not official_road_classification.empty
+        and urban_classification_unknowns.empty
+        else UrbanClassificationStatus.EXPLICIT_UNKNOWN
+    )
     crossing_warnings = _crossing_warnings(connections)
     connection_graph = _connection_graph(participants, accepted)
     covered = all(place_id in connection_graph for place_id in communities["place_id"])
@@ -335,6 +352,23 @@ def compile_network(
                 else TrafficLight.GREY
             ),
         },
+        "urban_network": {
+            "official_road_classification": (
+                TrafficLight.GREEN
+                if urban_classification_status
+                == UrbanClassificationStatus.GOVERNED_OFFICIAL
+                else TrafficLight.GREY
+            ),
+            "official_main_road_spines": (
+                TrafficLight.GREEN
+                if not urban_spines.empty
+                else TrafficLight.GREY
+                if urban_classification_status
+                == UrbanClassificationStatus.EXPLICIT_UNKNOWN
+                else TrafficLight.RED
+            ),
+            "ncn_kept_as_permeability_evidence": TrafficLight.GREEN,
+        },
         "atm_comparison": {"compared": TrafficLight.GREY},
     }
     return CompiledNetwork(
@@ -345,6 +379,8 @@ def compile_network(
         connections=connections,
         gaps=gaps,
         urban_spines=urban_spines,
+        urban_classification_unknowns=urban_classification_unknowns,
+        urban_classification_status=urban_classification_status,
         low_traffic_areas=low_traffic_areas,
         crossing_warnings=crossing_warnings,
         strategic_spines=strategic_spines,

@@ -71,12 +71,30 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
         ],
         crs=4326,
     )
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": "official-a",
+                "official_classification": "a-road",
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "Open Government Licence v3.0",
+                "content_fingerprint": "abc123",
+                "geometry": LineString([(0, -0.02), (0, 0.02)]),
+            }
+        ],
+        crs=4326,
+    )
 
-    spines, areas = derive_urban_structure(places, network)
+    spines, unknowns, areas = derive_urban_structure(places, network, official)
 
     assert len(spines) == 1
     assert set(spines["role"]) == {"urban-main-road-spine"}
     assert set(spines["intervention"]) == {"protected-cycle-infrastructure"}
+    assert set(spines["official_classification"]) == {"a-road"}
+    assert set(spines["classification_status"]) == {"governed-official"}
+    assert unknowns.empty
+    assert "Major engineering" in spines.iloc[0]["intervention_assumption"]
     assert len(areas) == 2
     assert set(areas["role"]) == {"candidate-low-traffic-area"}
     assert areas.iloc[0].geometry.geom_type in {"Polygon", "MultiPolygon"}
@@ -84,6 +102,119 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     assert all(
         not geometry.intersects(projected_spine) for geometry in areas.to_crs(27700).geometry
     )
+
+
+def test_osm_tags_do_not_override_missing_or_unclassified_official_evidence() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=4326,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "osm-primary",
+                "highway": "primary",
+                "geometry": LineString([(0, -0.02), (0, 0.02)]),
+            }
+        ],
+        crs=4326,
+    )
+    unclassified = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": "official-u",
+                "official_classification": "unclassified",
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "OGL v3.0",
+                "content_fingerprint": "abc123",
+                "geometry": LineString([(0, -0.02), (0, 0.02)]),
+            }
+        ],
+        crs=4326,
+    )
+
+    missing_spines, missing_unknowns, _ = derive_urban_structure(places, network)
+    unclassified_spines, unclassified_unknowns, _ = derive_urban_structure(
+        places, network, unclassified
+    )
+
+    assert missing_spines.empty
+    assert missing_unknowns.empty
+    assert unclassified_spines.empty
+    assert unclassified_unknowns.empty
+
+    unknown = unclassified.copy()
+    unknown["official_classification"] = "unknown"
+    _, unknowns, _ = derive_urban_structure(places, network, unknown)
+    assert len(unknowns) == 1
+    assert unknowns.iloc[0]["classification_status"] == "explicit-unknown"
+    assert unknowns.iloc[0]["role"] == "urban-road-classification-unknown"
+
+
+def test_official_a_b_and_classified_unnumbered_are_stable_urban_spines() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=4326,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "minor",
+                "highway": "residential",
+                "geometry": LineString([(-0.02, 0), (0.02, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": f"official-{classification}",
+                "official_classification": classification,
+                "source_id": "council-highways",
+                "effective_date": "2026-01-01",
+                "licence": "OGL v3.0",
+                "content_fingerprint": "abc123",
+                "geometry": LineString([(offset, -0.01), (offset, 0.01)]),
+            }
+            for classification, offset in (
+                ("a-road", -0.005),
+                ("b-road", 0.0),
+                ("classified-unnumbered", 0.005),
+            )
+        ],
+        crs=4326,
+    )
+
+    first, first_unknowns, _ = derive_urban_structure(places, network, official)
+    second, second_unknowns, _ = derive_urban_structure(places, network, official)
+
+    assert set(first["official_classification"]) == {
+        "a-road",
+        "b-road",
+        "classified-unnumbered",
+    }
+    assert list(first["structure_id"]) == list(second["structure_id"])
+    assert set(first["source_id"]) == {"council-highways"}
+    assert first_unknowns.empty
+    assert second_unknowns.empty
 
 
 def test_multi_portal_communities_use_the_nearest_connected_portals() -> None:
@@ -161,5 +292,9 @@ def test_multi_portal_communities_use_the_nearest_connected_portals() -> None:
     )
 
     assert len(compiled.connections) == 1
+    assert compiled.urban_spines.empty
+    assert compiled.urban_classification_unknowns.empty
+    assert compiled.urban_classification_status == "explicit-unknown"
+    assert compiled.criteria["urban_network"]["official_road_classification"] == "grey"
     coordinates = list(compiled.connections.iloc[0].geometry.coords)
     assert {coordinates[0], coordinates[-1]} == {(0.0, 0.0), (0.1, 0.0)}

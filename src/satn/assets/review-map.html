@@ -32,8 +32,18 @@
         </div>
         <label><input id="layer-a-road-spines" type="checkbox"> Raw A-road evidence</label>
         <label><input id="layer-community-connections" type="checkbox" checked> Community connections</label>
-        <label><input id="layer-ncn-routes" type="checkbox"> Raw National Cycle Network evidence</label>
-        <label><input id="layer-urban-structure" type="checkbox" checked> Urban network structure</label>
+        <label><input id="layer-ncn-routes" type="checkbox" aria-describedby="legend-ncn-routes"> Urban NCN Evidence</label>
+        <div id="legend-ncn-routes" class="layer-summary" role="note" hidden>
+          <p>Established NCN geometry — permeability evidence, not automatically a Circulation Boundary</p>
+        </div>
+        <label><input id="layer-urban-structure" type="checkbox" checked aria-describedby="legend-urban-structure"> Urban Main-Road Spines &amp; Candidate Low-Traffic Areas</label>
+        <div id="legend-urban-structure" class="layer-summary" role="note">
+          <p>A road — major engineering/protected provision assumption</p>
+          <p>B road — official through-road spine</p>
+          <p>Classified Unnumbered (C) road — official through-road spine</p>
+          <p>Missing official classification — Explicit Unknown; OSM tags are not substituted</p>
+          <p>Grey dashed line — governed road with classification still unknown</p>
+        </div>
         <label><input id="layer-places" type="checkbox" checked> Places</label>
         <label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label>
         <div id="legend-schools" class="layer-summary" role="note" hidden>
