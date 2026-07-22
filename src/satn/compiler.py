@@ -30,6 +30,7 @@ from satn.models import (
     UrbanClassificationStatus,
 )
 from satn.routing import RoadGraph, RouteOption, choose_alignment, serialise_options
+from satn.school_street import assess_school_street_candidates
 from satn.urban import derive_urban_structure
 from satn.urban_school import assess_urban_school_access
 
@@ -57,6 +58,7 @@ class CompiledNetwork:
     a_road_spines: gpd.GeoDataFrame
     ncn_routes: gpd.GeoDataFrame
     schools: gpd.GeoDataFrame
+    school_street_assessments: gpd.GeoDataFrame
     retail_centres: gpd.GeoDataFrame
     healthcare: gpd.GeoDataFrame
     agent_records: list[AgentRecord]
@@ -251,6 +253,11 @@ def compile_network(
             geometry="geometry",
             crs=crs,
         )
+    school_street_assessments = assess_school_street_candidates(
+        _in_scope_schools(context),
+        source["network"],
+        official_road_classification,
+    )
     urban_classification_status = (
         UrbanClassificationStatus.GOVERNED_OFFICIAL
         if official_road_classification is not None
@@ -416,6 +423,23 @@ def compile_network(
                 urban_school_access
             ),
         },
+        "school_street_candidate_assessments": {
+            "all_in_scope_schools_assessed": (
+                TrafficLight.GREEN
+                if len(school_street_assessments) == len(_in_scope_schools(context))
+                else TrafficLight.RED
+            ),
+            "qualitative_not_probability": (
+                TrafficLight.GREEN
+                if not school_street_assessments.empty
+                and school_street_assessments["qualification"].str.contains(
+                    "not scheme feasibility or calibrated probability"
+                ).all()
+                else TrafficLight.GREY
+                if school_street_assessments.empty
+                else TrafficLight.RED
+            ),
+        },
         "atm_comparison": {"compared": TrafficLight.GREY},
     }
     return CompiledNetwork(
@@ -440,6 +464,7 @@ def compile_network(
         a_road_spines=_context_frame(context, "a-road-spine"),
         ncn_routes=_context_frame(context, "ncn-route"),
         schools=_context_frame(context, "school"),
+        school_street_assessments=school_street_assessments,
         retail_centres=_context_frame(context, "retail-centre"),
         healthcare=_context_frame(context, "healthcare"),
         agent_records=[*records, *backbone.agent_records],
@@ -862,6 +887,14 @@ def _scoped_schools(
     context: gpd.GeoDataFrame,
     scope_kind: NetworkScope,
 ) -> gpd.GeoDataFrame:
+    schools = _in_scope_schools(context)
+    scope = schools.get(
+        "network_scope", pd.Series("unresolved", index=schools.index, dtype=object)
+    )
+    return schools[scope.eq(scope_kind.value)].copy().sort_values("place_id")
+
+
+def _in_scope_schools(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     schools = context[context["feature_type"] == "school"].copy()
     if schools.empty:
         return gpd.GeoDataFrame(
@@ -885,10 +918,7 @@ def _scoped_schools(
         "school_obligation_eligible",
         schools["category"].eq("school"),
     ).map(_truthy)
-    scope = schools.get(
-        "network_scope", pd.Series("unresolved", index=schools.index, dtype=object)
-    )
-    schools = schools[eligible & scope.eq(scope_kind.value)].copy()
+    schools = schools[eligible].copy()
     access_status = schools.get(
         "access_point_status",
         pd.Series("unresolved", index=schools.index, dtype=object),
