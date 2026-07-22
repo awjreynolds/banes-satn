@@ -1404,7 +1404,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         for record in run.get("authoritative_features", [])
     }
     if run_registry != geojson_registry:
-        raise ValueError("authoritative connection identifiers or roles differ in run manifest")
+        raise ValueError("authoritative feature identifiers or roles differ in run manifest")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
     geopackage_registry: dict[str, str] = {}
     if "spine_access_connections" in spatial_layer_names:
@@ -1441,7 +1441,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             )
         )
     if geopackage_registry != geojson_registry:
-        raise ValueError("authoritative connection identifiers or roles differ in GeoPackage")
+        raise ValueError("authoritative feature identifiers or roles differ in GeoPackage")
     agent_payload = json.loads(
         (output / "agent-records.json").read_text(encoding="utf-8")
     )
@@ -1460,7 +1460,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         }
     )
     if agent_registry != geojson_registry:
-        raise ValueError("authoritative connection identifiers or roles differ in agent records")
+        raise ValueError("authoritative feature identifiers or roles differ in agent records")
     review_network = json.loads(
         (output / "review-map" / "network.geojson").read_text(encoding="utf-8")
     )
@@ -1470,7 +1470,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         if feature["properties"].get("feature_type") in authoritative_types
     }
     if review_registry != geojson_registry:
-        raise ValueError("authoritative connection identifiers or roles differ in review map")
+        raise ValueError("authoritative feature identifiers or roles differ in review map")
     layer_types = {
         "strategic_spines": ("strategic-spine",),
         "access_obligations": ("access-obligation", "school-access-obligation"),
@@ -1654,5 +1654,5 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     for connection_id, network_role in geojson_registry.items():
         if f"{connection_id} | {network_role}" not in pdf_text:
             raise ValueError(
-                f"PDF edge register differs for authoritative connection: {connection_id}"
+                f"PDF edge register differs for authoritative feature: {connection_id}"
             )
