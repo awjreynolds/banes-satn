@@ -5,7 +5,7 @@
   const places = data.places;
   const state = { pinned: null, active: null };
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-spines", "access-obligations", "a-road-spines", "ncn-routes", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "a-road-spines", "ncn-routes", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -63,9 +63,9 @@
     panel.replaceChildren();
     const heading = document.createElement("h2");
     heading.id = "details-heading";
-    const isConnection = ["connection", "gap", "spine-access-connection", "branch-meeting-connection", "cross-spine-connector"].includes(properties.feature_type);
+    const isConnection = ["connection", "gap", "spine-access-connection", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector"].includes(properties.feature_type);
     heading.textContent = isConnection
-      ? `${value(properties.from_place_name, properties.community_name || properties.from_root_spine_name || properties.from_place)} → ${value(properties.to_place_name, properties.spine_name || properties.to_root_spine_name || properties.to_place)}`
+      ? `${value(properties.from_place_name, properties.school_name || properties.place_name || properties.community_name || properties.from_root_spine_name || properties.from_place)} → ${value(properties.to_place_name, properties.parent_target_name || properties.spine_name || properties.to_root_spine_name || properties.to_place)}`
       : value(properties.name, properties.feature_type.replaceAll("-", " "));
     const list = document.createElement("dl");
     addDefinition(list, "Stable ID", id);
@@ -77,6 +77,13 @@
       addDefinition(list, "Design status", value(properties.design_status));
       addDefinition(list, "Mapped features", value(properties.feature_count, 1));
       addDefinition(list, "Source identifiers", value(properties.source_id));
+      if (["school", "school-access-obligation"].includes(properties.feature_type)) {
+        addDefinition(list, "School kind", value(properties.school_kind, properties.category));
+        addDefinition(list, "School access point", value(properties.access_point_status));
+        addDefinition(list, "Access rationale", value(properties.access_point_rationale));
+        addDefinition(list, "Service status", value(properties.service_status));
+        addDefinition(list, "Service rationale", value(properties.service_rationale));
+      }
       panel.append(heading, list);
       setHighlight(null);
       return;
@@ -92,6 +99,11 @@
     addDefinition(list, "Distance criterion", value(properties.criterion_distance));
     addDefinition(list, "Rationale", value(properties.selection_reason));
     addDefinition(list, "Agent gate", value(properties.agent_outcome));
+    if (["school-access-connection", "school-access-gap"].includes(properties.feature_type)) {
+      addDefinition(list, "School kind", value(properties.school_kind));
+      addDefinition(list, "School access point", value(properties.access_point_status));
+      addDefinition(list, "Access rationale", value(properties.access_point_rationale));
+    }
     const findings = parseList(properties.agent_findings);
     addDefinition(list, "Findings", findings.length ? findings.map((finding) => finding.message).join("; ") : "None");
     addDefinition(list, "Source identifiers", parseList(properties.source_ids).join(", ") || "None");
@@ -131,7 +143,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["connection", "gap", "spine-access-connection", "branch-meeting-connection", "cross-spine-connector"].includes(feature.properties.feature_type))
+      .filter((feature) => ["connection", "gap", "spine-access-connection", "school-access-obligation", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -140,9 +152,14 @@
         button.dataset.featureId = feature.id;
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
-        title.textContent = `${value(feature.properties.from_place_name, feature.properties.community_name || feature.properties.from_root_spine_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.spine_name || feature.properties.to_root_spine_name || feature.properties.to_place)}`;
+        const isSchoolObligation = feature.properties.feature_type === "school-access-obligation";
+        title.textContent = isSchoolObligation
+          ? value(feature.properties.name, "Unnamed School")
+          : `${value(feature.properties.from_place_name, feature.properties.school_name || feature.properties.place_name || feature.properties.community_name || feature.properties.from_root_spine_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.parent_target_name || feature.properties.spine_name || feature.properties.to_root_spine_name || feature.properties.to_place)}`;
         const summary = document.createElement("span");
-        summary.textContent = `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
+        summary.textContent = isSchoolObligation
+          ? `${value(feature.properties.service_status)} · ${value(feature.properties.access_point_status)} access point`
+          : `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
         button.addEventListener("mouseenter", () => { if (!state.pinned) showDetails(feature.id); });
         button.addEventListener("mouseleave", clearTransient);
@@ -175,7 +192,7 @@
       "layer-ncn-routes": ["ncn-routes"],
       "layer-urban-structure": ["low-traffic-areas", "urban-spines"],
       "layer-places": ["places"],
-      "layer-schools": ["schools"],
+      "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-gaps"],
       "layer-retail-centres": ["retail-centres"],
       "layer-healthcare": ["healthcare"],
       "layer-gaps-warnings": warningLayers,
@@ -229,15 +246,18 @@
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#85c1e9", "fill-opacity": .3, "fill-outline-color": "#2874a6" } });
     map.addLayer({ id: "strategic-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "strategic-spine"], paint: { "line-color": ["match", ["get", "spine_kind"], "a-road", "#a04000", "ncn", "#2471a3", "#566573"], "line-width": 8, "line-opacity": .85 } });
     map.addLayer({ id: "spine-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "spine-access-connection"], paint: { "line-color": "#16a085", "line-width": 6, "line-dasharray": [1, 1] } });
+    map.addLayer({ id: "school-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "school-access-connection"], layout: { visibility: "none" }, paint: { "line-color": "#7d3c98", "line-width": 6, "line-dasharray": [1, 1] } });
     map.addLayer({ id: "cross-spine-connectors", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "cross-spine-connector"], paint: { "line-color": "#8e44ad", "line-width": 8, "line-opacity": .72 } });
     map.addLayer({ id: "branch-meeting-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "branch-meeting-connection"], paint: { "line-color": "#f39c12", "line-width": 7, "line-dasharray": [2, 1] } });
     map.addLayer({ id: "access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "access-obligation"], paint: { "circle-color": "#16a085", "circle-radius": 8, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
+    map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "criterion_access_point"], "green", "#1e8449", "amber", "#f39c12", "red", "#c0392b", "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
+    map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
     map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
     map.addLayer({ id: "ncn-routes", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "ncn-route"], layout: { visibility: "none" }, paint: { "line-color": "#2471a3", "line-width": 4, "line-dasharray": [2, 1] } });
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
     map.addLayer({ id: "urban-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-spine"], paint: { "line-color": "#8e44ad", "line-width": 5 } });
     map.addLayer({ id: "connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "connection"], paint: { "line-color": "#196f3d", "line-width": 5, "line-offset": ["case", ["==", ["get", "classification"], "strategic-spine"], 5, 0] } });
-    map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school"], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
+    map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["all", ["==", ["get", "feature_type"], "school"], ["!=", ["get", "school_obligation_eligible"], true]], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "retail-centres", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "retail-centre"], layout: { visibility: "none" }, paint: { "circle-color": "#d35400", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "healthcare", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "healthcare"], layout: { visibility: "none" }, paint: { "circle-color": "#c0392b", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "gap"], paint: { "circle-color": "#c0392b", "circle-radius": 8 } });
@@ -250,7 +270,7 @@
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
     });
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
-    ["connections", "spine-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
+    ["connections", "spine-access-connections", "school-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
       map.on("mousemove", layer, (event) => { if (!state.pinned) showDetails(event.features[0].id); });
       map.on("mouseleave", layer, clearTransient);
       map.on("click", layer, (event) => togglePin(event.features[0].id));
@@ -272,6 +292,6 @@
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +
     `${counts.cross_spine_connectors || 0} Cross-Spine Connectors · ` +
-    `${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
+    `${counts.school_access_obligations || 0} School Access Obligations · ${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
     `${counts.healthcare || 0} healthcare sites`;
 })();

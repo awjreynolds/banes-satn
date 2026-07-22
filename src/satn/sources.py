@@ -89,6 +89,8 @@ class OSMnxAdapter:
                 ],
                 "shop": True,
                 "landuse": "retail",
+                "entrance": True,
+                "barrier": ["gate", "lift_gate", "swing_gate"],
             },
         ).reset_index()
         graph = ox.graph_from_polygon(
@@ -198,6 +200,17 @@ def _write_osm_snapshot(
         data.network,
         config,
     )
+    strategic_destinations = derive_strategic_destinations(
+        data.facilities,
+        config.source.strategic_destination_source_ids,
+        places.crs,
+    )
+    if not strategic_destinations.empty:
+        places = gpd.GeoDataFrame(
+            pd.concat([places, strategic_destinations], ignore_index=True),
+            geometry="geometry",
+            crs=places.crs,
+        ).sort_values("place_id")
     context = govern_network_scope(
         derive_context_layers(data.network, data.ncn_routes, data.facilities),
         data.place_features,
@@ -328,6 +341,45 @@ def derive_network_places(
     if result.empty:
         return result.to_crs(crs)
     return result.drop_duplicates("place_id").sort_values("place_id").to_crs(crs)
+
+
+def derive_strategic_destinations(
+    facilities: gpd.GeoDataFrame | None,
+    source_ids: list[str],
+    target_crs: object,
+) -> gpd.GeoDataFrame:
+    """Promote explicitly configured education sites to Network Places, not Schools."""
+    columns = [
+        "place_id",
+        "name",
+        "kind",
+        "place_class",
+        "parent_place_id",
+        "source_id",
+        "geometry",
+    ]
+    if facilities is None or facilities.empty or not source_ids:
+        return gpd.GeoDataFrame(columns=columns, geometry="geometry", crs=target_crs)
+    configured = set(source_ids)
+    rows: list[dict[str, object]] = []
+    for index, facility in facilities.to_crs(target_crs).iterrows():
+        source_id = _source_identifier(facility, index)
+        amenity = (_string_value(facility.get("amenity")) or "").lower()
+        if source_id not in configured or amenity not in {"college", "university"}:
+            continue
+        name = _string_value(facility.get("name")) or f"Unnamed {amenity}"
+        rows.append(
+            {
+                "place_id": _stable_id("strategic-destination", source_id, name),
+                "name": name,
+                "kind": "strategic_destination",
+                "place_class": amenity,
+                "parent_place_id": None,
+                "source_id": source_id,
+                "geometry": facility.geometry.representative_point(),
+            }
+        )
+    return gpd.GeoDataFrame(rows, columns=columns, geometry="geometry", crs=target_crs)
 
 
 def _connected_portals(community: object, network: gpd.GeoDataFrame) -> list[Point]:

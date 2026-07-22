@@ -48,7 +48,8 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     gated_access_ids = {
         feature["id"]
         for feature in network["features"]
-        if feature["properties"]["feature_type"] == "spine-access-connection"
+        if feature["properties"]["feature_type"]
+        in {"spine-access-connection", "school-access-connection"}
     }
 
     assert geojson_ids == set(connections["connection_id"])

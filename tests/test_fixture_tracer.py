@@ -79,9 +79,16 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert a_road["design_status"] == "strategic assumption; not a carriageway or final design"
     spine_access = gpd.read_file(result.artifacts["geopackage"], layer="spine_access_connections")
     spine_branches = gpd.read_file(result.artifacts["geopackage"], layer="spine_access_branches")
-    assert len(spine_access) == 2
-    assert set(spine_access["community_id"]) == {"westfield", "eastfield"}
-    assert set(spine_access["network_role"]) == {"spine-access-connection"}
+    assert len(spine_access) == 3
+    community_access = spine_access[spine_access["obligation_kind"] == "community"]
+    school_access = spine_access[spine_access["obligation_kind"] == "school"]
+    assert set(community_access["community_id"]) == {"westfield", "eastfield"}
+    assert set(spine_access["network_role"]) == {
+        "spine-access-connection",
+        "school-access-connection",
+    }
+    assert list(school_access["school_id"]) == ["school-fixture"]
+    assert list(school_access["access_point_status"]) == ["mapped"]
     assert set(spine_access["spine_id"]) <= set(strategic_spines["spine_id"])
     assert spine_access["access_connection_id"].str.startswith("spine-access-").all()
     assert spine_access["community_attachment_node"].notna().all()
@@ -89,15 +96,22 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert spine_access["target_attachment_node"].notna().all()
     assert all(json.loads(value) for value in spine_access["source_ids"])
     assert result.metadata["strategic_spines"] == 2
-    assert result.metadata["access_obligations"] == 2
-    assert result.metadata["spine_access_connections"] == 2
+    assert result.metadata["access_obligations"] == 3
+    assert result.metadata["school_access_obligations"] == 1
+    assert result.metadata["spine_access_connections"] == 3
     assert result.metadata["spine_access_branches"] >= 1
     assert set(spine_access["branch_id"]) == set(spine_branches["branch_id"])
     assert set(spine_branches["network_role"]) == {"spine-access-branch"}
     obligation = gpd.read_file(result.artifacts["geopackage"], layer="access_obligations")
-    assert set(obligation["network_role"]) == {"community-access-obligation"}
+    assert set(obligation["network_role"]) == {
+        "community-access-obligation",
+        "school-access-obligation",
+    }
     assert set(obligation["service_status"]) == {"served"}
     assert set(obligation["access_connection_id"]) == set(spine_access["access_connection_id"])
+    school_obligation = obligation[obligation["obligation_kind"] == "school"].iloc[0]
+    assert school_obligation["school_id"] == "school-fixture"
+    assert school_obligation["access_point_status"] == "mapped"
     assert result.metadata["strategic_spine_records"][0]["spine_id"] in set(
         strategic_spines["spine_id"]
     )

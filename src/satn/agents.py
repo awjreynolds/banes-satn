@@ -36,6 +36,7 @@ class EvidenceFacts(BaseModel):
 
     from_place: str
     to_place: str
+    target_role: str | None = None
     selection_reason: str = ""
     evidence_ids: tuple[str, ...] = ()
 

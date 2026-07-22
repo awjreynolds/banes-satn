@@ -76,12 +76,26 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 for evidence_id in frame.get("evidence_id", [])
             ),
             "strategic_spines": sorted(compiled.strategic_spines["spine_id"]),
-            "access_obligations": sorted(compiled.access_obligations["obligation_id"]),
+            "access_obligations": sorted(
+                (
+                    row.obligation_id,
+                    row.service_status,
+                    row.access_point_status,
+                    row.access_point_source_id,
+                    row.access_point_rationale,
+                    row.geometry.wkb_hex,
+                )
+                for row in compiled.access_obligations.itertuples()
+            ),
             "spine_access_connections": sorted(
                 (
                     row.access_connection_id,
                     row.community_id,
+                    row.school_id,
+                    row.access_point_status,
                     row.spine_id,
+                    row.parent_target_id,
+                    row.parent_target_name,
                     row.community_attachment_node,
                     row.community_attachment_distance_m,
                     row.spine_attachment_node,
@@ -138,6 +152,9 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "network_units": compiled.network_units,
             "strategic_spines": len(compiled.strategic_spines),
             "access_obligations": len(compiled.access_obligations),
+            "school_access_obligations": int(
+                (compiled.access_obligations["obligation_kind"] == "school").sum()
+            ),
             "spine_access_connections": len(compiled.spine_access_connections),
             "spine_access_branches": len(compiled.spine_access_branches),
             "branch_meeting_connections": len(compiled.branch_meeting_connections),
@@ -155,7 +172,13 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                 {
                     "obligation_id": row.obligation_id,
                     "community_id": row.community_id,
+                    "school_id": row.school_id,
+                    "school_kind": row.school_kind,
                     "service_status": row.service_status,
+                    "service_rationale": row.service_rationale,
+                    "access_point_status": row.access_point_status,
+                    "access_point_source_id": row.access_point_source_id,
+                    "access_point_rationale": row.access_point_rationale,
                     "access_connection_id": row.access_connection_id,
                     "root_spine_id": row.root_spine_id,
                     "branch_id": row.branch_id,
@@ -169,11 +192,18 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
                     "place_id": row.place_id,
                     "place_kind": row.place_kind,
                     "community_id": row.community_id,
+                    "school_id": row.school_id,
+                    "school_kind": row.school_kind,
+                    "access_point_status": row.access_point_status,
+                    "access_point_source_id": row.access_point_source_id,
+                    "access_point_rationale": row.access_point_rationale,
                     "spine_id": row.spine_id,
                     "root_spine_id": row.root_spine_id,
                     "branch_id": row.branch_id,
                     "parent_branch_id": row.parent_branch_id,
                     "parent_role": row.parent_role,
+                    "parent_target_id": row.parent_target_id,
+                    "parent_target_name": row.parent_target_name,
                     "parent_place_id": row.parent_place_id,
                     "parent_access_connection_id": row.parent_access_connection_id,
                     "attachment_depth": row.attachment_depth,

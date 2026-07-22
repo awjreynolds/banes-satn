@@ -41,6 +41,7 @@ class SourceConfig(BaseModel):
         default_factory=lambda: ["city", "town", "suburb", "quarter", "neighbourhood"]
     )
     urban_scope_buffer_km: float = Field(default=2.0, gt=0)
+    strategic_destination_source_ids: list[str] = Field(default_factory=list)
 
 
 class AgentConfig(BaseModel):
