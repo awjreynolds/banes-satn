@@ -22,12 +22,17 @@ from shapely.geometry import LineString, MultiLineString, MultiPoint, Point
 from shapely.ops import unary_union
 
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
-from satn.evidence import derive_context_layers, empty_context, govern_network_scope
+from satn.evidence import (
+    derive_context_layers,
+    empty_context,
+    govern_network_scope_for_urban_communities,
+)
 from satn.models import (
     CouncilConfig,
     GovernedSpatialSourceConfig,
     OfficialRoadClassification,
 )
+from satn.settlement import assess_community_urban_eligibility
 
 CORE_SOURCE_FILES = ("boundary.geojson", "places.geojson", "network.geojson")
 OSM_ATTRIBUTION = "© OpenStreetMap contributors; data available under the ODbL"
@@ -325,15 +330,30 @@ def _write_osm_snapshot(
             geometry="geometry",
             crs=places.crs,
         ).sort_values("place_id")
-    context = govern_network_scope(
-        derive_context_layers(
-            data.network,
-            data.ncn_routes,
-            data.facilities,
-            data.circulation_boundaries,
+    context = derive_context_layers(
+        data.network,
+        data.ncn_routes,
+        data.facilities,
+        data.circulation_boundaries,
+    )
+    communities = assess_community_urban_eligibility(
+        places[places["kind"] == "community"],
+        data.network,
+        context,
+        config.source,
+    )
+    places = gpd.GeoDataFrame(
+        pd.concat(
+            [communities, places[places["kind"] != "community"]],
+            ignore_index=True,
+            sort=False,
         ),
-        data.place_features,
-        urban_place_types=config.source.urban_place_types,
+        geometry="geometry",
+        crs=places.crs,
+    ).sort_values("place_id")
+    context = govern_network_scope_for_urban_communities(
+        context,
+        communities[communities["urban_circulation_eligible"].astype(bool)],
         urban_scope_buffer_km=config.source.urban_scope_buffer_km,
     )
     frames = {

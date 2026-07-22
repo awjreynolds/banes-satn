@@ -76,12 +76,37 @@ def govern_network_scope(
             urban_place_types
         )
     ]
+    return govern_network_scope_for_urban_communities(
+        context,
+        urban,
+        urban_scope_buffer_km=urban_scope_buffer_km,
+    )
+
+
+def govern_network_scope_for_urban_communities(
+    context: gpd.GeoDataFrame,
+    urban_communities: gpd.GeoDataFrame,
+    *,
+    urban_scope_buffer_km: float,
+) -> gpd.GeoDataFrame:
+    """Apply one already-governed Community eligibility set to context evidence."""
     urban_extent = None
-    if not urban.empty:
-        urban_extent = urban.to_crs(27700).geometry.buffer(urban_scope_buffer_km * 1000).union_all()
+    if not urban_communities.empty:
+        urban_extent = (
+            urban_communities.to_crs(27700)
+            .geometry.buffer(urban_scope_buffer_km * 1000)
+            .union_all()
+        )
 
     strategic_types = {"a-road-spine", "ncn-route", "ncn-link"}
     strategic = context[context["feature_type"].isin(strategic_types)]
+    valid_scopes = {scope.value for scope in NetworkScope}
+    invalid_scopes = sorted(
+        set(strategic.get("network_scope", pd.Series(dtype=object)).dropna().astype(str))
+        - valid_scopes
+    )
+    if invalid_scopes:
+        raise ValueError(f"invalid governed network_scope: {', '.join(invalid_scopes)}")
     other = context[~context["feature_type"].isin(strategic_types)].copy()
     school_indexes = other.index[other["feature_type"] == "school"]
     if len(school_indexes):
@@ -112,8 +137,11 @@ def govern_network_scope(
         for scope, scoped_geometry in scoped_parts:
             for geometry in continuous_linework(scoped_geometry):
                 row = evidence.to_dict()
-                identity = hashlib.sha256(geometry.wkb).hexdigest()[:12]
-                row["evidence_id"] = f"{evidence['evidence_id']}-{scope.value}-{identity}"
+                if geometry.equals(evidence.geometry):
+                    row["evidence_id"] = evidence["evidence_id"]
+                else:
+                    identity = hashlib.sha256(geometry.wkb).hexdigest()[:12]
+                    row["evidence_id"] = f"{evidence['evidence_id']}-{scope.value}-{identity}"
                 row["network_scope"] = scope.value
                 row["geometry"] = geometry
                 rows.append(row)

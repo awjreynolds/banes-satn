@@ -129,6 +129,17 @@ class NationalElevationConfig(BaseModel):
         return self
 
 
+class UrbanSettlementFormConfig(BaseModel):
+    """Council-governed evidence thresholds for village circulation planning."""
+
+    eligible_place_classes: list[str] = Field(default_factory=lambda: ["village"])
+    assessment_radius_km: float = Field(default=1.0, gt=0)
+    maximum_component_association_m: float = Field(default=250.0, gt=0)
+    component_association_tolerance_m: float = Field(default=10.0, ge=0)
+    minimum_minor_street_length_km: float = Field(default=15.0, gt=0)
+    minimum_junction_count: int = Field(default=100, ge=1)
+
+
 class SourceConfig(BaseModel):
     kind: Literal["fixture", "osm"] = "fixture"
     fixture_dir: Path | None = None
@@ -148,6 +159,9 @@ class SourceConfig(BaseModel):
         default_factory=lambda: ["city", "town", "suburb", "quarter", "neighbourhood"]
     )
     urban_place_source_ids: list[str] = Field(default_factory=list)
+    urban_settlement_form: UrbanSettlementFormConfig = Field(
+        default_factory=UrbanSettlementFormConfig
+    )
     urban_scope_buffer_km: float = Field(default=2.0, gt=0)
     strategic_destination_source_ids: list[str] = Field(default_factory=list)
     official_road_classification: OfficialRoadClassificationConfig | None = None

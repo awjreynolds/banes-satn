@@ -24,10 +24,20 @@ source:
     - quarter
     - neighbourhood
   urban_place_source_ids:
-    # OSM classifies these substantial Somer Valley settlements as villages, but the
-    # circulation-plan model governs them as urban areas for LTA derivation.
+    # Explicit governed exceptions remain available when connected street form
+    # does not by itself describe a known circulation-plan settlement.
     - "25942875" # Peasedown St. John
     - "26900589" # Paulton
+  urban_settlement_form:
+    # A village enters circulation planning only when both independent form
+    # thresholds are met; amenities remain visible corroborating evidence.
+    eligible_place_classes:
+      - village
+    assessment_radius_km: 1
+    maximum_component_association_m: 250
+    component_association_tolerance_m: 10
+    minimum_minor_street_length_km: 10
+    minimum_junction_count: 70
   urban_scope_buffer_km: 2
   official_road_classification:
     path: ../data/governed/banes-os-open-roads-2026-04-07.geojson
