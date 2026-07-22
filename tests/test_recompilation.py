@@ -80,6 +80,35 @@ def test_agent_review_policy_change_invalidates_publication_reuse(tmp_path: Path
     assert all(record.usage["requests"] > 0 for record in changed.agent_records)
 
 
+def test_invalid_divergence_audit_prevents_publication_reuse(tmp_path: Path) -> None:
+    config = prepared_config(tmp_path)
+    first = compile(config)
+    divergences_path = first.artifacts["divergences"]
+    divergences = json.loads(divergences_path.read_text())
+    divergences["records"] = [{"connection_id": "invalid-divergence"}]
+    divergences_path.write_text(json.dumps(divergences))
+
+    recompiled = compile(config)
+
+    assert "publication_reused" not in recompiled.metadata
+    restored = json.loads(recompiled.artifacts["divergences"].read_text())
+    assert restored["records"] == []
+
+
+def test_stale_agent_review_summary_prevents_publication_reuse(tmp_path: Path) -> None:
+    config = prepared_config(tmp_path)
+    first = compile(config)
+    run = json.loads(first.artifacts["run"].read_text())
+    run["agent_review"]["reviewed_decisions"] += 1
+    first.artifacts["run"].write_text(json.dumps(run))
+
+    recompiled = compile(config)
+
+    assert "publication_reused" not in recompiled.metadata
+    restored = json.loads(recompiled.artifacts["run"].read_text())
+    assert restored["agent_review"]["reviewed_decisions"] == 0
+
+
 def test_changed_elevation_evidence_changes_run_fingerprint(
     tmp_path: Path,
 ) -> None:

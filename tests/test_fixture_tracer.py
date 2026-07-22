@@ -8,7 +8,8 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 import pyogrio
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
+from test_backbone_assembly import parallel_spine_source
 
 from satn import compile
 from satn.constants import DISCLAIMER
@@ -250,6 +251,12 @@ def test_empty_review_policy_compiles_without_constructing_an_agent_runtime(
         "statuses": [],
         "reviewed_decisions": 0,
         "skipped_decisions": len(result.agent_records),
+        "decisions_by_status": {
+            "green": {"reviewed": 0, "skipped": len(result.agent_records)},
+            "amber": {"reviewed": 0, "skipped": 0},
+            "red": {"reviewed": 0, "skipped": 0},
+            "grey": {"reviewed": 0, "skipped": 0},
+        },
     }
     records = json.loads(result.artifacts["agents"].read_text())["records"]
     assert all(record["governing_status"] == "green" for record in records)
@@ -334,6 +341,70 @@ def test_public_compilation_routes_a_configured_grey_gap_to_review(tmp_path: Pat
         for record in result.agent_records
         if record.governing_status == TrafficLight.GREEN
     )
+
+
+def test_public_route_compilation_reviews_only_configured_amber_decisions(
+    tmp_path: Path,
+) -> None:
+    config = CouncilConfig.from_yaml(fixture_config(tmp_path))
+    assert config.source.fixture_dir is not None
+    source = parallel_spine_source()
+    source["boundary"] = gpd.GeoDataFrame(
+        [
+            {
+                "boundary_id": "amber-route-fixture",
+                "geometry": Polygon(
+                    [(-0.01, -0.01), (0.11, -0.01), (0.11, 0.02), (-0.01, 0.02)]
+                ),
+            }
+        ],
+        geometry="geometry",
+        crs=4326,
+    )
+    for name in ("boundary", "places", "network", "context"):
+        source[name].to_file(config.source.fixture_dir / f"{name}.geojson", driver="GeoJSON")
+    config.compilation.max_connection_km = 0.01
+    config.compilation.agent.review_statuses = (TrafficLight.AMBER,)
+    snapshot(config)
+
+    reviewed = compile(config)
+    amber_records = [
+        record
+        for record in reviewed.agent_records
+        if record.governing_status == TrafficLight.AMBER
+    ]
+
+    assert amber_records
+    assert all(record.review_required is True for record in amber_records)
+    assert all(record.usage["requests"] > 0 for record in amber_records)
+    assert all(
+        record.review_required is False
+        for record in reviewed.agent_records
+        if record.governing_status == TrafficLight.GREEN
+    )
+    run = json.loads(reviewed.artifacts["run"].read_text())
+    assert run["agent_review"]["decisions_by_status"]["amber"] == {
+        "reviewed": len(amber_records),
+        "skipped": 0,
+    }
+
+    config.compilation.agent.review_statuses = ()
+    config.compilation.agent.provider = "provider-that-must-not-be-constructed"
+    skipped = compile(config)
+    skipped_amber = [
+        record
+        for record in skipped.agent_records
+        if record.governing_status == TrafficLight.AMBER
+    ]
+
+    assert skipped_amber
+    assert all(record.review_required is False for record in skipped_amber)
+    assert all(record.runtime == "not-invoked" for record in skipped_amber)
+    assert all(record.decision == "accept" for record in skipped_amber)
+    meetings = gpd.read_file(
+        skipped.artifacts["geopackage"], layer="branch_meeting_connections"
+    )
+    assert set(meetings["criterion_distance"]) == {"amber"}
 
 
 def test_external_cli_snapshot_and_compile(tmp_path: Path) -> None:
