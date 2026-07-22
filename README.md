@@ -143,6 +143,13 @@ and meaningful Cross-Boundary Gateways attach to the same served frontier withou
 becoming Community Access Obligations. Stable sorting and identifiers make topology
 independent of source feature order.
 
+When independently rooted fronts reach locally adjacent Communities, their first
+validated cycling-network meeting becomes a Branch Meeting Connection. Meetings are
+selected in global cost order and join spine components as a tree, so parallel or cyclic
+links cannot turn the result into a mesh. Each published Cross-Spine Connector traces
+that meeting through both parent lineages to the relevant Strategic Spines, preserving
+the full connection, branch, evidence and agent-gate provenance.
+
 The previous pairwise network remains temporarily available as the migration's
 comparison contract. It will cease to be authoritative only at the final expand–contract
 step, after cross-spine, School, urban and topography behavior is present and validated.

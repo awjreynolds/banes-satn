@@ -63,9 +63,9 @@
     panel.replaceChildren();
     const heading = document.createElement("h2");
     heading.id = "details-heading";
-    const isConnection = ["connection", "gap", "spine-access-connection"].includes(properties.feature_type);
+    const isConnection = ["connection", "gap", "spine-access-connection", "branch-meeting-connection", "cross-spine-connector"].includes(properties.feature_type);
     heading.textContent = isConnection
-      ? `${value(properties.from_place_name, properties.community_name || properties.from_place)} → ${value(properties.to_place_name, properties.spine_name || properties.to_place)}`
+      ? `${value(properties.from_place_name, properties.community_name || properties.from_root_spine_name || properties.from_place)} → ${value(properties.to_place_name, properties.spine_name || properties.to_root_spine_name || properties.to_place)}`
       : value(properties.name, properties.feature_type.replaceAll("-", " "));
     const list = document.createElement("dl");
     addDefinition(list, "Stable ID", id);
@@ -131,7 +131,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["connection", "gap", "spine-access-connection"].includes(feature.properties.feature_type))
+      .filter((feature) => ["connection", "gap", "spine-access-connection", "branch-meeting-connection", "cross-spine-connector"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -140,7 +140,7 @@
         button.dataset.featureId = feature.id;
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
-        title.textContent = `${value(feature.properties.from_place_name, feature.properties.community_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.spine_name || feature.properties.to_place)}`;
+        title.textContent = `${value(feature.properties.from_place_name, feature.properties.community_name || feature.properties.from_root_spine_name || feature.properties.from_place)} → ${value(feature.properties.to_place_name, feature.properties.spine_name || feature.properties.to_root_spine_name || feature.properties.to_place)}`;
         const summary = document.createElement("span");
         summary.textContent = `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
@@ -169,6 +169,7 @@
     const groups = {
       "layer-strategic-spines": ["strategic-spines"],
       "layer-spine-access-connections": ["spine-access-connections", "access-obligations"],
+      "layer-cross-spine-connectors": ["cross-spine-connectors", "branch-meeting-connections"],
       "layer-a-road-spines": ["a-road-spines"],
       "layer-community-connections": ["connections"],
       "layer-ncn-routes": ["ncn-routes"],
@@ -228,6 +229,8 @@
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#85c1e9", "fill-opacity": .3, "fill-outline-color": "#2874a6" } });
     map.addLayer({ id: "strategic-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "strategic-spine"], paint: { "line-color": ["match", ["get", "spine_kind"], "a-road", "#a04000", "ncn", "#2471a3", "#566573"], "line-width": 8, "line-opacity": .85 } });
     map.addLayer({ id: "spine-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "spine-access-connection"], paint: { "line-color": "#16a085", "line-width": 6, "line-dasharray": [1, 1] } });
+    map.addLayer({ id: "cross-spine-connectors", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "cross-spine-connector"], paint: { "line-color": "#8e44ad", "line-width": 8, "line-opacity": .72 } });
+    map.addLayer({ id: "branch-meeting-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "branch-meeting-connection"], paint: { "line-color": "#f39c12", "line-width": 7, "line-dasharray": [2, 1] } });
     map.addLayer({ id: "access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "access-obligation"], paint: { "circle-color": "#16a085", "circle-radius": 8, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
     map.addLayer({ id: "ncn-routes", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "ncn-route"], layout: { visibility: "none" }, paint: { "line-color": "#2471a3", "line-width": 4, "line-dasharray": [2, 1] } });
@@ -247,7 +250,7 @@
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
     });
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
-    ["connections", "spine-access-connections"].forEach((layer) => {
+    ["connections", "spine-access-connections", "cross-spine-connectors", "branch-meeting-connections"].forEach((layer) => {
       map.on("mousemove", layer, (event) => { if (!state.pinned) showDetails(event.features[0].id); });
       map.on("mouseleave", layer, clearTransient);
       map.on("click", layer, (event) => togglePin(event.features[0].id));
@@ -268,6 +271,7 @@
   const counts = data.layer_counts || {};
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +
+    `${counts.cross_spine_connectors || 0} Cross-Spine Connectors · ` +
     `${counts.schools || 0} education sites · ${counts.retail_centres || 0} retail centres · ` +
     `${counts.healthcare || 0} healthcare sites`;
 })();
