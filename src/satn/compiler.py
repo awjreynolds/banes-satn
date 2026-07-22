@@ -11,10 +11,12 @@ from numbers import Number
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
+from shapely.geometry import MultiPoint
 
 from satn.agents import AgentRuntime, CompilationGate
-from satn.backbone import assemble_backbone_outward
+from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
 from satn.evidence import continuous_linework, empty_context, mark_ncn_edges
+from satn.identifiers import stable_id as _stable_id
 from satn.models import (
     AccessPointStatus,
     AccessServiceStatus,
@@ -124,6 +126,7 @@ def compile_network(
     spine_access_branches = backbone.branches
     branch_meeting_connections = backbone.meeting_connections
     cross_spine_connectors = backbone.cross_spine_connectors
+    gaps = backbone.gaps.copy()
     crs = source["network"].crs
     official_road_classification = source.get("official_road_classification")
     urban = derive_urban_structure(
@@ -153,6 +156,14 @@ def compile_network(
             geometry="geometry",
             crs=crs,
         )
+        urban_school_gaps = _urban_school_gaps(urban_school_access, crs)
+        if not urban_school_gaps.empty:
+            gaps = gpd.GeoDataFrame(
+                pd.concat([gaps, urban_school_gaps], ignore_index=True, sort=False),
+                columns=GAP_COLUMNS,
+                geometry="geometry",
+                crs=crs,
+            ).sort_values("connection_id")
     school_street_assessments = assess_school_street_candidates(
         _in_scope_schools(context),
         source["network"],
@@ -199,7 +210,6 @@ def compile_network(
     crossing_warnings = _backbone_crossing_warnings(
         spine_access_connections, branch_meeting_connections
     )
-    gaps = backbone.gaps.copy()
     obligation_status = _access_obligation_status(access_obligations)
     covered = obligation_status in {TrafficLight.GREEN, TrafficLight.AMBER}
     network_units = _backbone_network_units(
@@ -410,6 +420,79 @@ def compile_network(
         ),
         compilation_diagnostics=backbone.compilation_diagnostics,
     )
+
+
+def _urban_school_gaps(
+    obligations: gpd.GeoDataFrame,
+    crs: object,
+) -> gpd.GeoDataFrame:
+    """Materialise every unserved urban School obligation as a visible Network Gap."""
+    rows: list[dict[str, object]] = []
+    for _, obligation in obligations[
+        obligations["service_status"] == AccessServiceStatus.NETWORK_GAP.value
+    ].sort_values("obligation_id").iterrows():
+        school_id = str(obligation["school_id"])
+        reason = str(obligation["service_rationale"])
+        source_ids = json.loads(str(obligation.get("fabric_source_ids") or "[]"))
+        access_source = obligation.get("access_point_source_id")
+        if access_source is not None and not pd.isna(access_source):
+            source_ids.append(str(access_source))
+        rows.append(
+            {
+                "connection_id": _stable_id(
+                    "urban-school-access-gap", obligation["obligation_id"]
+                ),
+                "network_role": "school-access-gap",
+                "from_place": school_id,
+                "to_place": None,
+                "from_place_name": obligation.get("name"),
+                "to_place_name": None,
+                "distance_km": None,
+                "classification": "network-gap",
+                "intervention_archetype": "urban permeability investigation",
+                "geometry_semantics": (
+                    "unserved urban School Access Point evidence; no residential "
+                    "centreline is fabricated"
+                ),
+                "status": "gap",
+                "selection_reason": reason,
+                "agent_outcome": reason,
+                "agent_attempt_count": 0,
+                "agent_findings": json.dumps(
+                    [
+                        {
+                            "code": str(obligation.get("finding") or "urban-access-gap"),
+                            "severity": "blocking",
+                            "message": reason,
+                            "evidence_ids": sorted(set(source_ids)),
+                        }
+                    ],
+                    sort_keys=True,
+                ),
+                "school_id": school_id,
+                "school_kind": obligation.get("school_kind"),
+                "access_point_status": obligation.get("access_point_status"),
+                "access_point_source_id": access_source,
+                "access_point_rationale": obligation.get("access_point_rationale"),
+                "source_ids": json.dumps(sorted(set(source_ids))),
+                "cache_status": "not-cacheable",
+                "alignment_options": "[]",
+                "criterion_endpoints": obligation.get("criterion_access_point"),
+                "criterion_continuity": obligation.get("criterion_continuity"),
+                "criterion_bidirectional": "grey",
+                "criterion_distance": "grey",
+                "topography_alternative_trigger": False,
+                "topography_comparison_status": "not-evaluated",
+                "topography_comparison_rationale": (
+                    "Urban service is assessed through area permeability; no routed "
+                    "alignment exists for topography comparison."
+                ),
+                "topography_original_role": None,
+                "topography_selected_role": None,
+                "geometry": MultiPoint([obligation.geometry]),
+            }
+        )
+    return gpd.GeoDataFrame(rows, columns=GAP_COLUMNS, geometry="geometry", crs=crs)
 
 
 def _human_intervention_requests(

@@ -51,6 +51,15 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         access_card.press("Enter")
         assert access_card.get_attribute("aria-pressed") == "false"
 
+        spine_card = page.locator('[data-feature-type="strategic-spine"]').first
+        spine_card.focus()
+        assert "Network role" in page.locator("#feature-details").inner_text()
+        place_card = page.locator('[data-feature-type="place"]').first
+        place_card.focus()
+        place_details = page.locator("#feature-details").inner_text()
+        assert "Stable ID" in place_details
+        assert "Place role" in place_details
+
         page.locator("#criteria-network").check()
         assert page.locator("#criteria-heading").inner_text() == "network criteria"
         assert "authoritative model" in page.locator("#criteria-list").inner_text()

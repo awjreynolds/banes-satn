@@ -5,6 +5,7 @@ import json
 import geopandas as gpd
 from shapely.geometry import LineString, Point, Polygon
 
+from satn.compiler import _urban_school_gaps
 from satn.urban_school import assess_urban_school_access
 
 
@@ -152,9 +153,16 @@ def test_unresolved_or_discontinuous_urban_school_access_is_a_visible_finding() 
         ]
     )
 
-    assessed = assess_urban_school_access(schools, network, areas, portals).set_index(
-        "school_id"
-    )
+    obligations = assess_urban_school_access(schools, network, areas, portals)
+    gaps = _urban_school_gaps(obligations, obligations.crs)
+    assessed = obligations.set_index("school_id")
+
+    assert len(gaps) == 2
+    assert set(gaps["network_role"]) == {"school-access-gap"}
+    assert set(gaps["from_place"]) == {"disconnected-school", "unresolved-school"}
+    assert gaps["connection_id"].is_unique
+    assert set(gaps.geometry.geom_type) == {"MultiPoint"}
+    assert all("no residential centreline" in value for value in gaps["geometry_semantics"])
 
     disconnected = assessed.loc["disconnected-school"]
     assert disconnected["service_status"] == "network-gap"

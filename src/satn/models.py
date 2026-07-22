@@ -271,6 +271,7 @@ class CouncilConfig(BaseModel):
 
 class AgentRecord(BaseModel):
     connection_id: str
+    network_role: str | None = None
     runtime: str
     model: str
     proposal: str

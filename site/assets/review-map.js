@@ -223,7 +223,7 @@
   function renderCards() {
     const list = document.querySelector("#connection-list");
     network.features
-      .filter((feature) => ["gap", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "low-traffic-area", "low-traffic-area-portal", "topography-profile", "gradient-section"].includes(feature.properties.feature_type))
+      .filter((feature) => ["gap", "strategic-spine", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "urban-spine", "urban-classification-unknown", "low-traffic-area", "low-traffic-area-portal", "crossing-warning", "topography-profile", "gradient-section"].includes(feature.properties.feature_type))
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -231,6 +231,7 @@
         const retainedTopography = ["original-retained-no-easier-option", "strategic-spine-retained"].includes(feature.properties.topography_comparison_status);
         button.className = `connection ${feature.properties.feature_type === "gap" ? "gap" : ""} ${retainedTopography ? "retained-topography" : ""}`;
         button.dataset.featureId = feature.id;
+        button.dataset.featureType = feature.properties.feature_type;
         button.setAttribute("aria-pressed", "false");
         const title = document.createElement("strong");
         const isSchoolObligation = feature.properties.feature_type === "school-access-obligation";
@@ -238,7 +239,10 @@
         const isAreaEvidence = ["low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type);
         const isTopographyProfile = feature.properties.feature_type === "topography-profile";
         const isGradientSection = feature.properties.feature_type === "gradient-section";
-        title.textContent = isAreaEvidence
+        const isNamedNetworkEvidence = ["strategic-spine", "urban-spine", "urban-classification-unknown", "crossing-warning"].includes(feature.properties.feature_type);
+        title.textContent = isNamedNetworkEvidence
+          ? value(feature.properties.name, feature.properties.feature_type.replaceAll("-", " "))
+          : isAreaEvidence
           ? value(feature.properties.name, "Unnamed Candidate Low-Traffic Area evidence")
           : isSchoolStreet
           ? value(feature.properties.school_name, "Unnamed School Street Candidate Assessment")
@@ -262,6 +266,8 @@
           ? `${value(feature.properties.evidence_status)} · ${value(feature.properties.distance_m)} m`
           : isGradientSection
           ? `${value(feature.properties.length_m)} m · ${value(feature.properties.forward_gradient_pct)}% forward`
+          : isNamedNetworkEvidence
+          ? `${feature.properties.feature_type.replaceAll("-", " ")} · ${value(feature.properties.network_role, feature.properties.status)}`
           : `${value(feature.properties.distance_km, "Unknown distance")} · ${value(feature.properties.status)}`;
         button.append(title, summary);
         if (retainedTopography) {
@@ -276,6 +282,24 @@
         button.addEventListener("click", () => togglePin(feature.id));
         list.append(button);
       });
+    places.features.forEach((feature) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.id = `item-place-${feature.properties.place_id}`;
+      button.className = "connection";
+      button.dataset.featureId = feature.properties.place_id;
+      button.dataset.featureType = "place";
+      const title = document.createElement("strong");
+      title.textContent = value(feature.properties.name, "Unnamed Network Place");
+      const summary = document.createElement("span");
+      summary.textContent = `Network Place · ${value(feature.properties.kind)}`;
+      button.append(title, summary);
+      button.addEventListener("mouseenter", () => showPlaceDetails(feature));
+      button.addEventListener("mouseleave", clearTransient);
+      button.addEventListener("focus", () => showPlaceDetails(feature));
+      button.addEventListener("click", () => showPlaceDetails(feature));
+      list.append(button);
+    });
   }
 
   function renderCriteria(section) {

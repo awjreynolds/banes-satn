@@ -34,6 +34,9 @@ def test_default_compilation_exposes_only_backbone_outward_connections(
         compiled.access_obligations["access_connection_id"].notna().sum()
         + (compiled.access_obligations["service_status"] == "network-gap").sum()
     )
+    assert len(compiled.gaps) == int(
+        (compiled.access_obligations["service_status"] == "network-gap").sum()
+    )
     assert compiled.human_intervention_requests == []
 
 
@@ -142,3 +145,27 @@ def test_comparison_labels_previous_pairwise_output_as_a_non_truth_reference(
     assert previous_topology["edge_count"] == 0
     assert report["current_backbone"]["connection_count"] == compiled.connection_count
     assert report["explainability"]["all_current_connections_have_typed_roles"]
+
+
+def test_comparison_accepts_the_immutable_banes_pairwise_summary(tmp_path: Path) -> None:
+    config = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    compiled = compile_network(config, parallel_spine_source(), FakeAgentRuntime())
+    report_path = tmp_path / "comparison.json"
+
+    _write_backbone_comparison(
+        report_path,
+        compiled,
+        PROJECT / "references" / "banes-legacy-pairwise-summary.json",
+    )
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    previous = report["superseded_pairwise_reference"]
+    assert previous == {
+        "network_model": "legacy-pairwise",
+        "connection_count": 163,
+        "linework_length_m": 319649.0,
+    }
+    assert report["topology"]["previous"]["feature_role_counts"] == {
+        "connection": 163
+    }
+    assert report["topology"]["previous"]["component_count"] == 1

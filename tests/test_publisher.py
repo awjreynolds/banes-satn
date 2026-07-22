@@ -133,6 +133,18 @@ def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
     assert gated_access_ids | meeting_ids == {
         record["connection_id"] for record in agents["records"]
     }
+    authoritative_roles = {
+        feature["id"]: feature["properties"]["network_role"]
+        for feature in network["features"]
+        if feature["id"] in gated_access_ids | meeting_ids
+    }
+    assert run["authoritative_connections"] == [
+        {"connection_id": connection_id, "network_role": role}
+        for connection_id, role in sorted(authoritative_roles.items())
+    ]
+    assert {
+        record["connection_id"]: record["network_role"] for record in agents["records"]
+    } == authoritative_roles
     assert run["connection_count"] == len(gated_access_ids | meeting_ids)
     assert run["network_model"] == "backbone-outward"
     assert run["compilation_diagnostics"]["assembly_strategy"] == "backbone-outward"
@@ -209,6 +221,30 @@ def test_failed_publication_preserves_the_previous_complete_output(
     monkeypatch.setattr("satn.publisher._write_pdf", fail_pdf)
     config.compilation.full = True
     with pytest.raises(RuntimeError, match="simulated print failure"):
+        compile(config)
+
+    after = {name: checksum(path) for name, path in first.artifacts.items() if path.is_file()}
+    assert after == before
+
+
+def test_failed_final_install_rolls_back_the_previous_complete_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = prepared_config(tmp_path)
+    first = compile(config)
+    before = {name: checksum(path) for name, path in first.artifacts.items() if path.is_file()}
+    original_replace = Path.replace
+
+    def fail_temporary_install(path: Path, target: Path) -> Path:
+        if path.name.startswith(f".{config.publication.output_dir.name}-") and target == (
+            config.publication.output_dir
+        ) and path.name != f".{config.publication.output_dir.name}-previous":
+            raise OSError("simulated final install failure")
+        return original_replace(path, target)
+
+    monkeypatch.setattr(Path, "replace", fail_temporary_install)
+    config.compilation.full = True
+    with pytest.raises(OSError, match="simulated final install failure"):
         compile(config)
 
     after = {name: checksum(path) for name, path in first.artifacts.items() if path.is_file()}

@@ -36,7 +36,7 @@ atm:
   redistribution_permitted: false
 publication:
   output_dir: ../output
-  comparison_reference: ../site/network.geojson
+  comparison_reference: ../references/banes-legacy-pairwise-summary.json
   title: B&NES Strategic Active Travel Network Review
   pdf_page_size: A3
   audience: public

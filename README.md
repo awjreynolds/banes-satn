@@ -310,8 +310,9 @@ review-map layers. If an earlier publication exists, `backbone-comparison.json`
 summarises topology, gaps, linework/noise and explainability differences under the
 explicit role `superseded-reference-not-ground-truth`; agreement with it is not a
 correctness criterion. `publication.comparison_reference` may identify a governed
-tracked predecessor (the B&NES configuration points to `site/network.geojson`) so a
-clean full compile still produces that comparison before any new output is promoted.
+tracked predecessor. The B&NES configuration uses an immutable schema-1 summary under
+`references/`, so a clean full compile remains reproducible after the schema-2 site is
+promoted.
 
 ## Deterministic recompilation
 

@@ -214,7 +214,7 @@ def test_unidirectional_option_is_not_a_plausible_topography_alternative() -> No
     connection = _authoritative_connection(compiled)
     assert connection.geometry.equals(direct)
     assert connection["topography_comparison_status"] == ("original-retained-no-easier-option")
-    assert connection["topography_comparison_status"] == ("original-retained-no-easier-option")
+    assert connection["topography_selected_role"] == "low-traffic"
 
 
 def test_agent_proposal_cannot_silently_override_authoritative_topography_selection() -> None:

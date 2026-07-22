@@ -1047,6 +1047,7 @@ def _evaluate(row: dict[str, object], gate: CompilationGate) -> AgentRecord:
 
 def _record_gate_acceptance(row: dict[str, object], record: AgentRecord) -> None:
     row["status"] = "validated"
+    record.network_role = str(row["network_role"])
     row["agent_outcome"] = record.outcome_reason
     row["agent_attempt_count"] = len(record.attempts)
     latest = record.attempts[-1] if record.attempts else {}
@@ -1227,6 +1228,26 @@ def _connection_row(
         "provenance": json.dumps(provenance, sort_keys=True),
         "criterion_continuity": "green",
         "criterion_bidirectional": "green",
+        **_topography_payload(
+            topography,
+            candidate.option,
+            candidate.options,
+            publish_alignment_options=obligation_kind == "community",
+        ),
+        "geometry": candidate.option.geometry,
+    }
+
+
+def _topography_payload(
+    topography: TopographyComparison | None,
+    selected: RouteOption,
+    options: tuple[RouteOption, ...],
+    *,
+    publish_alignment_options: bool,
+) -> dict[str, object]:
+    """Serialise one governed topography selection without widening domain terms."""
+    governed_options = list(options or (selected,))
+    return {
         "topography_alternative_trigger": (
             topography.triggered if topography is not None else False
         ),
@@ -1236,16 +1257,19 @@ def _connection_row(
         "topography_comparison_rationale": (
             topography.rationale if topography is not None else "Not evaluated."
         ),
-        "topography_original_role": (topography.original.role if topography is not None else None),
-        "topography_selected_role": candidate.option.role,
-        "alignment_options": (
-            topography.serialise_options(
-                list(candidate.options or (candidate.option,)), candidate.option.role
-            )
-            if topography is not None
-            else serialise_options(list(candidate.options or (candidate.option,)))
+        "topography_original_role": (
+            topography.original.role if topography is not None else None
         ),
-        "geometry": candidate.option.geometry,
+        "topography_selected_role": selected.role,
+        "alignment_options": (
+            (
+                topography.serialise_options(governed_options, selected.role)
+                if topography is not None
+                else serialise_options(governed_options)
+            )
+            if publish_alignment_options
+            else None
+        ),
     }
 
 
@@ -1714,23 +1738,11 @@ def _meeting_row(
         "criterion_continuity": "green",
         "criterion_bidirectional": "green",
         "criterion_distance": ("amber" if route_length_km > max_connection_km else "green"),
-        "topography_alternative_trigger": (
-            topography.triggered if topography is not None else False
-        ),
-        "topography_comparison_status": (
-            topography.status.value if topography is not None else "not-evaluated"
-        ),
-        "topography_comparison_rationale": (
-            topography.rationale if topography is not None else "Not evaluated."
-        ),
-        "topography_original_role": (topography.original.role if topography is not None else None),
-        "topography_selected_role": candidate.option.role,
-        "alignment_options": (
-            topography.serialise_options(
-                list(candidate.options or (candidate.option,)), candidate.option.role
-            )
-            if topography is not None
-            else serialise_options(list(candidate.options or (candidate.option,)))
+        **_topography_payload(
+            topography,
+            candidate.option,
+            candidate.options,
+            publish_alignment_options=True,
         ),
         "geometry": candidate.option.geometry,
     }
@@ -1759,6 +1771,7 @@ def _evaluate_meeting(row: dict[str, object], gate: CompilationGate) -> AgentRec
 
 def _record_meeting_acceptance(row: dict[str, object], record: AgentRecord) -> None:
     row["status"] = "validated"
+    record.network_role = str(row["network_role"])
     row["agent_outcome"] = record.outcome_reason
     row["agent_attempt_count"] = len(record.attempts)
     latest = record.attempts[-1] if record.attempts else {}

@@ -4,6 +4,7 @@
   "records": [
     {
       "connection_id": "spine-access-34065da0c75c",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -44,10 +45,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:35.824411Z"
+      "created_at": "2026-07-22T07:49:49.023693Z"
     },
     {
       "connection_id": "spine-access-212a61e497c2",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-eba2998349db\", \"strategic-spine-sources-f158aae89ed7\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -88,10 +90,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:36.385047Z"
+      "created_at": "2026-07-22T07:49:49.579230Z"
     },
     {
       "connection_id": "spine-access-ce01bd1dded9",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -132,10 +135,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:36.905529Z"
+      "created_at": "2026-07-22T07:49:50.114390Z"
     },
     {
       "connection_id": "spine-access-ba674d0420d9",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -176,10 +180,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:37.418826Z"
+      "created_at": "2026-07-22T07:49:50.620626Z"
     },
     {
       "connection_id": "spine-access-16e61149c286",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -220,10 +225,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:37.791822Z"
+      "created_at": "2026-07-22T07:49:50.970520Z"
     },
     {
       "connection_id": "spine-access-c26e1a7058e6",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -264,10 +270,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:38.448064Z"
+      "created_at": "2026-07-22T07:49:51.623191Z"
     },
     {
       "connection_id": "spine-access-b7efee718574",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -308,10 +315,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:38.777990Z"
+      "created_at": "2026-07-22T07:49:51.947515Z"
     },
     {
       "connection_id": "spine-access-178c4673ba72",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -352,10 +360,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:39.531596Z"
+      "created_at": "2026-07-22T07:49:52.700269Z"
     },
     {
       "connection_id": "spine-access-786a04ff9679",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -396,10 +405,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:39.972688Z"
+      "created_at": "2026-07-22T07:49:53.140565Z"
     },
     {
       "connection_id": "spine-access-c32d550cc97a",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -440,10 +450,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:40.360848Z"
+      "created_at": "2026-07-22T07:49:53.522888Z"
     },
     {
       "connection_id": "spine-access-aa5cf45f865c",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -484,10 +495,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:41.041110Z"
+      "created_at": "2026-07-22T07:49:54.201220Z"
     },
     {
       "connection_id": "spine-access-da2d6095b94f",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -528,10 +540,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:41.505916Z"
+      "created_at": "2026-07-22T07:49:54.669320Z"
     },
     {
       "connection_id": "spine-access-0d8cdb36e927",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"172623184\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -573,10 +586,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:41.896177Z"
+      "created_at": "2026-07-22T07:49:55.071589Z"
     },
     {
       "connection_id": "spine-access-a38cd2fcfa3b",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -617,10 +631,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:42.454460Z"
+      "created_at": "2026-07-22T07:49:55.609738Z"
     },
     {
       "connection_id": "spine-access-5b349512887e",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -661,10 +676,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:43.185753Z"
+      "created_at": "2026-07-22T07:49:56.343838Z"
     },
     {
       "connection_id": "spine-access-8fd581a5b19b",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -705,10 +721,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:43.665168Z"
+      "created_at": "2026-07-22T07:49:56.826245Z"
     },
     {
       "connection_id": "spine-access-ec56c1e325bd",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -749,10 +766,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:44.044719Z"
+      "created_at": "2026-07-22T07:49:57.205698Z"
     },
     {
       "connection_id": "spine-access-5d8e9e5648f1",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -793,10 +811,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:44.580535Z"
+      "created_at": "2026-07-22T07:49:57.735367Z"
     },
     {
       "connection_id": "spine-access-6af2db7fcba6",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-5d385c6816ed\", \"strategic-spine-sources-6fbaab9e0c9a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -837,10 +856,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:44.864766Z"
+      "created_at": "2026-07-22T07:49:58.019395Z"
     },
     {
       "connection_id": "spine-access-3cc0ec992b39",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -881,10 +901,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:45.320368Z"
+      "created_at": "2026-07-22T07:49:58.477279Z"
     },
     {
       "connection_id": "spine-access-d658f359ce19",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -925,10 +946,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:45.697348Z"
+      "created_at": "2026-07-22T07:49:58.856007Z"
     },
     {
       "connection_id": "spine-access-508884f4152c",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-5d385c6816ed\", \"strategic-spine-sources-6fbaab9e0c9a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -969,10 +991,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:46.031383Z"
+      "created_at": "2026-07-22T07:49:59.190560Z"
     },
     {
       "connection_id": "spine-access-37ca72c1dd80",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1013,10 +1036,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:46.534056Z"
+      "created_at": "2026-07-22T07:49:59.702984Z"
     },
     {
       "connection_id": "spine-access-6f3ced6523ef",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-48890a1ecc38\", \"strategic-spine-sources-2edfb8080367\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1057,10 +1081,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:46.790950Z"
+      "created_at": "2026-07-22T07:49:59.959208Z"
     },
     {
       "connection_id": "spine-access-ce3f4b167dc0",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1101,10 +1126,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:47.246194Z"
+      "created_at": "2026-07-22T07:50:00.417883Z"
     },
     {
       "connection_id": "spine-access-f8d958f09667",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1145,10 +1171,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:47.714213Z"
+      "created_at": "2026-07-22T07:50:00.893860Z"
     },
     {
       "connection_id": "spine-access-683a2b81df86",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1189,10 +1216,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:48.161552Z"
+      "created_at": "2026-07-22T07:50:01.343688Z"
     },
     {
       "connection_id": "spine-access-4161efed1d6e",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1233,10 +1261,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:48.410826Z"
+      "created_at": "2026-07-22T07:50:01.591531Z"
     },
     {
       "connection_id": "spine-access-64756e6cfad1",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1277,10 +1306,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:48.827504Z"
+      "created_at": "2026-07-22T07:50:02.022696Z"
     },
     {
       "connection_id": "spine-access-dd3dd5f9d9ff",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-48890a1ecc38\", \"strategic-spine-sources-2edfb8080367\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1321,10 +1351,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:49.038014Z"
+      "created_at": "2026-07-22T07:50:02.234362Z"
     },
     {
       "connection_id": "spine-access-a8943ffde6c1",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1365,10 +1396,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:49.364750Z"
+      "created_at": "2026-07-22T07:50:02.562144Z"
     },
     {
       "connection_id": "spine-access-ace2eeaebbd5",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1409,10 +1441,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:49.615823Z"
+      "created_at": "2026-07-22T07:50:02.813195Z"
     },
     {
       "connection_id": "spine-access-67676ac212b1",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1453,10 +1486,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:49.908896Z"
+      "created_at": "2026-07-22T07:50:03.109203Z"
     },
     {
       "connection_id": "spine-access-ca9607254ef1",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1497,10 +1531,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:50.122428Z"
+      "created_at": "2026-07-22T07:50:03.323703Z"
     },
     {
       "connection_id": "spine-access-280194e1ee76",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1541,10 +1576,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:50.437024Z"
+      "created_at": "2026-07-22T07:50:03.638274Z"
     },
     {
       "connection_id": "spine-access-e2afc8327be5",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1585,10 +1621,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:50.644693Z"
+      "created_at": "2026-07-22T07:50:03.845516Z"
     },
     {
       "connection_id": "spine-access-e020d611cfcb",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1629,10 +1666,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:50.891053Z"
+      "created_at": "2026-07-22T07:50:04.091596Z"
     },
     {
       "connection_id": "spine-access-18d9d6f6d746",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1673,10 +1711,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:51.073289Z"
+      "created_at": "2026-07-22T07:50:04.272577Z"
     },
     {
       "connection_id": "spine-access-a7c28bf6996e",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1717,10 +1756,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:51.214029Z"
+      "created_at": "2026-07-22T07:50:04.410442Z"
     },
     {
       "connection_id": "spine-access-5b41124c7fda",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"strategic-spine-evidence-48890a1ecc38\", \"strategic-spine-sources-2edfb8080367\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1761,10 +1801,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:51.388283Z"
+      "created_at": "2026-07-22T07:50:04.584837Z"
     },
     {
       "connection_id": "spine-access-7fd82bc98824",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"[70645412, 1379002204]\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1806,10 +1847,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:51.623460Z"
+      "created_at": "2026-07-22T07:50:04.819918Z"
     },
     {
       "connection_id": "spine-access-4d0191213e49",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"58659402\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1851,10 +1893,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:51.854945Z"
+      "created_at": "2026-07-22T07:50:05.052039Z"
     },
     {
       "connection_id": "spine-access-44a6b64285fd",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"126784209\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1896,10 +1939,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:51.941117Z"
+      "created_at": "2026-07-22T07:50:05.139672Z"
     },
     {
       "connection_id": "spine-access-cb3913370bd0",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"178172926\", \"28581115\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1942,10 +1986,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.032266Z"
+      "created_at": "2026-07-22T07:50:05.231952Z"
     },
     {
       "connection_id": "spine-access-b8431b5a437a",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"159967968\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -1987,10 +2032,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.188884Z"
+      "created_at": "2026-07-22T07:50:05.388690Z"
     },
     {
       "connection_id": "spine-access-03a3898d64f4",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"27579415\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2032,10 +2078,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.266265Z"
+      "created_at": "2026-07-22T07:50:05.466312Z"
     },
     {
       "connection_id": "spine-access-67e42862fbae",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"31016598\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2077,10 +2124,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.332378Z"
+      "created_at": "2026-07-22T07:50:05.532585Z"
     },
     {
       "connection_id": "spine-access-610cda60d787",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1103169381\", \"133377910\", \"4073834\", \"61014627\", \"956989019\", \"strategic-spine-evidence-a07df68b07b6\", \"strategic-spine-sources-ba9916cc208f\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2126,10 +2174,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.487732Z"
+      "created_at": "2026-07-22T07:50:05.687455Z"
     },
     {
       "connection_id": "spine-access-d64291b629df",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"26630163\", \"40366892\", \"489397102\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2173,10 +2222,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.657724Z"
+      "created_at": "2026-07-22T07:50:05.857130Z"
     },
     {
       "connection_id": "spine-access-06b8fd73006b",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"145263551\", \"7992106\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2219,10 +2269,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.706300Z"
+      "created_at": "2026-07-22T07:50:05.905989Z"
     },
     {
       "connection_id": "spine-access-e1b055d1a1c4",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"118063004\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2264,10 +2315,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.770276Z"
+      "created_at": "2026-07-22T07:50:05.965983Z"
     },
     {
       "connection_id": "spine-access-90b26a1bbbee",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030822316\", \"1030822328\", \"133638000\", \"34719194\", \"38334795\", \"38839577\", \"4390604\", \"4390607\", \"[133638010, 1379002204]\", \"[1379002212, 4390604, 1379002213]\", \"[70645426, 1317415722]\", \"[974618872, 70645426]\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2320,10 +2372,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.805984Z"
+      "created_at": "2026-07-22T07:50:06.001888Z"
     },
     {
       "connection_id": "spine-access-ed621bfed81b",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"4365178\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2365,10 +2418,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.819504Z"
+      "created_at": "2026-07-22T07:50:06.015650Z"
     },
     {
       "connection_id": "spine-access-e5fa65b61567",
+      "network_role": "spine-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"4365178\", \"strategic-spine-evidence-4cfe81363ba0\", \"strategic-spine-sources-092745b672d1\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -2410,10 +2464,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:21:52.830255Z"
+      "created_at": "2026-07-22T07:50:06.026204Z"
     },
     {
       "connection_id": "branch-meeting-40e1a3c8a057",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"189173683\", \"[189173683, 5153972]\", \"[189173684, 159244990]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2455,10 +2510,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252002Z"
+      "created_at": "2026-07-22T07:50:16.364247Z"
     },
     {
       "connection_id": "branch-meeting-ffce4fea0140",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"111539875\", \"133152981\", \"133152984\", \"26465876\", \"26465877\", \"42738608\", \"4412270\", \"4427578\", \"8406095\", \"8406096\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2507,10 +2563,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252105Z"
+      "created_at": "2026-07-22T07:50:16.364352Z"
     },
     {
       "connection_id": "branch-meeting-a89732d2e4bc",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"197574856\", \"27579454\", \"58659411\", \"9023235\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2553,10 +2610,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252187Z"
+      "created_at": "2026-07-22T07:50:16.364435Z"
     },
     {
       "connection_id": "branch-meeting-7a5890201d6f",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1336003393\", \"1374248509\", \"237111952\", \"2953997\", \"3215556\", \"375760186\", \"[1336003393, 1184653553, 859799891, 1374248510, 1374248511]\", \"[237111952, 237111954, 2953997]\", \"[375760186, 3215556]\", \"[375760186, 649724039]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2605,10 +2663,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252267Z"
+      "created_at": "2026-07-22T07:50:16.364517Z"
     },
     {
       "connection_id": "branch-meeting-73dcf32298d8",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"145288624\", \"172623170\", \"448214982\", \"4551358\", \"508603225\", \"518403476\", \"619322687\", \"619322688\", \"687911439\", \"[4551358, 619322687]\", \"[518403476, 448214981]\", \"[518403476, 518403477, 687911438, 649719671]\", \"[619322688, 619322689, 4551358]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2660,10 +2719,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252348Z"
+      "created_at": "2026-07-22T07:50:16.364600Z"
     },
     {
       "connection_id": "branch-meeting-9f59d3c886e0",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"165355458\", \"165355459\", \"195032580\", \"244625850\", \"244625851\", \"48680122\", \"61463549\", \"91376388\", \"[165355459, 195032580]\", \"[244625851, 1090866855]\", \"[244625851, 207644852]\", \"[45450840, 45450845, 61463549]\", \"[45450840, 61463549, 45450845]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2715,10 +2775,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252426Z"
+      "created_at": "2026-07-22T07:50:16.364678Z"
     },
     {
       "connection_id": "branch-meeting-c5dd6b428ced",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"172623188\", \"3192100\", \"499392187\", \"649719670\", \"815927028\", \"815930208\", \"[499392187, 172623188]\", \"[499392187, 815927028, 963437342]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2765,10 +2826,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252498Z"
+      "created_at": "2026-07-22T07:50:16.364752Z"
     },
     {
       "connection_id": "branch-meeting-28c5443f46c0",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1101757504\", \"1336003393\", \"1374248509\", \"1464335722\", \"172119380\", \"172623184\", \"3188667\", \"4929098\", \"7592869\", \"7592877\", \"[1101757504, 59752758]\", \"[1336003393, 1184653553, 859799891, 1374248510, 1374248511]\", \"[3188667, 423686828, 423686827]\", \"[423686827, 423686828, 3188667]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2821,10 +2883,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252574Z"
+      "created_at": "2026-07-22T07:50:16.364831Z"
     },
     {
       "connection_id": "branch-meeting-b8b952ee40be",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"111539875\", \"118063006\", \"133152981\", \"133152984\", \"26465876\", \"26465877\", \"26772779\", \"3217159\", \"3217160\", \"42738608\", \"4412257\", \"4412270\", \"4427578\", \"553567923\", \"604751503\", \"715404683\", \"8281156\", \"8406086\", \"8406088\", \"8406089\", \"8406090\", \"8406095\", \"8406096\", \"8406101\", \"951566007\", \"951566008\", \"[553567924, 3217159]\", \"[604751502, 604751503, 40363280, 40363281, 118063006]\", \"[715404682, 715404683]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2892,10 +2955,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252653Z"
+      "created_at": "2026-07-22T07:50:16.364912Z"
     },
     {
       "connection_id": "branch-meeting-c8932cb891ee",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"118063004\", \"151911907\", \"30355624\", \"[40385232, 40385235, 588422841, 588422842, 189173694]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2938,10 +3002,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252717Z"
+      "created_at": "2026-07-22T07:50:16.364980Z"
     },
     {
       "connection_id": "branch-meeting-2d7743b1fee0",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1318893730\", \"1318893731\", \"159967968\", \"168633487\", \"27579412\", \"27579415\", \"619154568\", \"7992109\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -2988,10 +3053,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252802Z"
+      "created_at": "2026-07-22T07:50:16.365065Z"
     },
     {
       "connection_id": "branch-meeting-fd0a2f472bc0",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"108331477\", \"1467894306\", \"196\", \"201112622\", \"24427477\", \"26096069\", \"26137912\", \"28653242\", \"659953713\", \"813399066\", \"997161353\", \"[1467894306, 997161354]\", \"[26137912, 201112618, 201112622]\", \"[997161353, 659953710]\", \"[997161354, 1467894306]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -3045,10 +3111,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252896Z"
+      "created_at": "2026-07-22T07:50:16.365161Z"
     },
     {
       "connection_id": "branch-meeting-69c3aab3db7a",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"151911908\", \"160466548\", \"652037956\", \"86846989\", \"[151911908, 38038606]\", \"[35164681, 38038606, 38038607]\", \"[374015882, 652037958]\", \"[374015884, 652037956, 38331303]\", \"[717091610, 160464295]\", \"[717091610, 160466548]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -3097,10 +3164,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.252969Z"
+      "created_at": "2026-07-22T07:50:16.365235Z"
     },
     {
       "connection_id": "branch-meeting-dee402f317a4",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1030764620\", \"189103920\", \"24427472\", \"26341812\", \"27579415\", \"7992110\", \"[222614379, 222614380, 42764471]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -3146,10 +3214,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.253141Z"
+      "created_at": "2026-07-22T07:50:16.365407Z"
     },
     {
       "connection_id": "branch-meeting-64e7ee2db0cd",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"178233889\", \"203240679\", \"207644851\", \"244625851\", \"270846515\", \"3401505\", \"369745844\", \"369745845\", \"4235525\", \"4269376\", \"4279575\", \"4279576\", \"4321799\", \"48680121\", \"48680122\", \"546225661\", \"546225671\", \"686\", \"7985223\", \"[1317293877, 34784844, 4235525, 34784845]\", \"[133875189, 34784846]\", \"[133875191, 48679743]\", \"[178233889, 369745845]\", \"[203240689, 546225661]\", \"[244625851, 1090866855]\", \"[244625851, 207644852]\", \"[3401505, 553589297]\", \"[369745844, 546225668]\", \"[37657734, 546225671]\", \"[383679366, 34784845, 383679373, 4279573, 37992379]\", \"[4235525, 1317293877, 34784844, 34784845]\", \"[546225668, 546225669]\", \"[546225669, 369745845]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -3221,10 +3290,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.253247Z"
+      "created_at": "2026-07-22T07:50:16.365511Z"
     },
     {
       "connection_id": "branch-meeting-106282dae331",
+      "network_role": "branch-meeting-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"102994011\", \"1030822316\", \"1102622929\", \"1194757862\", \"1205716889\", \"1221535668\", \"1279782223\", \"1280050348\", \"1288401946\", \"1305612326\", \"1305613786\", \"133638015\", \"133638016\", \"133875200\", \"133875203\", \"133875207\", \"133875211\", \"133875212\", \"133875219\", \"1346491654\", \"1525111439\", \"1528766561\", \"178233889\", \"192668650\", \"207644855\", \"209\", \"210\", \"212\", \"3086257\", \"3086258\", \"309842640\", \"3120967\", \"3292445\", \"3292454\", \"331545472\", \"34719196\", \"34719197\", \"352983607\", \"369745844\", \"369745845\", \"37657734\", \"39352131\", \"39590930\", \"40137898\", \"40138636\", \"4235526\", \"42837654\", \"4340899\", \"4365178\", \"4390604\", \"444272568\", \"465899322\", \"546225671\", \"546225681\", \"55290798\", \"592193933\", \"592488402\", \"59592162\", \"61483629\", \"695868553\", \"815885856\", \"837573373\", \"8769305\", \"972310897\", \"972310899\", \"[1279782221, 34719196, 35390541]\", \"[1279782224, 131628669, 1368613087]\", \"[1305612184, 1305612325, 1305612326]\", \"[133638000, 34719195, 34719196]\", \"[133638018, 61483629]\", \"[133875200, 133875211]\", \"[133875203, 133875219]\", \"[133875205, 465899325]\", \"[133875219, 133875203]\", \"[1494679072, 102994011]\", \"[1528766561, 1112494139]\", \"[178233889, 369745845]\", \"[2424675, 54448020, 35390542]\", \"[30992002, 1368613087]\", \"[369745844, 546225668]\", \"[37657734, 546225671]\", \"[37747316, 133638015]\", \"[38570712, 133638016]\", \"[40137898, 133875212]\", \"[4340899, 133638013]\", \"[444272568, 1120385897]\", \"[444272568, 1305612326]\", \"[444272569, 39352131]\", \"[444272569, 837573373]\", \"[465899325, 133875205]\", \"[465906456, 41406211]\", \"[546225668, 546225669]\", \"[546225669, 369745845]\", \"[546225681, 1527581517, 37657734]\", \"[695868553, 4236443, 133638014]\", \"[837573373, 1305612327]\", \"[972310896, 922486427, 922486428]\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"cross-spine-connector\"}",
@@ -3360,10 +3430,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.253523Z"
+      "created_at": "2026-07-22T07:50:16.365777Z"
     },
     {
       "connection_id": "spine-access-5244701de3fe",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"235481602\", \"48045698\", \"[45118864, 955305057]\", \"[48045698, 955306159]\", \"school-049594b34b66\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3409,10 +3480,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.352002Z"
+      "created_at": "2026-07-22T07:50:16.464666Z"
     },
     {
       "connection_id": "spine-access-ac77e13444d1",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"172154025\", \"28951990\", \"2953993\", \"310145349\", \"3209117\", \"375500188\", \"390424518\", \"4929103\", \"698438659\", \"8877254\", \"[172154025, 375500188]\", \"[2953993, 375500188]\", \"[310145349, 8877254]\", \"school-2842de49fd2a\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3467,10 +3539,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.366169Z"
+      "created_at": "2026-07-22T07:50:16.478814Z"
     },
     {
       "connection_id": "spine-access-9eac142a5537",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"145263551\", \"145263663\", \"178267554\", \"24410233\", \"26544621\", \"26546553\", \"26546613\", \"26546703\", \"346305227\", \"[145263551, 145263663]\", \"[145263663, 145263551]\", \"school-3f90f52e434f\", \"strategic-spine-evidence-8717342e81c0\", \"strategic-spine-sources-09ef3391197a\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3523,10 +3596,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.384351Z"
+      "created_at": "2026-07-22T07:50:16.496948Z"
     },
     {
       "connection_id": "spine-access-7eec85415820",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1130925218\", \"1130925234\", \"25286410\", \"26341784\", \"318144406\", \"393518554\", \"[1130925218, 25286410]\", \"[1130925225, 1130925234]\", \"school-578c7bcac76e\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3576,10 +3650,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.398927Z"
+      "created_at": "2026-07-22T07:50:16.511414Z"
     },
     {
       "connection_id": "spine-access-90dfdf0d49e7",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"1037128155\", \"126211912\", \"26464711\", \"26466363\", \"50447797\", \"school-9064e01c61e3\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3626,10 +3701,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.412827Z"
+      "created_at": "2026-07-22T07:50:16.525244Z"
     },
     {
       "connection_id": "spine-access-fd8bcee1f24e",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"397460240\", \"45118882\", \"90177055\", \"school-9b1e147762ac\", \"strategic-spine-evidence-a70b55b96066\", \"strategic-spine-sources-1927af0f1d84\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3674,10 +3750,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.424639Z"
+      "created_at": "2026-07-22T07:50:16.537008Z"
     },
     {
       "connection_id": "spine-access-54643e90c46a",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"172139237\", \"172259579\", \"310143540\", \"393603245\", \"7116026586\", \"769758553\", \"[545110034, 172139237]\", \"[545110034, 310143540]\", \"school-ca24a9a5973d\", \"strategic-spine-evidence-81fab8c91c96\", \"strategic-spine-sources-f516c0259b2c\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3727,10 +3804,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.477803Z"
+      "created_at": "2026-07-22T07:50:16.589849Z"
     },
     {
       "connection_id": "spine-access-73215497844c",
+      "network_role": "school-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"6556561602\", \"79542765\", \"school-e9e5b72474f4\", \"strategic-spine-evidence-9b43ccdc57a7\", \"strategic-spine-sources-cf6da52eda8d\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3774,10 +3852,11 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:03.480640Z"
+      "created_at": "2026-07-22T07:50:16.592659Z"
     },
     {
       "connection_id": "spine-access-476d6c729ec7",
+      "network_role": "gateway-access-connection",
       "runtime": "fake",
       "model": "deterministic-roles-v1",
       "proposal": "{\"evidence_ids\": [\"osm-network\", \"22932307\", \"297352360\", \"301821547\", \"301821548\", \"316935267\", \"318144406\", \"3217157\", \"4291464\", \"4291467\", \"450896551\", \"553567927\", \"55813861\", \"55813862\", \"[297352360, 553567926, 553567927]\", \"[316935266, 316935267, 22932307]\", \"[316935267, 316935266, 22932307]\", \"[316935267, 450896551]\", \"[318144406, 553567927]\", \"strategic-spine-evidence-15a08e089777\", \"strategic-spine-sources-6458d2ef0386\"], \"rationale\": \"Use the best current OSM alignment under the governed rules.\", \"selected_role\": \"direct\"}",
@@ -3836,7 +3915,7 @@
         "requests": 4,
         "tokens": 4
       },
-      "created_at": "2026-07-22T07:22:04.797673Z"
+      "created_at": "2026-07-22T07:50:17.902096Z"
     }
   ]
 }

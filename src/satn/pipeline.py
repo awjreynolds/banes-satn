@@ -456,6 +456,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "spine_access_connection_records": [
                 {
                     "access_connection_id": row.access_connection_id,
+                    "network_role": row.network_role,
                     "place_id": row.place_id,
                     "place_kind": row.place_kind,
                     "community_id": row.community_id,
@@ -498,6 +499,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "branch_meeting_connection_records": [
                 {
                     "meeting_connection_id": row.meeting_connection_id,
+                    "network_role": row.network_role,
                     "from_place_id": row.from_place_id,
                     "to_place_id": row.to_place_id,
                     "from_root_spine_id": row.from_root_spine_id,
