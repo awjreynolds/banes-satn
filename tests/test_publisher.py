@@ -447,6 +447,7 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert "School Street Candidate Assessments" in review_html
     assert "Green — Promising" in review_html
     assert "Grey — Not Evaluated" in review_html
+    assert '<a href="network-map.pdf" download>Network map PDF</a>' in review_html
     assert '"network_scope"], "urban"' not in review_js
     assert 'id: "strategic-network"' in review_js
     assert '"line-color": "#c0392b"' in review_js

@@ -77,6 +77,7 @@ def test_tracked_pages_site_is_complete_and_contains_no_atm_geometry() -> None:
         for feature in connections
     )
     html = (site / "index.html").read_text(encoding="utf-8")
+    assert '<a href="network-map.pdf" download>Network map PDF</a>' in html
     assert 'id="layer-strategic-network"' in html
     assert 'id="layer-spine-access-connections"' in html
     assert 'id="layer-cross-spine-connectors"' in html
