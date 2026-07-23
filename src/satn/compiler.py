@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 from numbers import Number
 
@@ -13,7 +13,7 @@ import networkx as nx
 import pandas as pd
 from shapely.geometry import MultiPoint
 
-from satn.agents import AgentRuntimeSource, CompilationGate
+from satn.agents import AgentDecisionResolver, AgentRuntimeSource, CompilationGate
 from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
 from satn.evidence import (
     continuous_linework,
@@ -90,6 +90,8 @@ class CompiledNetwork:
     human_intervention_requests: list[HumanInterventionRequest]
     compilation_diagnostics: dict[str, object]
     compilation_input_fingerprint: str = ""
+    decision_contract: str = "agent-decision-menu/v1"
+    accepted_decisions: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def connection_count(self) -> int:
@@ -112,6 +114,7 @@ def compile_network(
     runtime: AgentRuntimeSource,
     *,
     governed_input_fingerprint: str = "",
+    decision_resolver: AgentDecisionResolver | None = None,
 ) -> CompiledNetwork:
     places = source["places"].copy().sort_values("place_id").reset_index(drop=True)
     context = source.get("context", empty_context(source["network"].crs)).copy()
@@ -146,6 +149,7 @@ def compile_network(
         runtime,
         config.compilation.agent,
         governed_input_fingerprint,
+        decision_resolver,
     )
     strategic_spines = _strategic_spines(context)
     rural_communities = _rural_communities(communities)

@@ -54,13 +54,18 @@ def test_public_compile_returns_a_stable_bounded_decision_menu_without_publicati
         "Which predefined compiler action should be applied for the continuity criterion?"
     )
     assert request.governed_evidence_references
-    assert [choice.choice_id for choice in request.choices] == ["1", "terminate"]
+    assert [choice.choice_id for choice in request.choices] == [
+        "1",
+        "2",
+        "3",
+        "terminate",
+    ]
     assert all(choice.label for choice in request.choices)
     assert all(choice.compiler_action for choice in request.choices)
     assert all(choice.expected_consequence for choice in request.choices)
     assert all(choice.mandatory_constraints for choice in request.choices)
     terminate = request.choices[-1]
-    assert terminate.compiler_action == "terminate"
+    assert terminate.compiler_action.kind == "terminate"
     assert terminate.expected_consequence == (
         "Stop this run, preserve the previous valid publication, and require a fresh compilation."
     )

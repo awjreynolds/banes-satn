@@ -1,17 +1,26 @@
 from __future__ import annotations
 
+import hashlib
 import os
 
 import pytest
 
 from satn.agents import (
     AgentDecisionRequired,
+    AgentDecisionResolver,
     AgentRole,
     CompilationGate,
     FakeAgentRuntime,
     PydanticAIRuntime,
 )
-from satn.models import AgentConfig, AgentRecord, DivergenceRecord, TrafficLight
+from satn.models import (
+    AgentConfig,
+    AgentDecisionLedger,
+    AgentDecisionResponse,
+    AgentRecord,
+    DivergenceRecord,
+    TrafficLight,
+)
 
 
 def facts(*, direct: str = "green", low_traffic: str = "green") -> dict[str, object]:
@@ -165,6 +174,8 @@ def test_selected_status_returns_a_bounded_caller_menu(status: TrafficLight) -> 
     assert raised.value.request.criterion == "continuity"
     assert [choice.choice_id for choice in raised.value.request.choices] == [
         "1",
+        "2",
+        "3",
         "terminate",
     ]
     assert raised.value.request.deterministic_findings
@@ -188,12 +199,56 @@ def test_caller_menu_preserves_choice_order_and_predefined_action_mapping() -> N
 
     choices = raised.value.request.choices
     assert [choice.choice_id for choice in choices] == ["1", "2", "3", "terminate"]
-    assert [choice.compiler_action for choice in choices] == [
-        "select-role:direct",
-        "select-role:low-traffic",
-        "select-role:quietway",
-        "terminate",
+    assert [choice.compiler_action.model_dump(exclude_none=True) for choice in choices] == [
+        {"kind": "select-network-role", "network_role": "direct"},
+        {"kind": "select-network-role", "network_role": "low-traffic"},
+        {"kind": "select-network-role", "network_role": "quietway"},
+        {"kind": "terminate"},
     ]
+
+
+def test_caller_choice_cannot_waive_a_mandatory_red_invariant() -> None:
+    config = AgentConfig(review_statuses=(TrafficLight.RED,))
+    with pytest.raises(AgentDecisionRequired) as first:
+        CompilationGate(None, config).evaluate(
+            "connection-a-b",
+            facts(direct="red"),
+            "direct",
+            ["direct"],
+            governing_criterion="continuity",
+            governing_status=TrafficLight.RED,
+        )
+    request = first.value.request
+    governed_fingerprint = hashlib.sha256(config.model_dump_json().encode()).hexdigest()
+    resolver = AgentDecisionResolver(
+        AgentDecisionLedger(
+            responses=(
+                AgentDecisionResponse(
+                    request_id=request.request_id,
+                    dependency_fingerprint=request.dependency_fingerprint,
+                    choice_id="1",
+                ),
+            )
+        ),
+        governed_fingerprint,
+    )
+
+    with pytest.raises(AgentDecisionRequired):
+        CompilationGate(
+            None,
+            config,
+            decision_resolver=resolver,
+        ).evaluate(
+            "connection-a-b",
+            facts(direct="red"),
+            "direct",
+            ["direct"],
+            governing_criterion="continuity",
+            governing_status=TrafficLight.RED,
+        )
+
+    assert resolver.validation == "mandatory-red"
+    assert resolver.applied_records == []
 
 
 @pytest.mark.parametrize(

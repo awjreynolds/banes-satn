@@ -12,7 +12,7 @@ from satn import compile
 from satn.agents import FakeAgentRuntime
 from satn.atm import compare_atm
 from satn.compiler import compile_network
-from satn.models import CouncilConfig
+from satn.models import AgentDecisionLedger, AgentDecisionResponse, CouncilConfig
 from satn.sources import load_snapshot, snapshot
 
 PROJECT = Path(__file__).parents[1]
@@ -183,3 +183,53 @@ def test_caller_mediated_atm_review_returns_the_same_bounded_request_shape(
     assert request.status == "amber"
     assert request.deterministic_findings
     assert [choice.choice_id for choice in request.choices] == ["1", "terminate"]
+
+
+def test_atm_choices_replay_to_a_complete_published_divergence_audit(
+    tmp_path: Path,
+) -> None:
+    config, _ = prepared(tmp_path)
+    config.compilation.agent.review_statuses = ("amber",)
+    responses: list[AgentDecisionResponse] = []
+    for _ in range(10):
+        result = compile(
+            config,
+            decision_ledger=AgentDecisionLedger(responses=tuple(responses)),
+        )
+        if result.status == "complete":
+            break
+        assert result.status == "decision-required"
+        request = result.decision_requests[0]
+        responses.append(
+            AgentDecisionResponse(
+                request_id=request.request_id,
+                dependency_fingerprint=request.dependency_fingerprint,
+                choice_id="1",
+            )
+        )
+    else:
+        raise AssertionError("ATM replay did not complete within its bounded decision count")
+
+    caller_records = [
+        record for record in result.divergence_records if record.responder_mode == "caller"
+    ]
+    assert caller_records
+    assert all(
+        record.mapped_action is not None
+        and record.mapped_action.kind == "retain-atm-comparison"
+        for record in caller_records
+    )
+    run = json.loads(result.artifacts["run"].read_text(encoding="utf-8"))
+    assert run["accepted_decisions"] == [
+        {
+            "request_id": record.decision_request.request_id,
+            "dependency_fingerprint": record.decision_request.dependency_fingerprint,
+            "choice_id": record.selected_choice_id,
+        }
+        for record in caller_records
+        if record.decision_request is not None
+    ]
+    published = json.loads(result.artifacts["divergences"].read_text(encoding="utf-8"))
+    assert sum(record["responder_mode"] == "caller" for record in published["records"]) == len(
+        caller_records
+    )

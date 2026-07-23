@@ -384,63 +384,34 @@ class AgentAttempt(BaseModel):
     decision: Literal["retry"] | None = None
 
 
-class AgentRecord(AgentReviewAudit):
-    connection_id: str
-    governing_criterion: str
+class AgentDecisionAction(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal[
+        "select-network-role",
+        "reject-candidate",
+        "retain-network-gap",
+        "retain-atm-comparison",
+        "terminate",
+    ]
     network_role: str | None = None
-    runtime: str
-    model: str
-    proposal: AgentProposal | None = None
-    critique: AgentCritique | None = None
-    revision: AgentSynthesis | None = None
-    decision: Literal["accept", "gap", "superseded"]
-    selected_role: str | None = None
-    outcome_reason: str = ""
-    attempts: list[AgentAttempt] = Field(default_factory=list)
-    usage: dict[str, int] = Field(default_factory=dict)
-    derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    comparison_status: Literal["match", "omission", "deviation", "addition"] | None = None
 
     @model_validator(mode="after")
-    def validate_review_execution(self) -> AgentRecord:
-        requests = self.usage.get("requests", 0)
-        tokens = self.usage.get("tokens", 0)
-        if self.review_required and (self.runtime == "not-invoked" or not self.attempts):
-            raise ValueError("required review must record an invoked runtime and attempt")
-        if not self.review_required and (
-            self.runtime != "not-invoked" or requests or tokens or self.attempts
+    def validate_action_parameters(self) -> AgentDecisionAction:
+        if self.kind == "select-network-role" and (
+            not self.network_role or self.comparison_status is not None
         ):
-            raise ValueError("skipped review must have no runtime, usage, or attempts")
+            raise ValueError("select-network-role requires only network_role")
+        if self.kind == "retain-atm-comparison" and (
+            not self.comparison_status or self.network_role is not None
+        ):
+            raise ValueError("retain-atm-comparison requires only comparison_status")
+        if self.kind in {"reject-candidate", "retain-network-gap", "terminate"} and (
+            self.network_role or self.comparison_status
+        ):
+            raise ValueError(f"{self.kind} cannot contain action parameters")
         return self
-
-
-class DivergenceRecord(AgentReviewAudit):
-    connection_id: str
-    status: Literal["match", "omission", "deviation", "addition"]
-    atm_feature_ids: list[str] = Field(default_factory=list)
-    overlap_ratio: float = Field(ge=0, le=1)
-    explanation: str
-    resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
-    resolved: bool = False
-
-    @model_validator(mode="after")
-    def validate_review_execution(self) -> DivergenceRecord:
-        if self.review_required and not self.resolution_attempts:
-            raise ValueError("required divergence review must record an attempt")
-        if not self.review_required and self.resolution_attempts:
-            raise ValueError("skipped divergence review cannot contain resolution attempts")
-        return self
-
-
-class HumanInterventionRequest(BaseModel):
-    request_id: str
-    connection_id: str
-    reason: str
-    attempted_revisions: list[dict[str, Any]] = Field(default_factory=list)
-    unresolved_findings: list[dict[str, Any]] = Field(default_factory=list)
-    missing_evidence: list[str] = Field(default_factory=list)
-    choices: list[str] = Field(default_factory=list)
-    smallest_human_input: str
 
 
 class AgentDecisionChoice(BaseModel):
@@ -448,14 +419,16 @@ class AgentDecisionChoice(BaseModel):
 
     choice_id: str = Field(pattern=r"^(?:[1-9][0-9]*|terminate)$")
     label: str = Field(min_length=1)
-    compiler_action: str = Field(min_length=1)
+    compiler_action: AgentDecisionAction
     expected_consequence: str = Field(min_length=1)
     mandatory_constraints: tuple[str, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_reserved_terminate_action(self) -> AgentDecisionChoice:
-        if self.choice_id == "terminate" and self.compiler_action != "terminate":
-            raise ValueError("the terminate choice must use the reserved terminate action")
+        identifier_is_terminate = self.choice_id == "terminate"
+        action_is_terminate = self.compiler_action.kind == "terminate"
+        if identifier_is_terminate != action_is_terminate:
+            raise ValueError("only the reserved terminate choice may terminate compilation")
         return self
 
 
@@ -482,16 +455,180 @@ class AgentDecisionRequest(BaseModel):
         return self
 
 
+class AgentDecisionResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    request_id: str = Field(min_length=1)
+    dependency_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
+    choice_id: str = Field(pattern=r"^(?:[1-9][0-9]*|terminate)$")
+
+
+class AgentDecisionLedger(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    decision_contract: Literal["agent-decision-menu/v1"] = "agent-decision-menu/v1"
+    responses: tuple[AgentDecisionResponse, ...] = ()
+
+    @field_validator("responses")
+    @classmethod
+    def canonicalise_responses(
+        cls,
+        value: tuple[AgentDecisionResponse, ...],
+    ) -> tuple[AgentDecisionResponse, ...]:
+        return tuple(sorted(value, key=lambda response: response.request_id))
+
+    @model_validator(mode="after")
+    def validate_unique_requests(self) -> AgentDecisionLedger:
+        request_ids = [response.request_id for response in self.responses]
+        if len(request_ids) != len(set(request_ids)):
+            raise ValueError("a decision ledger can answer each request only once")
+        return self
+
+
+class AgentRecord(AgentReviewAudit):
+    connection_id: str
+    governing_criterion: str
+    network_role: str | None = None
+    runtime: str
+    model: str
+    proposal: AgentProposal | None = None
+    critique: AgentCritique | None = None
+    revision: AgentSynthesis | None = None
+    decision: Literal["accept", "reject", "gap", "superseded"]
+    selected_role: str | None = None
+    outcome_reason: str = ""
+    attempts: list[AgentAttempt] = Field(default_factory=list)
+    usage: dict[str, int] = Field(default_factory=dict)
+    derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
+    decision_request: AgentDecisionRequest | None = None
+    selected_choice_id: str | None = None
+    mapped_action: AgentDecisionAction | None = None
+    responder_mode: Literal["caller", "direct-runtime"] | None = None
+    choice_validation: Literal["accepted"] | None = None
+    affected_feature_identifiers: tuple[str, ...] = ()
+    created_at: datetime | None = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_review_execution(self) -> AgentRecord:
+        requests = self.usage.get("requests", 0)
+        tokens = self.usage.get("tokens", 0)
+        caller_response = self.responder_mode == "caller"
+        if self.review_required and caller_response:
+            if (
+                self.runtime != "caller"
+                or self.decision_request is None
+                or self.selected_choice_id is None
+                or self.mapped_action is None
+                or self.choice_validation != "accepted"
+            ):
+                raise ValueError("caller review must record the complete accepted choice")
+            if (
+                self.attempts
+                or self.proposal is not None
+                or self.critique is not None
+                or self.revision is not None
+                or requests
+                or tokens
+            ):
+                raise ValueError("caller review cannot contain direct-runtime activity")
+            selected = next(
+                (
+                    choice
+                    for choice in self.decision_request.choices
+                    if choice.choice_id == self.selected_choice_id
+                ),
+                None,
+            )
+            if (
+                selected is None
+                or selected.compiler_action != self.mapped_action
+                or self.affected_feature_identifiers
+                != self.decision_request.affected_identifiers
+            ):
+                raise ValueError("caller review choice must match the offered request action")
+        elif self.review_required and (
+            self.runtime == "not-invoked" or not self.attempts
+        ):
+            raise ValueError("required review must record an invoked runtime and attempt")
+        if not self.review_required and (
+            self.runtime != "not-invoked" or requests or tokens or self.attempts
+        ):
+            raise ValueError("skipped review must have no runtime, usage, or attempts")
+        return self
+
+
+class DivergenceRecord(AgentReviewAudit):
+    connection_id: str
+    status: Literal["match", "omission", "deviation", "addition"]
+    atm_feature_ids: list[str] = Field(default_factory=list)
+    overlap_ratio: float = Field(ge=0, le=1)
+    explanation: str
+    resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
+    resolved: bool = False
+    decision_request: AgentDecisionRequest | None = None
+    selected_choice_id: str | None = None
+    mapped_action: AgentDecisionAction | None = None
+    responder_mode: Literal["caller", "direct-runtime"] | None = None
+    choice_validation: Literal["accepted"] | None = None
+    affected_feature_identifiers: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_review_execution(self) -> DivergenceRecord:
+        caller_response = self.responder_mode == "caller"
+        if self.review_required and caller_response:
+            if (
+                self.decision_request is None
+                or self.selected_choice_id is None
+                or self.mapped_action is None
+                or self.choice_validation != "accepted"
+            ):
+                raise ValueError("caller review must record the complete accepted choice")
+            if self.resolution_attempts:
+                raise ValueError("caller review cannot contain direct-runtime attempts")
+            selected = next(
+                (
+                    choice
+                    for choice in self.decision_request.choices
+                    if choice.choice_id == self.selected_choice_id
+                ),
+                None,
+            )
+            if (
+                selected is None
+                or selected.compiler_action != self.mapped_action
+                or self.affected_feature_identifiers
+                != self.decision_request.affected_identifiers
+            ):
+                raise ValueError("caller review choice must match the offered request action")
+        elif self.review_required and not self.resolution_attempts:
+            raise ValueError("required divergence review must record an attempt")
+        if not self.review_required and self.resolution_attempts:
+            raise ValueError("skipped divergence review cannot contain resolution attempts")
+        return self
+
+
+class HumanInterventionRequest(BaseModel):
+    request_id: str
+    connection_id: str
+    reason: str
+    attempted_revisions: list[dict[str, Any]] = Field(default_factory=list)
+    unresolved_findings: list[dict[str, Any]] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+    choices: list[str] = Field(default_factory=list)
+    smallest_human_input: str
+
+
 class CompilationResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     run_id: str
-    status: Literal["reviewable", "complete", "decision-required"]
+    status: Literal["reviewable", "complete", "decision-required", "terminated"]
     output_dir: Path
     connections: int
     gaps: int
     artifacts: dict[str, Path]
     criteria: dict[str, dict[str, TrafficLight]]
     agent_records: list[AgentRecord]
+    divergence_records: list[DivergenceRecord] = Field(default_factory=list)
     decision_requests: list[AgentDecisionRequest] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)

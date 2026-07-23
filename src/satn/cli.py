@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -45,6 +46,16 @@ def snapshot(
 @app.command("compile")
 def compile_command(
     config: Path,
+    decision_ledger: Annotated[
+        Path | None,
+        typer.Option(
+            "--decision-ledger",
+            help=(
+                "JSON ledger containing only request, fingerprint and offered-choice "
+                "identifiers."
+            ),
+        ),
+    ] = None,
     full: bool = typer.Option(
         False,
         "--full",
@@ -57,11 +68,11 @@ def compile_command(
     council = CouncilConfig.from_yaml(config)
     council.compilation.full = full
     try:
-        result = compile_satn(council)
+        result = compile_satn(council, decision_ledger=decision_ledger)
     except Exception:
         LOGGER.exception("Compile command failed config=%s", config)
         raise
-    if result.status == "decision-required":
+    if result.status in {"decision-required", "terminated"}:
         typer.echo(result.model_dump_json(indent=2))
         return
     typer.echo(f"{result.status}: {result.connections} connections, {result.gaps} gaps")

@@ -76,6 +76,10 @@ ACCESS_COLUMNS = [
     "agent_outcome",
     "agent_attempt_count",
     "agent_findings",
+    "agent_decision_request_id",
+    "agent_decision_choice_id",
+    "agent_decision_action",
+    "agent_decision_responder_mode",
     "intervention_archetype",
     "selection_reason",
     "geometry_semantics",
@@ -129,6 +133,10 @@ MEETING_COLUMNS = [
     "agent_outcome",
     "agent_attempt_count",
     "agent_findings",
+    "agent_decision_request_id",
+    "agent_decision_choice_id",
+    "agent_decision_action",
+    "agent_decision_responder_mode",
     "intervention_archetype",
     "selection_reason",
     "geometry_semantics",
@@ -184,6 +192,10 @@ GAP_COLUMNS = [
     "agent_outcome",
     "agent_attempt_count",
     "agent_findings",
+    "agent_decision_request_id",
+    "agent_decision_choice_id",
+    "agent_decision_action",
+    "agent_decision_responder_mode",
     "school_id",
     "school_kind",
     "access_point_status",
@@ -348,6 +360,17 @@ def assemble_backbone_outward(
         row = _connection_row(selected, graph, obligation_kind="community")
         record = _evaluate(row, gate)
         agent_records.append(record)
+        if record.mapped_action is not None and record.mapped_action.kind == "retain-network-gap":
+            gap_row = _gap_row(
+                unserved[place_id],
+                graph,
+                obligation_kind="community",
+                gate_reason=record.outcome_reason,
+            )
+            _project_agent_record(gap_row, record)
+            gap_rows.append(gap_row)
+            del unserved[place_id]
+            continue
         if record.decision != "accept":
             rejected_by_place.setdefault(place_id, []).append(record)
             continue
@@ -436,6 +459,19 @@ def assemble_backbone_outward(
             row = _connection_row(selected, graph, obligation_kind="school")
             record = _evaluate(row, gate)
             agent_records.append(record)
+            if (
+                record.mapped_action is not None
+                and record.mapped_action.kind == "retain-network-gap"
+            ):
+                gap_row = _gap_row(
+                    school,
+                    graph,
+                    obligation_kind="school",
+                    gate_reason=record.outcome_reason,
+                )
+                _project_agent_record(gap_row, record)
+                gap_rows.append(gap_row)
+                break
             if record.decision != "accept":
                 rejected_school_records.append(record)
                 excluded_pairs.add((selected.start_node, selected.end_node))
@@ -1046,6 +1082,14 @@ def _project_agent_record(row: dict[str, object], record: AgentRecord) -> None:
     record.network_role = str(row["network_role"])
     row["agent_outcome"] = record.outcome_reason
     row["agent_attempt_count"] = len(record.attempts)
+    row["agent_decision_request_id"] = (
+        record.decision_request.request_id if record.decision_request else None
+    )
+    row["agent_decision_choice_id"] = record.selected_choice_id
+    row["agent_decision_action"] = (
+        record.mapped_action.kind if record.mapped_action else None
+    )
+    row["agent_decision_responder_mode"] = record.responder_mode
     latest = record.attempts[-1] if record.attempts else None
     row["agent_findings"] = json.dumps(
         [

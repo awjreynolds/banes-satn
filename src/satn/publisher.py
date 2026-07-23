@@ -398,6 +398,8 @@ def _write_json_records(
         "network_model": "backbone-outward",
         "authoritative_features": _authoritative_feature_records(compiled),
         "agent_review": _agent_review_summary(config, review_records),
+        "decision_contract": compiled.decision_contract,
+        "accepted_decisions": compiled.accepted_decisions,
         "compilation_input_fingerprint": compiled.compilation_input_fingerprint,
         "compilation_diagnostics": compiled.compilation_diagnostics,
         "connection_count": compiled.connection_count,
@@ -1440,6 +1442,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         raise ValueError("authoritative feature identifiers or roles differ in run manifest")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
     geopackage_registry: dict[str, str] = {}
+    geopackage_decisions: dict[str, dict[str, object]] = {}
     if "spine_access_connections" in spatial_layer_names:
         access_rows = gpd.read_file(output / "network.gpkg", layer="spine_access_connections")
         geopackage_registry.update(
@@ -1449,6 +1452,13 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
                 strict=True,
             )
         )
+        geopackage_decisions.update(
+            {
+                str(row.agent_decision_request_id): row._asdict()
+                for row in access_rows.itertuples()
+                if pd.notna(row.agent_decision_request_id)
+            }
+        )
     if "branch_meeting_connections" in spatial_layer_names:
         meeting_rows = gpd.read_file(output / "network.gpkg", layer="branch_meeting_connections")
         geopackage_registry.update(
@@ -1457,6 +1467,22 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
                 meeting_rows["network_role"].astype(str),
                 strict=True,
             )
+        )
+        geopackage_decisions.update(
+            {
+                str(row.agent_decision_request_id): row._asdict()
+                for row in meeting_rows.itertuples()
+                if pd.notna(row.agent_decision_request_id)
+            }
+        )
+    if "gaps" in spatial_layer_names:
+        gap_rows = gpd.read_file(output / "network.gpkg", layer="gaps")
+        geopackage_decisions.update(
+            {
+                str(row.agent_decision_request_id): row._asdict()
+                for row in gap_rows.itertuples()
+                if pd.notna(row.agent_decision_request_id)
+            }
         )
     if "cross_spine_connectors" in spatial_layer_names:
         connector_rows = gpd.read_file(output / "network.gpkg", layer="cross_spine_connectors")
@@ -1488,6 +1514,24 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     )
     if run.get("agent_review") != expected_review_summary:
         raise ValueError("agent review summary differs from decision records")
+    caller_records = [
+        record
+        for record in [*agent_records, *divergence_records]
+        if record.responder_mode == "caller"
+    ]
+    accepted_decisions = [
+        {
+            "request_id": record.decision_request.request_id,
+            "dependency_fingerprint": record.decision_request.dependency_fingerprint,
+            "choice_id": record.selected_choice_id,
+        }
+        for record in caller_records
+        if record.decision_request is not None
+    ]
+    if run.get("decision_contract") != "agent-decision-menu/v1":
+        raise ValueError("run manifest decision contract is unsupported")
+    if run.get("accepted_decisions") != accepted_decisions:
+        raise ValueError("run manifest accepted choices differ from decision records")
     accepted_agent_records = [
         record for record in agent_payload["records"] if record["decision"] == "accept"
     ]
@@ -1514,6 +1558,37 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     }
     if review_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in review map")
+    geojson_decisions = {
+        str(feature["properties"]["agent_decision_request_id"]): feature["properties"]
+        for feature in geojson["features"]
+        if feature["properties"].get("agent_decision_request_id")
+    }
+    review_decisions = {
+        str(feature["properties"]["agent_decision_request_id"]): feature["properties"]
+        for feature in review_network["features"]
+        if feature["properties"].get("agent_decision_request_id")
+    }
+    for record in caller_records:
+        if record.decision_request is None or record.mapped_action is None:
+            raise ValueError("caller record omits its request or mapped action")
+        request_id = record.decision_request.request_id
+        if request_id not in geojson_decisions:
+            if isinstance(record, AgentRecord) and record.decision == "accept":
+                raise ValueError("accepted caller choice is absent from spatial artifacts")
+            continue
+        expected = {
+            "agent_decision_request_id": request_id,
+            "agent_decision_choice_id": record.selected_choice_id,
+            "agent_decision_action": record.mapped_action.kind,
+            "agent_decision_responder_mode": record.responder_mode,
+        }
+        for name, value in expected.items():
+            if geojson_decisions[request_id].get(name) != value:
+                raise ValueError("GeoJSON decision audit differs from decision record")
+            if review_decisions.get(request_id, {}).get(name) != value:
+                raise ValueError("review map decision audit differs from decision record")
+            if geopackage_decisions.get(request_id, {}).get(name) != value:
+                raise ValueError("GeoPackage decision audit differs from decision record")
     layer_types = {
         "strategic_spines": ("strategic-spine",),
         "access_obligations": ("access-obligation", "school-access-obligation"),
