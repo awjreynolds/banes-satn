@@ -1514,10 +1514,10 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
     )
     if run.get("agent_review") != expected_review_summary:
         raise ValueError("agent review summary differs from decision records")
-    caller_records = [
+    bounded_choice_records = [
         record
         for record in [*agent_records, *divergence_records]
-        if record.responder_mode == "caller"
+        if record.responder_mode in {"caller", "direct-runtime"}
     ]
     accepted_decisions = [
         {
@@ -1525,7 +1525,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             "dependency_fingerprint": record.decision_request.dependency_fingerprint,
             "choice_id": record.selected_choice_id,
         }
-        for record in caller_records
+        for record in bounded_choice_records
         if record.decision_request is not None
     ]
     if run.get("decision_contract") != "agent-decision-menu/v1":
@@ -1568,13 +1568,13 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         for feature in review_network["features"]
         if feature["properties"].get("agent_decision_request_id")
     }
-    for record in caller_records:
+    for record in bounded_choice_records:
         if record.decision_request is None or record.mapped_action is None:
-            raise ValueError("caller record omits its request or mapped action")
+            raise ValueError("bounded choice record omits its request or mapped action")
         request_id = record.decision_request.request_id
         if request_id not in geojson_decisions:
             if isinstance(record, AgentRecord) and record.decision == "accept":
-                raise ValueError("accepted caller choice is absent from spatial artifacts")
+                raise ValueError("accepted bounded choice is absent from spatial artifacts")
             continue
         expected = {
             "agent_decision_request_id": request_id,

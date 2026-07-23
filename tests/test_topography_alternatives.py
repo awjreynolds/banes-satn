@@ -217,22 +217,12 @@ def test_unidirectional_option_is_not_a_plausible_topography_alternative() -> No
     assert connection["topography_selected_role"] == "low-traffic"
 
 
-def test_agent_proposal_cannot_silently_override_authoritative_topography_selection() -> None:
+def test_bounded_runtime_cannot_parameterise_authoritative_topography_selection() -> None:
     direct = LineString([(0, 0), (1000, 0)])
     easier = LineString([(0, 0), (0, 200), (1000, 200), (1000, 0)])
     source = _two_route_source(direct, easier)
     config = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
-    runtime = FakeAgentRuntime(
-        {
-            AgentRole.PROPOSER: [
-                {
-                    "selected_role": "direct",
-                    "rationale": "Retain the direct route after bounded critique.",
-                    "evidence_ids": ["osm-network"],
-                }
-            ]
-        }
-    )
+    runtime = FakeAgentRuntime()
 
     compiled = compile_network(config, source, runtime)
 
@@ -251,15 +241,12 @@ def test_gate_rejection_publishes_no_authoritative_alignment_selection() -> None
     easier = LineString([(0, 0), (0, 200), (1000, 200), (1000, 0)])
     source = _two_route_source(direct, easier)
     config = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    config.compilation.agent.response_mode = "direct-runtime"
     config.compilation.agent.review_statuses = (TrafficLight.GREEN,)
     runtime = FakeAgentRuntime(
         {
-            AgentRole.SYNTHESISER: [
-                {
-                    "decision": "gap",
-                    "selected_role": None,
-                    "rationale": "Evidence remains unresolved.",
-                }
+            AgentRole.DECISION: [
+                {"request_id": "$request", "choice_id": "3"}
                 for _ in range(12)
             ]
         }

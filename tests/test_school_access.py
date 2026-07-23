@@ -21,7 +21,9 @@ PROJECT = Path(__file__).parents[1]
 
 
 def config() -> CouncilConfig:
-    return CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council.compilation.agent.response_mode = "direct-runtime"
+    return council
 
 
 def frame(rows: list[dict[str, object]]) -> gpd.GeoDataFrame:
@@ -471,12 +473,8 @@ def test_rejected_direct_frontier_falls_through_to_next_direct_frontier() -> Non
     empty = gpd.GeoDataFrame(columns=["place_id", "geometry"], geometry="geometry", crs=4326)
     runtime = FakeAgentRuntime(
         {
-            AgentRole.SYNTHESISER: [
-                {
-                    "decision": "gap",
-                    "selected_role": None,
-                    "rationale": "Reject the first direct frontier for test coverage.",
-                }
+            AgentRole.DECISION: [
+                {"request_id": "$request", "choice_id": "2"}
             ]
         }
     )
@@ -489,7 +487,10 @@ def test_rejected_direct_frontier_falls_through_to_next_direct_frontier() -> Non
         graph,
         CompilationGate(
             runtime,
-            AgentConfig(review_statuses=(TrafficLight.GREEN,)),
+            AgentConfig(
+                response_mode="direct-runtime",
+                review_statuses=(TrafficLight.GREEN,),
+            ),
         ),
         15,
     )

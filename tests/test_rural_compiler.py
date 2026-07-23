@@ -16,7 +16,9 @@ PROJECT = Path(__file__).parents[1]
 
 
 def config() -> CouncilConfig:
-    return CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council.compilation.agent.response_mode = "direct-runtime"
+    return council
 
 
 def edges(rows: list[dict[str, object]]) -> gpd.GeoDataFrame:

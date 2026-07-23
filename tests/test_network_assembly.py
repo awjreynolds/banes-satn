@@ -13,7 +13,9 @@ PROJECT = Path(__file__).parents[1]
 
 
 def config() -> CouncilConfig:
-    return CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council.compilation.agent.response_mode = "direct-runtime"
+    return council
 
 
 def test_missing_spine_evidence_exposes_every_rural_obligation_as_a_gap() -> None:

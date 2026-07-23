@@ -49,6 +49,7 @@ compilation:
   criteria_version: "1"
   agent:
     provider: fake
+    response_mode: caller
     review_statuses:
       - amber
       - red

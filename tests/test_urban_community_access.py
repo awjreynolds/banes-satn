@@ -26,7 +26,9 @@ def _frame(rows: list[dict[str, object]]) -> gpd.GeoDataFrame:
 
 
 def _config() -> CouncilConfig:
-    return CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council.compilation.agent.response_mode = "direct-runtime"
+    return council
 
 
 def _urban_source() -> dict[str, gpd.GeoDataFrame]:
