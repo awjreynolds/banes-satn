@@ -3,7 +3,14 @@
   const data = window.SATN_DATA;
   const network = data.network;
   const places = data.places;
-  const state = { pinned: null, active: null };
+  const state = { pinned: null, active: null, inspectionPath: [] };
+  const gradientPathTypes = new Set([
+    "strategic-spine",
+    "spine-access-connection",
+    "school-access-connection",
+    "branch-meeting-connection",
+    "urban-spine"
+  ]);
   const warningLayers = ["gaps", "crossing-warnings"];
   const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "a-road-spines", "ncn-route-evidence", "ncn-link-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-outlines", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
@@ -44,6 +51,222 @@
   function parseList(raw) {
     try { return Array.isArray(raw) ? raw : JSON.parse(raw || "[]"); }
     catch (_) { return []; }
+  }
+
+  function profileFor(feature) {
+    const profileId = feature?.properties?.topography_profile_id;
+    return network.features.find((candidate) =>
+      candidate.properties.feature_type === "topography-profile" &&
+      candidate.properties.profile_id === profileId
+    );
+  }
+
+  function eligibleForGradientPath(feature) {
+    return Boolean(
+      feature &&
+      gradientPathTypes.has(feature.properties.feature_type) &&
+      ["LineString", "MultiLineString"].includes(feature.geometry?.type) &&
+      feature.properties.topography_profile_id
+    );
+  }
+
+  function lineEndpoints(feature) {
+    const coordinates = feature.geometry.coordinates;
+    if (feature.geometry.type === "LineString") {
+      return [coordinates[0], coordinates[coordinates.length - 1]];
+    }
+    const first = coordinates[0];
+    const last = coordinates[coordinates.length - 1];
+    return [first[0], last[last.length - 1]];
+  }
+
+  function distanceMetres(left, right) {
+    const latitude = (left[1] + right[1]) * Math.PI / 360;
+    const dx = (right[0] - left[0]) * 111320 * Math.cos(latitude);
+    const dy = (right[1] - left[1]) * 110540;
+    return Math.hypot(dx, dy);
+  }
+
+  function orientedEndpoints(item) {
+    const endpoints = lineEndpoints(item.feature);
+    return item.reversed ? [endpoints[1], endpoints[0]] : endpoints;
+  }
+
+  function updateGradientCandidate() {
+    const candidate = network.features.find((feature) => feature.id === state.pinned);
+    const message = document.querySelector("#gradient-path-candidate");
+    const start = document.querySelector("#gradient-path-start");
+    const append = document.querySelector("#gradient-path-append");
+    if (!eligibleForGradientPath(candidate)) {
+      message.textContent = state.pinned
+        ? "Pinned feature is not an eligible analytical edge."
+        : "Pin an eligible Published Feature, then start or append it.";
+      start.disabled = true;
+      append.disabled = true;
+      return;
+    }
+    message.textContent = `${value(candidate.properties.name, candidate.properties.feature_type.replaceAll("-", " "))} · ${candidate.id}`;
+    start.disabled = false;
+    append.disabled = state.inspectionPath.length === 0;
+  }
+
+  function setInspectionPath(features) {
+    state.inspectionPath = features;
+    const selectedIds = features.map((item) => item.feature.id);
+    const source = map.getSource("inspection-path");
+    if (source) {
+      source.setData({
+        type: "FeatureCollection",
+        features: features.map((item) => item.feature)
+      });
+    }
+    document.querySelector("#gradient-path-status").textContent = selectedIds.length
+      ? `${selectedIds.length} edge${selectedIds.length === 1 ? "" : "s"} selected.`
+      : "No path selected.";
+    renderLinearEvidence();
+    updateGradientCandidate();
+  }
+
+  function startPinnedPath() {
+    const feature = network.features.find((candidate) => candidate.id === state.pinned);
+    if (eligibleForGradientPath(feature)) setInspectionPath([{ feature, reversed: false }]);
+  }
+
+  function appendPinnedPath() {
+    const feature = network.features.find((candidate) => candidate.id === state.pinned);
+    if (!eligibleForGradientPath(feature) || !state.inspectionPath.length) return;
+    if (state.inspectionPath.some((item) => item.feature.id === feature.id)) {
+      document.querySelector("#gradient-path-status").textContent = "That edge is already in the path.";
+      return;
+    }
+    const activeEnd = orientedEndpoints(state.inspectionPath.at(-1))[1];
+    const [start, end] = lineEndpoints(feature);
+    const startGap = distanceMetres(activeEnd, start);
+    const endGap = distanceMetres(activeEnd, end);
+    const gap = Math.min(startGap, endGap);
+    if (gap > 50) {
+      document.querySelector("#gradient-path-status").textContent =
+        `Edge is ${gap.toFixed(0)} m from the active endpoint; append requires continuity within 50 m.`;
+      return;
+    }
+    setInspectionPath([
+      ...state.inspectionPath,
+      { feature, reversed: endGap < startGap }
+    ]);
+  }
+
+  function evidenceCell(track, item, totalDistance, offset, segmentIndex) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = `track-cell ${item.gradient_band || "unavailable"}`;
+    const length = Math.max(0.001, item.end_distance_m - item.start_distance_m);
+    cell.style.flexBasis = `${length / totalDistance * 100}%`;
+    cell.title = item.status === "available"
+      ? `${(offset + item.start_distance_m).toFixed(0)}–${(offset + item.end_distance_m).toFixed(0)} m · ${item.forward_gradient_pct}%`
+      : "Micro-gradient evidence unavailable";
+    cell.textContent = item.status === "available" ? `${item.forward_gradient_pct}%` : "—";
+    cell.addEventListener("mouseenter", () => {
+      cell.classList.add("hovered");
+      const featureId = state.inspectionPath[segmentIndex]?.feature.id;
+      if (featureId && map.getLayer("connections-highlight")) {
+        map.setFilter("connections-highlight", ["==", ["id"], featureId]);
+      }
+    });
+    cell.addEventListener("mouseleave", () => {
+      cell.classList.remove("hovered");
+      setHighlight(state.pinned);
+    });
+    track.append(cell);
+  }
+
+  function renderLinearEvidence() {
+    const chart = document.querySelector("#linear-evidence-chart");
+    const summary = document.querySelector("#route-summary");
+    chart.replaceChildren();
+    if (!state.inspectionPath.length) {
+      chart.innerHTML = '<p class="empty-evidence">No Gradient Inspection Path selected.</p>';
+      summary.textContent = "Build a continuous Gradient Inspection Path to compare distance-aligned evidence.";
+      return;
+    }
+    const segments = state.inspectionPath.map((item) => {
+      const profile = profileFor(item.feature);
+      const distance = Number(profile?.properties?.distance_m || item.feature.properties.topography_distance_m || 0);
+      const capability = profile ? parseObject(profile.properties.micro_gradient_capability) : {};
+      const intervals = profile ? parseList(profile.properties.micro_gradient_intervals) : [];
+      return { ...item, profile, distance, capability, intervals };
+    });
+    const totalDistance = Math.max(segments.reduce((sum, item) => sum + item.distance, 0), 1);
+    summary.textContent = `${segments.length} edge${segments.length === 1 ? "" : "s"} · ${(totalDistance / 1000).toFixed(2)} km · shared distance axis`;
+    const axis = document.createElement("div");
+    axis.className = "evidence-axis";
+
+    const gradientRow = document.createElement("div");
+    gradientRow.className = "evidence-track";
+    const gradientLabel = document.createElement("div");
+    gradientLabel.className = "track-label";
+    gradientLabel.textContent = "Gradient · 20 m";
+    const gradientCells = document.createElement("div");
+    gradientCells.className = "track-cells";
+    let offset = 0;
+    segments.forEach((segment, segmentIndex) => {
+      const detail = segment.intervals.filter((item) => Number(item.window_m) === 20);
+      if (!detail.length) {
+        evidenceCell(gradientCells, {
+          start_distance_m: 0,
+          end_distance_m: segment.distance,
+          status: "unavailable",
+          gradient_band: "unavailable"
+        }, totalDistance, offset, segmentIndex);
+      } else {
+        detail.forEach((raw) => {
+          const item = { ...raw };
+          if (segment.reversed) {
+            const originalStart = Number(item.start_distance_m);
+            item.start_distance_m = segment.distance - Number(item.end_distance_m);
+            item.end_distance_m = segment.distance - originalStart;
+            item.forward_gradient_pct = -Number(item.forward_gradient_pct);
+            item.uphill_direction = item.uphill_direction === "forward" ? "reverse" : item.uphill_direction === "reverse" ? "forward" : "level";
+          }
+          evidenceCell(gradientCells, item, totalDistance, offset, segmentIndex);
+        });
+      }
+      offset += segment.distance;
+    });
+    gradientRow.append(gradientLabel, gradientCells);
+
+    const roadRow = document.createElement("div");
+    roadRow.className = "evidence-track";
+    const roadLabel = document.createElement("div");
+    roadLabel.className = "track-label";
+    roadLabel.textContent = "Road type";
+    const roadCells = document.createElement("div");
+    roadCells.className = "track-cells";
+    segments.forEach((segment, index) => {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "track-cell road";
+      cell.style.flexBasis = `${segment.distance / totalDistance * 100}%`;
+      cell.textContent = value(
+        segment.feature.properties.official_classification,
+        segment.feature.properties.spine_kind || segment.feature.properties.feature_type.replaceAll("-", " ")
+      );
+      cell.title = `${segment.feature.id} · future engineering evidence track`;
+      cell.addEventListener("click", () => togglePin(segment.feature.id));
+      cell.dataset.segmentIndex = String(index);
+      roadCells.append(cell);
+    });
+    roadRow.append(roadLabel, roadCells);
+
+    const distanceAxis = document.createElement("div");
+    distanceAxis.className = "distance-axis";
+    distanceAxis.innerHTML = `<span>0 m</span><span>${Math.round(totalDistance / 2)} m</span><span>${Math.round(totalDistance)} m</span>`;
+    axis.append(gradientRow, roadRow, distanceAxis);
+    chart.append(axis);
+  }
+
+  function parseObject(raw) {
+    try { return raw && typeof raw === "object" ? raw : JSON.parse(raw || "{}"); }
+    catch (_) { return {}; }
   }
 
   function addDefinition(list, term, description, className = "") {
@@ -250,13 +473,17 @@
     state.pinned = state.pinned === id ? null : id;
     if (state.pinned) showDetails(id); else clearTransient();
     setHighlight(state.pinned || state.active);
+    updateGradientCandidate();
   }
 
   function renderCards() {
     const list = document.querySelector("#connection-list");
     list.replaceChildren();
     network.features
-      .filter((feature) => ["gap", "strategic-spine", "access-obligation", "spine-access-connection", "school-access-obligation", "school-street-assessment", "school-access-connection", "school-access-gap", "branch-meeting-connection", "cross-spine-connector", "a-road-spine", "ncn-route", "ncn-link", "urban-spine", "urban-classification-unknown", "low-traffic-area", "low-traffic-area-portal", "crossing-warning", "school", "topography-profile", "gradient-section", "retail-centre", "healthcare", "atm-reference"].includes(feature.properties.feature_type))
+      .filter((feature) =>
+        eligibleForGradientPath(feature) ||
+        feature.properties.feature_type === "cross-spine-connector"
+      )
       .forEach((feature) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -309,34 +536,14 @@
           warning.textContent = "Elevation challenge retained";
           button.append(warning);
         }
-        button.addEventListener("mouseenter", () => { if (!state.pinned) showDetails(feature.id); });
-        button.addEventListener("mouseleave", clearTransient);
-        button.addEventListener("focus", () => { if (!state.pinned) showDetails(feature.id); });
         button.addEventListener("click", () => togglePin(feature.id));
         list.append(button);
       });
-    places.features.forEach((feature) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.id = `item-place-${feature.properties.place_id}`;
-      button.className = "connection";
-      button.dataset.featureId = feature.properties.place_id;
-      button.dataset.featureType = "place";
-      const title = document.createElement("strong");
-      title.textContent = value(feature.properties.name, "Unnamed Network Place");
-      const summary = document.createElement("span");
-      summary.textContent = `Network Place · ${value(feature.properties.kind)}`;
-      button.append(title, summary);
-      button.addEventListener("mouseenter", () => showPlaceDetails(feature));
-      button.addEventListener("mouseleave", clearTransient);
-      button.addEventListener("focus", () => showPlaceDetails(feature));
-      button.addEventListener("click", () => showPlaceDetails(feature));
-      list.append(button);
-    });
   }
 
   function renderCriteria(section) {
     const heading = document.querySelector("#criteria-heading");
+    if (!heading) return;
     heading.textContent = `${section.replaceAll("_", " ")} criteria`;
     const list = document.querySelector("#criteria-list");
     list.replaceChildren();
@@ -379,6 +586,76 @@
         if (legend) legend.hidden = !control.checked;
       });
     });
+    document.querySelectorAll(".info-button").forEach((button) => {
+      const popover = document.getElementById(button.getAttribute("aria-controls"));
+      const close = () => {
+        popover.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+      };
+      button.addEventListener("click", () => {
+        const open = popover.hidden;
+        document.querySelectorAll(".layer-popover").forEach((item) => { item.hidden = true; });
+        document.querySelectorAll(".info-button").forEach((item) => item.setAttribute("aria-expanded", "false"));
+        popover.hidden = !open;
+        button.setAttribute("aria-expanded", String(open));
+        if (open) {
+          const rect = button.getBoundingClientRect();
+          popover.style.top = `${Math.min(rect.top, window.innerHeight - popover.offsetHeight - 8)}px`;
+        }
+      });
+      button.addEventListener("mouseleave", () => {
+        if (!popover.matches(":hover")) close();
+      });
+      popover.addEventListener("mouseleave", close);
+    });
+    document.querySelector("#gradient-path-start").addEventListener("click", startPinnedPath);
+    document.querySelector("#gradient-path-append").addEventListener("click", appendPinnedPath);
+    document.querySelector("#gradient-path-remove").addEventListener("click", () => {
+      setInspectionPath(state.inspectionPath.slice(0, -1));
+    });
+    document.querySelector("#gradient-path-reverse").addEventListener("click", () => {
+      setInspectionPath(
+        [...state.inspectionPath].reverse().map((item) => ({ ...item, reversed: !item.reversed }))
+      );
+    });
+    document.querySelector("#gradient-path-reset").addEventListener("click", () => setInspectionPath([]));
+    document.querySelector("#criteria-download").addEventListener("click", () => {
+      const url = URL.createObjectURL(new Blob(
+        [JSON.stringify(data.criteria, null, 2)],
+        { type: "application/json" }
+      ));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "criteria-evidence.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+    document.querySelector("#terrain-mode").addEventListener("change", async (event) => {
+      const status = document.querySelector("#terrain-status");
+      if (!event.target.checked) {
+        map.setTerrain(null);
+        map.easeTo({ pitch: 0, duration: 500 });
+        status.textContent = "2D map · analytical default";
+        return;
+      }
+      try {
+        if (!map.getSource("mapterhorn-dem")) {
+          map.addSource("mapterhorn-dem", {
+            type: "raster-dem",
+            url: "https://tiles.mapterhorn.com/tilejson.json",
+            tileSize: 512,
+            attribution: "Terrain © Mäperhorn and attributed source datasets"
+          });
+        }
+        map.setTerrain({ source: "mapterhorn-dem", exaggeration: 1.8 });
+        map.easeTo({ pitch: 55, duration: 700 });
+        status.textContent = "3D terrain · 1.8× visual exaggeration · contextual only";
+      } catch (error) {
+        event.target.checked = false;
+        map.setTerrain(null);
+        status.textContent = `3D unavailable; restored 2D map. ${error.message}`;
+      }
+    });
     document.querySelector("#atm-upload").addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -415,6 +692,10 @@
   map.on("load", () => {
     map.addSource("network", { type: "geojson", data: network });
     map.addSource("places", { type: "geojson", data: places });
+    map.addSource("inspection-path", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] }
+    });
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#7fb8c9", "fill-opacity": .24 } });
     map.addLayer({ id: "low-traffic-area-outlines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "line-color": "#2f6474", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 13, 2], "line-opacity": .65 } });
     map.addLayer({ id: "low-traffic-area-portals", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area-portal"], layout: { visibility: "none" }, paint: { "circle-color": "#2874a6", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
@@ -443,6 +724,7 @@
     map.addLayer({ id: "gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "gap"], paint: { "circle-color": "#c0392b", "circle-radius": 6 } });
     map.addLayer({ id: "crossing-warnings", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "crossing-warning"], paint: { "circle-color": "#f39c12", "circle-radius": 6, "circle-stroke-color": "#17202a", "circle-stroke-width": 1.5 } });
     map.addLayer({ id: "connections-highlight", type: "line", source: "network", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 8 } });
+    map.addLayer({ id: "inspection-path", type: "line", source: "inspection-path", paint: { "line-color": "#f4d03f", "line-width": 10, "line-opacity": .82 } });
     const bounds = new maplibregl.LngLatBounds();
     [...network.features, ...places.features].forEach((feature) => {
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);
@@ -465,8 +747,9 @@
   });
 
   renderCards();
-  renderCriteria("connections");
   bindControls();
+  updateGradientCandidate();
+  renderLinearEvidence();
   const counts = data.layer_counts || {};
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +

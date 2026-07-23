@@ -109,6 +109,61 @@ def test_adjustable_gradient_bands_keep_every_section_visible() -> None:
     assert json.loads(profiles.iloc[0]["gradient_section_ids"]) == list(sections["section_id"])
 
 
+def test_dense_evidence_publishes_20m_and_50m_micro_gradient_intervals() -> None:
+    frame, profiles, _ = profiles_for(
+        LineString([(0, 0), (100, 0)]),
+        [(distance, distance / 10) for distance in range(0, 101, 10)],
+    )
+
+    profile = profiles.iloc[0]
+    capability = json.loads(profile["micro_gradient_capability"])
+    intervals = json.loads(profile["micro_gradient_intervals"])
+
+    assert capability["status"] == "available"
+    assert capability["windows_m"] == [20.0, 50.0]
+    assert capability["maximum_observed_sample_spacing_m"] == pytest.approx(10)
+    assert {(item["window_m"], item["start_distance_m"]) for item in intervals} == {
+        (20.0, 0.0),
+        (20.0, 20.0),
+        (20.0, 40.0),
+        (20.0, 60.0),
+        (20.0, 80.0),
+        (50.0, 0.0),
+        (50.0, 50.0),
+    }
+    assert {item["forward_gradient_pct"] for item in intervals} == {10.0}
+    assert all(item["status"] == "available" for item in intervals)
+    assert all(item["uncertainty"]["gradient_is_derived"] for item in intervals)
+    assert "micro_gradient_intervals" not in frame
+
+
+def test_sparse_legacy_profile_marks_micro_gradient_as_unavailable() -> None:
+    _, profiles, _ = profiles_for(
+        LineString([(0, 0), (100, 0)]),
+        [(0, 0), (100, 10)],
+    )
+
+    profile = profiles.iloc[0]
+    assert profile["evidence_status"] == "available"
+    capability = json.loads(profile["micro_gradient_capability"])
+    assert capability["status"] == "unavailable"
+    assert "12.5 m" in capability["rationale"]
+    assert json.loads(profile["micro_gradient_intervals"]) == []
+
+
+def test_micro_gradient_clamps_endpoints_within_governed_edge_tolerance() -> None:
+    _, profiles, _ = profiles_for(
+        LineString([(0, 0), (100, 0)]),
+        [(2, 0.2), (12, 1.2), (22, 2.2), (32, 3.2), (42, 4.2), (52, 5.2),
+         (62, 6.2), (72, 7.2), (82, 8.2), (92, 9.2), (98, 9.8)],
+    )
+
+    intervals = json.loads(profiles.iloc[0]["micro_gradient_intervals"])
+    assert intervals
+    assert intervals[0]["start_distance_m"] == 0
+    assert intervals[-1]["end_distance_m"] == 100
+
+
 def test_unusable_elevation_evidence_is_explicitly_grey() -> None:
     frame, profiles, sections = profiles_for(
         LineString([(0, 0), (100, 0)]),
@@ -327,5 +382,5 @@ def test_public_compile_uses_snapshot_elevation_and_configured_bands(
     assert not sections.empty
     assert set(sections["gradient_band"]) == {"gentle"}
     html = result.artifacts["review_map"].read_text()
-    assert "Gentle — up to 100%" in html
-    assert "Noticeable — above 100% to 101%" in html
+    assert "Gentle ≤ 100%;" in html
+    assert "Noticeable ≤ 101%;" in html

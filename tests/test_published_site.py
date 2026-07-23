@@ -33,15 +33,20 @@ def test_tracked_pages_site_is_complete_and_contains_no_atm_geometry() -> None:
     assert publication["human_intervention_request_count"] == 0
     assert publication["comparison_role"] == "superseded-reference-not-ground-truth"
     assert publication["compilation_diagnostics"]["assembly_strategy"] == "backbone-outward"
-    assert {record["connection_id"] for record in agent_records["records"]} == {
-        feature["id"] for feature in connections
-    }
+    recorded_ids = {record["connection_id"] for record in agent_records["records"]}
+    assert {feature["id"] for feature in connections} <= recorded_ids
+    assert recorded_ids <= {feature["id"] for feature in features}
     assert publication["disclaimer"] == DISCLAIMER
     assert len({feature["id"] for feature in connections}) == len(connections)
     assert "connection" not in {feature["properties"]["feature_type"] for feature in features}
     assert "atm-reference" not in {feature["properties"]["feature_type"] for feature in features}
     assert (site / ".nojekyll").exists()
     assert (site / "network-map.pdf").read_bytes().startswith(b"%PDF-")
+    assert (site / "network.geojson").stat().st_size < 100_000_000
+    assert all(
+        "micro_gradient_intervals" not in feature["properties"]
+        for feature in connections
+    )
     html = (site / "index.html").read_text(encoding="utf-8")
     assert 'id="layer-a-road-spines"' in html
     assert 'id="layer-strategic-spines"' in html

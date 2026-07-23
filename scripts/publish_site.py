@@ -36,6 +36,14 @@ def main() -> None:
     try:
         shutil.copytree(review_map, temporary / "content", dirs_exist_ok=True)
         content = temporary / "content"
+        network_path = content / "network.geojson"
+        network_path.write_text(
+            json.dumps(
+                json.loads(network_path.read_text(encoding="utf-8")),
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
         shutil.copy2(pdf_map, content / "network-map.pdf")
         (content / ".nojekyll").write_text("", encoding="utf-8")
         publication = {

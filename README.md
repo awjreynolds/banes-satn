@@ -221,6 +221,24 @@ and run fingerprints. Sparse OSM `ele` and `incline` tags are published only as
 the optional live-source smoke test explicitly with `--live-terrain` and
 `SATN_TEST_TERRAIN_GEOJSON_URL`.
 
+For English councils, create a bounded local evidence file from the Environment
+Agency LIDAR Composite DTM WCS after compiling or otherwise supplying eligible route
+linework:
+
+```shell
+uv run python scripts/acquire_ea_elevation.py \
+  site/network.geojson \
+  data/local/ea-lidar-dtm-1m-council-samples.geojson \
+  --cache-dir data/local/ea-dtm-cache \
+  --spacing-m 10
+```
+
+The command downloads only intersecting 5 km tiles, scales the official 1 m DTM to
+the requested route-sampling interval, preserves request URLs and tile hashes in a
+manifest, and excludes aggregate Cross-Spine Connector geometry. Configure the
+result through the existing `local-geojson` contract, then replace the immutable
+source snapshot. The 3D terrain layer is contextual and is never sampled for analysis.
+
 Configure a council-governed classification dataset as follows. The source must be
 line geometry with an `official_classification`, `road_classification` or
 `classification` field; common A, B, C/Classified Unnumbered and Unclassified values

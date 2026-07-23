@@ -9,6 +9,8 @@ cache/
 examples/*/work/
 data/snapshots/
 data/local/*.geojson
+data/local/*.manifest.json
+data/local/ea-dtm-cache/
 dist/
 output/
 output-atm-local/

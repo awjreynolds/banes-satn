@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-83c71695cef1",
+  "run_id": "run-01de032b4605",
   "status": "reviewable",
   "network_model": "backbone-outward",
   "connection_count": 73,
@@ -16,8 +16,8 @@
     "spine_access_branches": 44,
     "branch_meeting_connections": 16,
     "cross_spine_connectors": 16,
-    "a_road_spines": 2424,
-    "ncn_routes": 266,
+    "a_road_spines": 2435,
+    "ncn_routes": 268,
     "urban_spines": 1383,
     "urban_classification_unknowns": 2075,
     "candidate_low_traffic_areas": 41,
@@ -25,7 +25,7 @@
     "schools": 104,
     "school_street_assessments": 93,
     "topography_profiles": 1564,
-    "gradient_sections": 0,
+    "gradient_sections": 42185,
     "elevation_corroboration": 0,
     "retail_centres": 55,
     "healthcare": 78
@@ -74,7 +74,7 @@
     "topography": {
       "all_generated_edges_profiled": "green",
       "elevation_evidence_coverage": "grey",
-      "gradient_sections_published": "grey"
+      "gradient_sections_published": "green"
     },
     "atm_comparison": {
       "compared": "grey"
@@ -2949,7 +2949,7 @@
     ],
     "urban_a_road_spine_coverage": {
       "source_alignment_tolerance_m": 100.0,
-      "evidence_segment_count": 1647,
+      "evidence_segment_count": 1664,
       "total_km": 85.319,
       "unmatched_km": 0.0
     }

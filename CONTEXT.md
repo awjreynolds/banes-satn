@@ -200,6 +200,22 @@ _Avoid_: gradient prohibition, invisible routing weight, permanent design standa
 The distance and per-direction cumulative-ascent, cumulative-descent, Gradient Sections and steepest-sustained-gradient evidence displayed for an Alignment Option to support human and agent judgement. It is derived from elevation throughout the alignment rather than endpoint difference, and the measures are not collapsed into a composite effort score.
 _Avoid_: net elevation change, cycling effort score, hidden weighting
 
+**Micro-Gradient Interval**:
+A distance-aligned 20 metre detail or 50 metre overview measurement derived from governed elevation samples no more than 12.5 metres apart. It records direction, severity, supporting evidence and uncertainty; unavailable evidence remains explicit rather than being interpreted as level ground.
+_Avoid_: map-tile gradient, assumed flat interval, endpoint-only slope
+
+**Gradient Inspection Path**:
+An ordered, continuous selection of eligible Published Features assembled from one active endpoint for exploratory analysis. Aggregate Cross-Spine Connector geometry is excluded because its constituent edges already carry the analytical evidence.
+_Avoid_: arbitrary multi-selection, disconnected edge set, aggregate double-counting
+
+**Linear Evidence Panel**:
+A shared-distance view of the Gradient Inspection Path that aligns Micro-Gradient Intervals with road classification and future engineering evidence tracks. Reversing the path reverses directional gradient without changing the governed source evidence.
+_Avoid_: independent charts, edge-only summary, composite route score
+
+**Contextual Terrain Mode**:
+An optional visually exaggerated 3D terrain view used for orientation. It is never an analytical elevation source, and failure of its replaceable raster-dem provider restores the default 2D map without affecting the network or Linear Evidence Panel.
+_Avoid_: analytical terrain tile, required 3D renderer, MapToolkit dependency
+
 **Elevation Evidence**:
 Governed terrain-height evidence sampled along the routable network to produce Topography Profiles. A national terrain model is authoritative for continuous coverage; sparse OSM elevation and incline tags are corroborating evidence rather than the primary source.
 _Avoid_: OSM-only elevation, live elevation lookup, assumed flat terrain

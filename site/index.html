@@ -5,163 +5,117 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>B&amp;NES Strategic Active Travel Network Review</title>
   <link href="assets/maplibre-gl.css" rel="stylesheet">
-  <link href="assets/review-map.c0c8c0b06794.css" rel="stylesheet">
+  <link href="assets/review-map.0bf586bcc9e2.css" rel="stylesheet">
 </head>
 <body>
   <main>
-    <aside aria-label="Network information">
-      <h1>B&amp;NES Strategic Active Travel Network Review</h1>
-      <p class="project-link"><a href="https://github.com/awjreynolds/banes-satn">View source, methodology and issues on GitHub</a></p>
-      <p class="notice" role="note">Experimental SATN POC — not an adopted B&NES plan.</p>
+    <aside id="layer-rail" aria-label="Map layers and inspection tools">
+      <header class="rail-header">
+        <h1>B&amp;NES Strategic Active Travel Network Review</h1>
+        <p class="notice" role="note">Experimental SATN POC — not an adopted B&NES plan.</p>
+      </header>
 
       <fieldset id="layer-controls">
         <legend>Map layers</legend>
-        <label><input id="layer-strategic-spines" type="checkbox" checked aria-describedby="legend-strategic-spines"> Strategic Spines</label>
-        <div id="legend-strategic-spines" class="layer-summary" role="note">
-          <p>A-road Strategic Spine — major engineering required</p>
-          <p>Established NCN Strategic Spine</p>
-        </div>
-        <label><input id="layer-spine-access-connections" type="checkbox" checked aria-describedby="legend-spine-access-connections"> Spine Access Connections</label>
-        <div id="legend-spine-access-connections" class="layer-summary" role="note">
-          <p>Spine Access Connection — routed Community attachment</p>
-          <p>Green point — served Community reference point</p>
-          <p>Amber point — bounded graph association to a spine or an already served Community</p>
-          <p>Red point — unresolved Community access gap</p>
-          <p>Amber dashed line — retained Elevation Challenge with no materially easier option</p>
-        </div>
-        <label><input id="layer-cross-spine-connectors" type="checkbox" checked aria-describedby="legend-cross-spine-connectors"> Cross-Spine Connectors</label>
-        <div id="legend-cross-spine-connectors" class="layer-summary" role="note">
-          <p>Cross-Spine Connector — continuous transverse chain</p>
-          <p>Branch Meeting Connection — first justified meeting only</p>
-          <p>Amber dashed line — retained Elevation Challenge with no materially easier option</p>
-        </div>
-        <label><input id="layer-a-road-spines" type="checkbox" aria-describedby="legend-a-road-spines"> Raw A-road evidence</label>
-        <div id="legend-a-road-spines" class="layer-summary" role="note" hidden><p>Orange line — governed source corridor before assembly.</p></div>
-        <label><input id="layer-ncn-routes" type="checkbox" checked aria-describedby="legend-ncn-routes"> National Cycle Network</label>
-        <div id="legend-ncn-routes" class="layer-summary" role="note">
-          <p>Blue line — established NCN geometry across rural and urban areas</p>
-          <p>Blue dashed line — official connector LINK evidence; visible for continuity but not promoted to a Strategic Spine</p>
-          <p>Urban NCN is permeability evidence, not automatically a Circulation Boundary</p>
-        </div>
-        <label><input id="layer-urban-spines" type="checkbox" checked aria-describedby="legend-urban-spines"> Urban Main-Road Spines</label>
-        <div id="legend-urban-spines" class="layer-summary" role="note">
-          <p>A road — major engineering/protected provision assumption</p>
-          <p>B road — official through-road spine</p>
-          <p>Classified Unnumbered (C) road — official through-road spine</p>
-        </div>
-        <label><input id="layer-urban-classification-unknowns" type="checkbox" aria-describedby="legend-urban-classification-unknowns"> Road-classification evidence gaps</label>
-        <div id="legend-urban-classification-unknowns" class="layer-summary" role="note" hidden>
-          <p>Grey dashed line — governed road with official classification still unknown</p>
-          <p>Diagnostic evidence only; OSM tags are not substituted</p>
-        </div>
-        <label><input id="layer-low-traffic-areas" type="checkbox" checked aria-describedby="legend-low-traffic-areas"> Candidate Low-Traffic Areas</label>
-        <div id="legend-low-traffic-areas" class="layer-summary" role="note">
-          <p>Blue area — Candidate Low-Traffic Area, not an existing LTN</p>
-          <p>Area permeability only — no preferred residential cycling centreline asserted</p>
-        </div>
-        <label><input id="layer-low-traffic-area-portals" type="checkbox" aria-describedby="legend-low-traffic-area-portals"> LTA portal evidence</label>
-        <div id="legend-low-traffic-area-portals" class="layer-summary" role="note" hidden>
-          <p>Blue dot — street-to-boundary portal used by the urban access assessment</p>
-          <p>Diagnostic evidence; hidden by default to keep the circulation plan legible</p>
-        </div>
-        <label><input id="layer-places" type="checkbox" checked aria-describedby="legend-places"> Places</label>
-        <div id="legend-places" class="layer-summary" role="note"><p>Dark dot — labelled place reference point.</p></div>
-        <label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label>
-        <div id="legend-schools" class="layer-summary" role="note" hidden>
-          <p>Green — Mapped and served</p>
-          <p>Amber — Inferred access point; needs verification</p>
-          <p>Red — mapped access point but no reachable backbone or continuous urban fabric to a main-road portal</p>
-          <p>Grey — Unresolved access point</p>
-          <p>Urban service — area permeability to a named main-road portal; no residential centreline selected</p>
-          <p>Urban finding — unresolved entrance, missing portal or discontinuous low-traffic fabric</p>
-          <p>Purple — contextual college or university</p>
-        </div>
-        <label><input id="layer-school-streets" type="checkbox" aria-describedby="legend-school-streets"> School Street Candidate Assessments</label>
-        <div id="legend-school-streets" class="layer-summary" role="note" hidden>
-          <p>Green — Promising</p>
-          <p>Amber — Needs Investigation</p>
-          <p>Red — Unlikely</p>
-          <p>Grey — Not Evaluated</p>
-          <p>Qualitative evidence for investigation — not scheme feasibility or calibrated probability</p>
-        </div>
-        <label><input id="layer-gradient-sections" type="checkbox" aria-describedby="legend-gradient-sections"> Gradient Sections</label>
-        <div id="legend-gradient-sections" class="layer-summary" role="note" hidden>
-          <p>Gentle — up to 3%</p>
-          <p>Noticeable — above 3% to 5%</p>
-          <p>Steep — above 5% to 8%</p>
-          <p>Very Steep — above 8% to 12.5%</p>
-          <p>Severe — above 12.5%</p>
-          <p>Grey — Elevation Evidence unavailable</p>
-          <p>Sequential blue terrain colours show physical gradient severity, not Criterion Status or route rejection.</p>
-        </div>
-        <label><input id="layer-retail-centres" type="checkbox" aria-describedby="legend-retail-centres"> High streets &amp; retail centres</label>
-        <div id="legend-retail-centres" class="layer-summary" role="note" hidden><p>Orange dot — retail amenity evidence.</p></div>
-        <label><input id="layer-healthcare" type="checkbox" aria-describedby="legend-healthcare"> Doctors, pharmacies &amp; hospitals</label>
-        <div id="legend-healthcare" class="layer-summary" role="note" hidden><p>Red dot — healthcare amenity evidence.</p></div>
-        <label><input id="layer-gaps-warnings" type="checkbox" checked aria-describedby="legend-gaps-warnings"> Gaps and warnings</label>
-        <div id="legend-gaps-warnings" class="layer-summary" role="note"><p>Red dot — unresolved Network Gap. Amber dot — undeclared crossing warning.</p></div>
-        <label><input id="layer-atm" type="checkbox" disabled aria-describedby="legend-atm"> ATM reference (before/after)</label>
-        <div id="legend-atm" class="layer-summary" role="note" hidden><p>Blue dashed line — governed comparison reference, never ground truth.</p></div>
+        <div class="layer-row"><label><input id="layer-strategic-spines" type="checkbox" checked aria-describedby="legend-strategic-spines"> Strategic Spines</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-strategic-spines" aria-label="About Strategic Spines">i</button><div id="legend-strategic-spines" class="layer-popover" role="note" hidden>A-road Strategic Spine — major engineering required. Established NCN Strategic Spines are shown separately.</div></div>
+        <div class="layer-row"><label><input id="layer-spine-access-connections" type="checkbox" checked aria-describedby="legend-spine-access-connections"> Spine Access</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-spine-access-connections" aria-label="About Spine Access">i</button><div id="legend-spine-access-connections" class="layer-popover" role="note" hidden>A Spine Access Connection is a routed Community attachment. Dashed amber marks a retained Elevation Challenge.</div></div>
+        <div class="layer-row"><label><input id="layer-cross-spine-connectors" type="checkbox" checked aria-describedby="legend-cross-spine-connectors"> Cross-Spine Connectors</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-cross-spine-connectors" aria-label="About Cross-Spine Connectors">i</button><div id="legend-cross-spine-connectors" class="layer-popover" role="note" hidden>Aggregate transverse chains. They are not selectable in a Gradient Inspection Path, avoiding double-counted linework.</div></div>
+        <div class="layer-row"><label><input id="layer-a-road-spines" type="checkbox" aria-describedby="legend-a-road-spines"> Raw A-road evidence</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-a-road-spines" aria-label="About raw A-road evidence">i</button><div id="legend-a-road-spines" class="layer-popover" role="note" hidden>Governed source corridors before assembly.</div></div>
+        <div class="layer-row"><label><input id="layer-ncn-routes" type="checkbox" checked aria-describedby="legend-ncn-routes"> National Cycle Network</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-ncn-routes" aria-label="About National Cycle Network">i</button><div id="legend-ncn-routes" class="layer-popover" role="note" hidden>Established NCN geometry and connector LINK evidence. Urban NCN is permeability evidence, not automatically a Circulation Boundary.</div></div>
+        <div class="layer-row"><label><input id="layer-urban-spines" type="checkbox" checked aria-describedby="legend-urban-spines"> Urban Main-Road Spines</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-urban-spines" aria-label="About Urban Main-Road Spines">i</button><div id="legend-urban-spines" class="layer-popover" role="note" hidden>A, B and Classified Unnumbered roads assigned to carry through traffic.</div></div>
+        <div class="layer-row"><label><input id="layer-urban-classification-unknowns" type="checkbox" aria-describedby="legend-urban-classification-unknowns"> Classification gaps</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-urban-classification-unknowns" aria-label="About classification gaps">i</button><div id="legend-urban-classification-unknowns" class="layer-popover" role="note" hidden>Governed road evidence whose official classification remains unknown.</div></div>
+        <div class="layer-row"><label><input id="layer-low-traffic-areas" type="checkbox" checked aria-describedby="legend-low-traffic-areas"> Candidate Low-Traffic Areas</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-low-traffic-areas" aria-label="About Candidate Low-Traffic Areas">i</button><div id="legend-low-traffic-areas" class="layer-popover" role="note" hidden>A Candidate Low-Traffic Area is not an existing LTN. Area permeability is shown with no preferred residential cycling centreline.</div></div>
+        <div class="layer-row"><label><input id="layer-low-traffic-area-portals" type="checkbox" aria-describedby="legend-low-traffic-area-portals"> LTA portals</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-low-traffic-area-portals" aria-label="About LTA portals">i</button><div id="legend-low-traffic-area-portals" class="layer-popover" role="note" hidden>Named street-to-boundary portals used by urban access assessments.</div></div>
+        <div class="layer-row"><label><input id="layer-places" type="checkbox" checked aria-describedby="legend-places"> Places</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-places" aria-label="About Places">i</button><div id="legend-places" class="layer-popover" role="note" hidden>Labelled Network Place reference points.</div></div>
+        <div class="layer-row"><label><input id="layer-schools" type="checkbox" aria-describedby="legend-schools"> Schools &amp; education</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-schools" aria-label="About Schools">i</button><div id="legend-schools" class="layer-popover" role="note" hidden>School Access Obligations: Mapped and served; Inferred access point — needs verification; Network gap; or Unresolved access point. Contextual education sites are separate.</div></div>
+        <div class="layer-row"><label><input id="layer-school-streets" type="checkbox" aria-describedby="legend-school-streets"> School Street Candidate Assessments</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-school-streets" aria-label="About School Street Assessments">i</button><div id="legend-school-streets" class="layer-popover" role="note" hidden>Green — Promising; Amber — Needs Investigation; Red — Unlikely; Grey — Not Evaluated. Qualitative investigation evidence, not scheme feasibility or a calibrated probability.</div></div>
+        <div class="layer-row"><label><input id="layer-gradient-sections" type="checkbox" aria-describedby="legend-gradient-sections"> Gradient Sections</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-gradient-sections" aria-label="About Gradient Sections">i</button><div id="legend-gradient-sections" class="layer-popover" role="note" hidden>Gentle ≤ 3%; Noticeable ≤ 5%; Steep ≤ 8%; Very Steep ≤ 12.5%; Severe above. Terrain colours describe gradient, not Criterion Status.</div></div>
+        <div class="layer-row"><label><input id="layer-retail-centres" type="checkbox" aria-describedby="legend-retail-centres"> Retail centres</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-retail-centres" aria-label="About retail centres">i</button><div id="legend-retail-centres" class="layer-popover" role="note" hidden>Retail amenity evidence.</div></div>
+        <div class="layer-row"><label><input id="layer-healthcare" type="checkbox" aria-describedby="legend-healthcare"> Healthcare</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-healthcare" aria-label="About healthcare">i</button><div id="legend-healthcare" class="layer-popover" role="note" hidden>Doctors, pharmacies and hospitals.</div></div>
+        <div class="layer-row"><label><input id="layer-gaps-warnings" type="checkbox" checked aria-describedby="legend-gaps-warnings"> Gaps &amp; warnings</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-gaps-warnings" aria-label="About gaps and warnings">i</button><div id="legend-gaps-warnings" class="layer-popover" role="note" hidden>Unresolved Network Gaps and undeclared crossing warnings.</div></div>
+        <div class="layer-row"><label><input id="layer-atm" type="checkbox" disabled aria-describedby="legend-atm"> ATM reference</label><button class="info-button" type="button" aria-expanded="false" aria-controls="legend-atm" aria-label="About ATM reference">i</button><div id="legend-atm" class="layer-popover" role="note" hidden>Governed before/after comparison evidence, never ground truth.</div></div>
       </fieldset>
 
-      <p id="layer-summary" class="layer-summary" aria-live="polite"></p>
+      <section id="gradient-path-controls" aria-labelledby="gradient-path-heading">
+        <h2 id="gradient-path-heading">Gradient Inspection Path</h2>
+        <p id="gradient-path-candidate">Pin an eligible Published Feature, then start or append it.</p>
+        <div class="button-row">
+          <button id="gradient-path-start" type="button">Start pinned</button>
+          <button id="gradient-path-append" type="button">Append pinned</button>
+        </div>
+        <div class="button-row">
+          <button id="gradient-path-remove" type="button">Remove last</button>
+          <button id="gradient-path-reverse" type="button">Reverse</button>
+          <button id="gradient-path-reset" type="button">Reset</button>
+        </div>
+        <p id="gradient-path-status" role="status" aria-live="polite">No path selected.</p>
+      </section>
+
+      <section id="feature-details" aria-live="polite" aria-labelledby="details-heading">
+        <h2 id="details-heading">Details</h2>
+        <p>Hover or focus a feature. Click to pin its details.</p>
+      </section>
+
+      <details id="feature-index">
+        <summary>Published feature index</summary>
+        <div id="connection-list"></div>
+      </details>
+
       <label class="file-control">Load governed local ATM GeoJSON
         <input id="atm-upload" type="file" accept=".geojson,.json,application/geo+json,application/json">
       </label>
-      <p id="atm-status" class="layer-summary" role="status">ATM geometry is not published. Load a governed local GeoJSON to compare it.</p>
-
-      <fieldset id="criteria-controls">
-        <legend>Evaluation section</legend>
-        <label><input id="criteria-connections" type="radio" name="section" value="connections" checked> Connections</label>
-        <label><input id="criteria-network" type="radio" name="section" value="network"> Network</label>
-        <label><input id="criteria-spine-network" type="radio" name="section" value="spine_network"> Spine network</label>
-        <label><input id="criteria-school-street-assessments" type="radio" name="section" value="school_street_candidate_assessments"> School Street Candidate Assessments</label>
-        <label><input id="criteria-topography" type="radio" name="section" value="topography"> Topography</label>
-        <label><input id="criteria-atm-comparison" type="radio" name="section" value="atm_comparison"> ATM comparison</label>
-      </fieldset>
-
-      <section id="criteria-panel" aria-live="polite" aria-labelledby="criteria-heading">
-        <h2 id="criteria-heading">Connections criteria</h2>
-        <dl id="criteria-list"></dl>
-      </section>
+      <p id="atm-status" class="rail-status" role="status">ATM geometry is not published. Load a governed local GeoJSON to compare it.</p>
+      <p id="layer-summary" class="rail-status" aria-live="polite"></p>
 
       <nav aria-label="Downloads">
         <a href="network.geojson" download>Network GeoJSON</a>
         <a href="agent-records.json" download>Typed agent records</a>
         <a href="divergence-records.json" download>ATM divergence records</a>
+        <button id="criteria-download" type="button">Criteria evidence</button>
       </nav>
-
-      <section aria-labelledby="connection-heading">
-        <h2 id="connection-heading">Connections, gaps and profiles</h2>
-        <div id="connection-list"></div>
-      </section>
-
-      <section id="feature-details" aria-live="polite" aria-labelledby="details-heading">
-        <h2 id="details-heading">Details</h2>
-        <p>Hover or focus a route. Click to pin its details.</p>
-      </section>
+      <p class="project-link"><a href="https://github.com/awjreynolds/banes-satn">Source, methodology and issues</a></p>
     </aside>
-    <section class="map-shell" aria-label="Map view">
-      <div id="map" role="application" aria-label="Interactive SATN review map"></div>
-      <details id="map-legend" role="region" aria-label="Map legend">
-        <summary>Map legend</summary>
-        <ul>
-          <li><span class="map-key line a-road" aria-hidden="true"></span>A-road spine</li>
-          <li><span class="map-key line ncn" aria-hidden="true"></span>NCN spine</li>
-          <li><span class="map-key line access" aria-hidden="true"></span>Access connection</li>
-          <li><span class="map-key line cross-spine" aria-hidden="true"></span>Cross-spine connector</li>
-          <li><span class="map-key line urban" aria-hidden="true"></span>Urban through-road</li>
-          <li><span class="map-key area lta" aria-hidden="true"></span>Candidate low-traffic area</li>
-          <li><span class="map-key dot served" aria-hidden="true"></span>Served community</li>
-          <li><span class="map-key dot place" aria-hidden="true"></span>Place reference</li>
-          <li><span class="map-key dot gap" aria-hidden="true"></span>Network gap</li>
-          <li><span class="map-key dot warning" aria-hidden="true"></span>Crossing warning</li>
-        </ul>
-      </details>
+
+    <section class="workspace" aria-label="Map and linear evidence">
+      <section class="map-shell" aria-label="Map view">
+        <div id="map" role="application" aria-label="Interactive SATN review map"></div>
+        <div class="terrain-switch">
+          <label><input id="terrain-mode" type="checkbox"> 3D terrain</label>
+          <span id="terrain-status" role="status">2D map · analytical default</span>
+        </div>
+        <details id="map-legend" role="region" aria-label="Map legend">
+          <summary>Map legend</summary>
+          <ul>
+            <li><span class="map-key line a-road" aria-hidden="true"></span>A-road spine</li>
+            <li><span class="map-key line ncn" aria-hidden="true"></span>NCN spine</li>
+            <li><span class="map-key line access" aria-hidden="true"></span>Access connection</li>
+            <li><span class="map-key line cross-spine" aria-hidden="true"></span>Cross-spine connector</li>
+            <li><span class="map-key line urban" aria-hidden="true"></span>Urban through-road</li>
+            <li><span class="map-key area lta" aria-hidden="true"></span>Candidate low-traffic area</li>
+            <li><span class="map-key dot served" aria-hidden="true"></span>Served community</li>
+            <li><span class="map-key dot place" aria-hidden="true"></span>Place reference</li>
+            <li><span class="map-key dot gap" aria-hidden="true"></span>Network gap</li>
+            <li><span class="map-key dot warning" aria-hidden="true"></span>Crossing warning</li>
+          </ul>
+        </details>
+      </section>
+
+      <section id="linear-evidence-panel" aria-labelledby="linear-evidence-heading">
+        <header>
+          <div>
+            <h2 id="linear-evidence-heading">Linear Evidence Panel</h2>
+            <p id="route-summary">Build a continuous Gradient Inspection Path to compare distance-aligned evidence.</p>
+          </div>
+          <p id="evidence-disclosure">Gradient evidence comes from governed Topography Profiles. 3D terrain is contextual only.</p>
+        </header>
+        <div id="linear-evidence-chart" aria-live="polite">
+          <p class="empty-evidence">No Gradient Inspection Path selected.</p>
+        </div>
+      </section>
     </section>
   </main>
   <script src="assets/maplibre-gl.js"></script>
   <script src="data.js"></script>
-  <script src="assets/review-map.3d2db0aa68f5.js"></script>
+  <script src="assets/review-map.09d779c5f6e1.js"></script>
 </body>
 </html>
