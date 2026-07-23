@@ -115,18 +115,25 @@ Mapterhorn states:
 - fully open-source code under BSD-3;
 - terrain data comes from multiple open-data sources with source-specific attribution.
 
+The provider's current machine-readable attribution catalogue identifies the England source as
+`ukengland`: Environment Agency **LIDAR Composite Digital Terrain Model (DTM) - 1m**, accessed
+by Mapterhorn in 2025 and licensed under the Open Government Licence. This is the same national
+dataset used by the governed analytical acquisition in this project, but the hosted terrain tiles
+remain display-only and are not substituted for the versioned analytical evidence.
+
 Sources:
 
 - [Mapterhorn](https://mapterhorn.com/)
 - [Mapterhorn data access](https://mapterhorn.com/data)
 - [Mapterhorn attribution](https://mapterhorn.com/attribution)
+- [Mapterhorn source attribution catalogue](https://download.mapterhorn.com/attribution.json)
+- [Environment Agency LIDAR Composite DTM 1m](https://environment.data.gov.uk/dataset/13787b9a-26a4-4775-8523-806d13af58fc)
 - [mapterhorn/mapterhorn](https://github.com/mapterhorn/mapterhorn)
 
 The public host is still an external best-effort dependency. The resilience advantage is that a bounded area can be obtained/packaged and served under project control, rather than making the analytical product depend permanently on an opaque hosted endpoint.
 
 Before self-hosting:
 
-- confirm the exact England source and its attribution;
 - produce a bounded deployment-area extract rather than mirroring a broad service;
 - document update cadence and cache invalidation;
 - keep terrain display data separate from governed gradient evidence.

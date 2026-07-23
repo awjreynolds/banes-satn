@@ -20,6 +20,12 @@ def test_gradient_inspection_interface_contract() -> None:
     assert 'id="criteria-controls"' not in html
     assert 'id="criteria-panel"' not in html
     assert "tiles.mapterhorn.com/tilejson.json" in script
+    assert 'event.sourceId === "mapterhorn-dem"' in script
+    assert "Terrain provider timed out." in script
+    assert "Gradient · ${windowMetres} m" in script
+    assert "form a cycle or branch" in script
+    assert "does not share its junction" in script
+    assert "inspection-path-direction" in script
     assert "MapToolkit" not in script
     assert '"cross-spine-connector"' not in script.split(
         "const gradientPathTypes", maxsplit=1

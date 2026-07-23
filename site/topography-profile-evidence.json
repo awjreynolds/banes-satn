@@ -1,0 +1,39 @@
+{
+  "schema_version": "2.0",
+  "profile_count": 1564,
+  "chunks": [
+    {
+      "path": "evidence/topography-profiles-000.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-001.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-002.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-003.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-004.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-005.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-006.geojson",
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-007.geojson",
+      "profile_count": 164
+    }
+  ],
+  "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan."
+}

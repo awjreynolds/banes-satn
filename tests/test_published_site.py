@@ -42,7 +42,36 @@ def test_tracked_pages_site_is_complete_and_contains_no_atm_geometry() -> None:
     assert "atm-reference" not in {feature["properties"]["feature_type"] for feature in features}
     assert (site / ".nojekyll").exists()
     assert (site / "network-map.pdf").read_bytes().startswith(b"%PDF-")
-    assert (site / "network.geojson").stat().st_size < 100_000_000
+    assert (site / "network.geojson").stat().st_size < 35_000_000
+    assert (site / "topography.geojson").stat().st_size < 60_000_000
+    assert (site / "data.js").stat().st_size < 1_000_000
+    assert '"network_url":"network.geojson"' in (site / "data.js").read_text()
+    assert '"topography_url":"topography.geojson"' in (site / "data.js").read_text()
+    profile_index = json.loads(
+        (site / "topography-profile-evidence.json").read_text(encoding="utf-8")
+    )
+    governed_profiles = [
+        feature
+        for chunk in profile_index["chunks"]
+        for feature in json.loads((site / chunk["path"]).read_text(encoding="utf-8"))[
+            "features"
+        ]
+    ]
+    assert len(governed_profiles) == profile_index["profile_count"]
+    available = next(
+        feature
+        for feature in governed_profiles
+        if json.loads(feature["properties"]["micro_gradient_intervals"])
+    )
+    interval = json.loads(available["properties"]["micro_gradient_intervals"])[0]
+    assert {
+        "uphill_direction",
+        "absolute_gradient_pct",
+        "rolling_step_m",
+        "calculation_method",
+        "elevation_evidence_ids",
+        "uncertainty",
+    } <= set(interval)
     assert all(
         "micro_gradient_intervals" not in feature["properties"]
         for feature in connections

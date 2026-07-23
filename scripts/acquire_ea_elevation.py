@@ -197,6 +197,8 @@ def write_evidence(
             {
                 "evidence_id": f"ea-dtm-{hashlib.sha256(coordinate.encode()).hexdigest()[:20]}",
                 "elevation_m": round(elevation, 3),
+                "source_resolution_m": 1.0,
+                "output_sample_spacing_m": spacing_m,
                 "geometry": point,
             }
         )

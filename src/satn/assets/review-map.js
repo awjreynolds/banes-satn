@@ -1,6 +1,11 @@
-(() => {
+(async () => {
   "use strict";
   const data = window.SATN_DATA;
+  if (!data.network && data.network_url) {
+    const response = await fetch(data.network_url);
+    if (!response.ok) throw new Error(`Network evidence failed to load (${response.status}).`);
+    data.network = await response.json();
+  }
   const network = data.network;
   const places = data.places;
   const state = { pinned: null, active: null, inspectionPath: [] };
@@ -43,6 +48,48 @@
   });
   window.SATN_REVIEW_MAP = map;
   map.addControl(new maplibregl.NavigationControl());
+  let terrainTimeout = null;
+  let topographyLoaded = !data.topography_url;
+
+  async function ensureTopographyLoaded() {
+    if (topographyLoaded || !data.topography_url) return;
+    const response = await fetch(data.topography_url);
+    if (!response.ok) throw new Error(`Topography evidence failed to load (${response.status}).`);
+    const collection = await response.json();
+    map.getSource("topography")?.setData(collection);
+    network.features.push(
+      ...collection.features.filter((feature) => feature.properties.feature_type === "gradient-section")
+    );
+    topographyLoaded = true;
+    renderLinearEvidence();
+  }
+
+  function restoreTwoDimensionalMap(reason = "") {
+    if (terrainTimeout) window.clearTimeout(terrainTimeout);
+    terrainTimeout = null;
+    const control = document.querySelector("#terrain-mode");
+    if (control) control.checked = false;
+    try { map.setTerrain(null); } catch (_) { /* terrain was never available */ }
+    map.easeTo({ pitch: 0, duration: 500 });
+    const status = document.querySelector("#terrain-status");
+    if (status) {
+      status.textContent = reason
+        ? `3D unavailable; restored 2D map. ${reason}`
+        : "2D map · analytical default";
+    }
+  }
+
+  map.on("error", (event) => {
+    if (event.sourceId === "mapterhorn-dem" && document.querySelector("#terrain-mode")?.checked) {
+      restoreTwoDimensionalMap("Terrain provider did not respond.");
+    }
+  });
+  map.on("sourcedata", (event) => {
+    if (event.sourceId === "mapterhorn-dem" && event.isSourceLoaded && terrainTimeout) {
+      window.clearTimeout(terrainTimeout);
+      terrainTimeout = null;
+    }
+  });
 
   function value(value, fallback = "Not available") {
     return value === null || value === undefined || value === "" ? fallback : value;
@@ -87,6 +134,10 @@
     return Math.hypot(dx, dy);
   }
 
+  function junctionKey(coordinate) {
+    return `${Number(coordinate[0]).toFixed(5)},${Number(coordinate[1]).toFixed(5)}`;
+  }
+
   function orientedEndpoints(item) {
     const endpoints = lineEndpoints(item.feature);
     return item.reversed ? [endpoints[1], endpoints[0]] : endpoints;
@@ -117,7 +168,22 @@
     if (source) {
       source.setData({
         type: "FeatureCollection",
-        features: features.map((item) => item.feature)
+        features: features.map((item, index) => {
+          const feature = structuredClone(item.feature);
+          if (item.reversed) {
+            if (feature.geometry.type === "LineString") feature.geometry.coordinates.reverse();
+            else {
+              feature.geometry.coordinates.reverse();
+              feature.geometry.coordinates.forEach((line) => line.reverse());
+            }
+          }
+          feature.properties = {
+            ...feature.properties,
+            inspection_order: index + 1,
+            inspection_direction: item.reversed ? "reverse" : "forward"
+          };
+          return feature;
+        })
       });
     }
     document.querySelector("#gradient-path-status").textContent = selectedIds.length
@@ -141,42 +207,122 @@
     }
     const activeEnd = orientedEndpoints(state.inspectionPath.at(-1))[1];
     const [start, end] = lineEndpoints(feature);
+    const activeJunction = junctionKey(activeEnd);
     const startGap = distanceMetres(activeEnd, start);
     const endGap = distanceMetres(activeEnd, end);
     const gap = Math.min(startGap, endGap);
-    if (gap > 50) {
+    const reversed = junctionKey(end) === activeJunction;
+    const joinsAtStart = junctionKey(start) === activeJunction;
+    if (!reversed && !joinsAtStart) {
       document.querySelector("#gradient-path-status").textContent =
-        `Edge is ${gap.toFixed(0)} m from the active endpoint; append requires continuity within 50 m.`;
+        `Edge is ${gap.toFixed(0)} m from the active endpoint but does not share its junction.`;
+      return;
+    }
+    const farEnd = reversed ? start : end;
+    const usedJunctions = new Set(
+      state.inspectionPath.flatMap((item) => orientedEndpoints(item).map(junctionKey))
+    );
+    if (usedJunctions.has(junctionKey(farEnd))) {
+      document.querySelector("#gradient-path-status").textContent =
+        "That edge would revisit a path junction and form a cycle or branch.";
       return;
     }
     setInspectionPath([
       ...state.inspectionPath,
-      { feature, reversed: endGap < startGap }
+      { feature, reversed }
     ]);
   }
 
-  function evidenceCell(track, item, totalDistance, offset, segmentIndex) {
+  function evidenceCell(track, item, totalDistance, offset, segmentIndex, segment) {
     const cell = document.createElement("button");
     cell.type = "button";
     cell.className = `track-cell ${item.gradient_band || "unavailable"}`;
     const length = Math.max(0.001, item.end_distance_m - item.start_distance_m);
     cell.style.flexBasis = `${length / totalDistance * 100}%`;
-    cell.title = item.status === "available"
+    const hasValue = item.status !== "unavailable" && Number.isFinite(Number(item.forward_gradient_pct));
+    cell.title = hasValue
       ? `${(offset + item.start_distance_m).toFixed(0)}–${(offset + item.end_distance_m).toFixed(0)} m · ${item.forward_gradient_pct}%`
       : "Micro-gradient evidence unavailable";
-    cell.textContent = item.status === "available" ? `${item.forward_gradient_pct}%` : "—";
-    cell.addEventListener("mouseenter", () => {
+    cell.textContent = hasValue ? `${item.forward_gradient_pct}%` : "—";
+    cell.dataset.segmentIndex = String(segmentIndex);
+    cell.dataset.featureId = segment?.feature.id || "";
+    const profileId = profileFor(segment?.feature)?.properties?.profile_id;
+    const originalStart = segment?.reversed
+      ? segment.distance - Number(item.end_distance_m)
+      : Number(item.start_distance_m);
+    const originalEnd = segment?.reversed
+      ? segment.distance - Number(item.start_distance_m)
+      : Number(item.end_distance_m);
+    const sectionIds = network.features
+      .filter((feature) =>
+        feature.properties.feature_type === "gradient-section" &&
+        feature.properties.profile_id === profileId &&
+        Number(feature.properties.start_distance_m) < originalEnd &&
+        Number(feature.properties.end_distance_m) > originalStart
+      )
+      .map((feature) => feature.id);
+    cell.dataset.gradientSectionIds = sectionIds.join(" ");
+    const enter = () => {
       cell.classList.add("hovered");
-      const featureId = state.inspectionPath[segmentIndex]?.feature.id;
-      if (featureId && map.getLayer("connections-highlight")) {
-        map.setFilter("connections-highlight", ["==", ["id"], featureId]);
-      }
-    });
-    cell.addEventListener("mouseleave", () => {
+      setHighlight(sectionIds[0] || segment?.feature.id);
+    };
+    const leave = () => {
       cell.classList.remove("hovered");
       setHighlight(state.pinned);
-    });
+    };
+    cell.addEventListener("mouseenter", enter);
+    cell.addEventListener("focus", enter);
+    cell.addEventListener("mouseleave", leave);
+    cell.addEventListener("blur", leave);
     track.append(cell);
+  }
+
+  function orientedIntervals(segment, windowMetres) {
+    return segment.intervals
+      .filter((item) => Number(item.window_m) === windowMetres)
+      .map((raw) => {
+        const item = { ...raw };
+        if (segment.reversed) {
+          const originalStart = Number(item.start_distance_m);
+          item.start_distance_m = segment.distance - Number(item.end_distance_m);
+          item.end_distance_m = segment.distance - originalStart;
+          item.forward_gradient_pct = -Number(item.forward_gradient_pct);
+          item.uphill_direction = item.uphill_direction === "forward"
+            ? "reverse"
+            : item.uphill_direction === "reverse" ? "forward" : "level";
+        }
+        return item;
+      })
+      .sort((left, right) => left.start_distance_m - right.start_distance_m);
+  }
+
+  function gradientTrack(segments, totalDistance, windowMetres) {
+    const row = document.createElement("div");
+    row.className = "evidence-track";
+    const label = document.createElement("div");
+    label.className = "track-label";
+    label.textContent = `Gradient · ${windowMetres} m`;
+    const cells = document.createElement("div");
+    cells.className = "track-cells";
+    let offset = 0;
+    segments.forEach((segment, segmentIndex) => {
+      const intervals = orientedIntervals(segment, windowMetres);
+      if (!intervals.length) {
+        evidenceCell(cells, {
+          start_distance_m: 0,
+          end_distance_m: segment.distance,
+          status: "unavailable",
+          gradient_band: "unavailable"
+        }, totalDistance, offset, segmentIndex, segment);
+      } else {
+        intervals.forEach((item) => {
+          evidenceCell(cells, item, totalDistance, offset, segmentIndex, segment);
+        });
+      }
+      offset += segment.distance;
+    });
+    row.append(label, cells);
+    return row;
   }
 
   function renderLinearEvidence() {
@@ -196,43 +342,69 @@
       return { ...item, profile, distance, capability, intervals };
     });
     const totalDistance = Math.max(segments.reduce((sum, item) => sum + item.distance, 0), 1);
-    summary.textContent = `${segments.length} edge${segments.length === 1 ? "" : "s"} · ${(totalDistance / 1000).toFixed(2)} km · shared distance axis`;
+    const measurementAvailable = segments.every((item) =>
+      item.profile?.properties?.evidence_status === "available" &&
+      item.capability.status !== "unavailable"
+    );
+    const ascent = measurementAvailable
+      ? segments.reduce((sum, item) => sum + Number(
+        item.reversed ? item.profile.properties.reverse_ascent_m : item.profile.properties.forward_ascent_m
+      ), 0)
+      : null;
+    const descent = measurementAvailable
+      ? segments.reduce((sum, item) => sum + Number(
+        item.reversed ? item.profile.properties.reverse_descent_m : item.profile.properties.forward_descent_m
+      ), 0)
+      : null;
+    const steepestValues = segments
+      .map((item) => item.profile?.properties?.steepest_sustained_gradient_pct)
+      .filter((item) => item !== null && item !== undefined && Number.isFinite(Number(item)))
+      .map(Number);
+    const steepest = measurementAvailable && steepestValues.length
+      ? Math.max(...steepestValues)
+      : null;
+    const evidenceStates = [...new Set(segments.map((item) =>
+      item.capability.status === "available"
+        ? item.capability.evidence_quality_status || "available"
+        : item.capability.status || "unavailable"
+    ))];
+    summary.textContent =
+      `${segments.length} edge${segments.length === 1 ? "" : "s"} · ${(totalDistance / 1000).toFixed(2)} km · ` +
+      `↑ ${ascent === null ? "unavailable" : `${ascent.toFixed(1)} m`} · ` +
+      `↓ ${descent === null ? "unavailable" : `${descent.toFixed(1)} m`} · ` +
+      `steepest sustained ${steepest === null ? "unavailable" : `${steepest.toFixed(1)}%`} · ` +
+      `evidence ${evidenceStates.join(", ")} · shared distance axis`;
+    const rationale = document.createElement("p");
+    rationale.className = "evidence-rationale";
+    rationale.textContent = [...new Set(segments.map((item) =>
+      item.capability.rationale || item.profile?.properties?.evidence_rationale
+    ).filter(Boolean))].join(" ");
     const axis = document.createElement("div");
     axis.className = "evidence-axis";
 
-    const gradientRow = document.createElement("div");
-    gradientRow.className = "evidence-track";
-    const gradientLabel = document.createElement("div");
-    gradientLabel.className = "track-label";
-    gradientLabel.textContent = "Gradient · 20 m";
-    const gradientCells = document.createElement("div");
-    gradientCells.className = "track-cells";
-    let offset = 0;
-    segments.forEach((segment, segmentIndex) => {
-      const detail = segment.intervals.filter((item) => Number(item.window_m) === 20);
-      if (!detail.length) {
-        evidenceCell(gradientCells, {
-          start_distance_m: 0,
-          end_distance_m: segment.distance,
-          status: "unavailable",
-          gradient_band: "unavailable"
-        }, totalDistance, offset, segmentIndex);
-      } else {
-        detail.forEach((raw) => {
-          const item = { ...raw };
-          if (segment.reversed) {
-            const originalStart = Number(item.start_distance_m);
-            item.start_distance_m = segment.distance - Number(item.end_distance_m);
-            item.end_distance_m = segment.distance - originalStart;
-            item.forward_gradient_pct = -Number(item.forward_gradient_pct);
-            item.uphill_direction = item.uphill_direction === "forward" ? "reverse" : item.uphill_direction === "reverse" ? "forward" : "level";
-          }
-          evidenceCell(gradientCells, item, totalDistance, offset, segmentIndex);
-        });
-      }
-      offset += segment.distance;
+    const boundaryRow = document.createElement("div");
+    boundaryRow.className = "evidence-track feature-boundaries";
+    const boundaryLabel = document.createElement("div");
+    boundaryLabel.className = "track-label";
+    boundaryLabel.textContent = "Path order";
+    const boundaryCells = document.createElement("div");
+    boundaryCells.className = "track-cells";
+    segments.forEach((segment, index) => {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "track-cell boundary";
+      cell.style.flexBasis = `${segment.distance / totalDistance * 100}%`;
+      cell.textContent = `${index + 1} ${segment.reversed ? "←" : "→"}`;
+      cell.title = `${segment.feature.id} · ${segment.distance.toFixed(0)} m`;
+      cell.dataset.featureId = segment.feature.id;
+      cell.addEventListener("mouseenter", () => setHighlight(segment.feature.id));
+      cell.addEventListener("focus", () => setHighlight(segment.feature.id));
+      cell.addEventListener("mouseleave", () => setHighlight(state.pinned));
+      cell.addEventListener("blur", () => setHighlight(state.pinned));
+      cell.addEventListener("click", () => togglePin(segment.feature.id));
+      boundaryCells.append(cell);
     });
-    gradientRow.append(gradientLabel, gradientCells);
+    boundaryRow.append(boundaryLabel, boundaryCells);
 
     const roadRow = document.createElement("div");
     roadRow.className = "evidence-track";
@@ -252,7 +424,12 @@
       );
       cell.title = `${segment.feature.id} · future engineering evidence track`;
       cell.addEventListener("click", () => togglePin(segment.feature.id));
+      cell.addEventListener("mouseenter", () => setHighlight(segment.feature.id));
+      cell.addEventListener("focus", () => setHighlight(segment.feature.id));
+      cell.addEventListener("mouseleave", () => setHighlight(state.pinned));
+      cell.addEventListener("blur", () => setHighlight(state.pinned));
       cell.dataset.segmentIndex = String(index);
+      cell.dataset.featureId = segment.feature.id;
       roadCells.append(cell);
     });
     roadRow.append(roadLabel, roadCells);
@@ -260,8 +437,14 @@
     const distanceAxis = document.createElement("div");
     distanceAxis.className = "distance-axis";
     distanceAxis.innerHTML = `<span>0 m</span><span>${Math.round(totalDistance / 2)} m</span><span>${Math.round(totalDistance)} m</span>`;
-    axis.append(gradientRow, roadRow, distanceAxis);
-    chart.append(axis);
+    axis.append(
+      boundaryRow,
+      gradientTrack(segments, totalDistance, 50),
+      gradientTrack(segments, totalDistance, 20),
+      roadRow,
+      distanceAxis
+    );
+    chart.append(rationale, axis);
   }
 
   function parseObject(raw) {
@@ -287,6 +470,18 @@
     if (map.getLayer("connections-highlight")) {
       map.setFilter("connections-highlight", id ? ["==", ["id"], id] : ["==", ["id"], ""]);
     }
+    if (map.getLayer("gradient-section-highlight")) {
+      map.setFilter("gradient-section-highlight", id ? ["==", ["id"], id] : ["==", ["id"], ""]);
+    }
+    document.querySelectorAll(".track-cell[data-feature-id]").forEach((cell) => {
+      cell.classList.toggle(
+        "hovered",
+        Boolean(id) && (
+          cell.dataset.featureId === String(id) ||
+          cell.dataset.gradientSectionIds?.split(" ").includes(String(id))
+        )
+      );
+    });
   }
 
   function addTopographyDetails(list, properties) {
@@ -578,7 +773,16 @@
     Object.entries(groups).forEach(([controlId, layers]) => {
       const control = document.getElementById(controlId);
       if (!control) return;
-      control.addEventListener("change", () => {
+      control.addEventListener("change", async () => {
+        if (controlId === "layer-gradient-sections" && control.checked) {
+          try {
+            await ensureTopographyLoaded();
+          } catch (error) {
+            control.checked = false;
+            document.querySelector("#terrain-status").textContent =
+              `Topography layer unavailable. ${error.message}`;
+          }
+        }
         layers.forEach((layer) => {
           if (map.getLayer(layer)) map.setLayoutProperty(layer, "visibility", control.checked ? "visible" : "none");
         });
@@ -633,9 +837,7 @@
     document.querySelector("#terrain-mode").addEventListener("change", async (event) => {
       const status = document.querySelector("#terrain-status");
       if (!event.target.checked) {
-        map.setTerrain(null);
-        map.easeTo({ pitch: 0, duration: 500 });
-        status.textContent = "2D map · analytical default";
+        restoreTwoDimensionalMap();
         return;
       }
       try {
@@ -644,16 +846,19 @@
             type: "raster-dem",
             url: "https://tiles.mapterhorn.com/tilejson.json",
             tileSize: 512,
-            attribution: "Terrain © Mäperhorn and attributed source datasets"
+            attribution: "Terrain © Mapterhorn · England DTM © Environment Agency (OGL)"
           });
         }
         map.setTerrain({ source: "mapterhorn-dem", exaggeration: 1.8 });
         map.easeTo({ pitch: 55, duration: 700 });
-        status.textContent = "3D terrain · 1.8× visual exaggeration · contextual only";
+        status.textContent =
+          "3D terrain · 1.8× visual exaggeration · contextual only · Environment Agency 1 m DTM via Mapterhorn";
+        terrainTimeout = window.setTimeout(
+          () => restoreTwoDimensionalMap("Terrain provider timed out."),
+          8000
+        );
       } catch (error) {
-        event.target.checked = false;
-        map.setTerrain(null);
-        status.textContent = `3D unavailable; restored 2D map. ${error.message}`;
+        restoreTwoDimensionalMap(error.message);
       }
     });
     document.querySelector("#atm-upload").addEventListener("change", async (event) => {
@@ -692,8 +897,20 @@
   map.on("load", () => {
     map.addSource("network", { type: "geojson", data: network });
     map.addSource("places", { type: "geojson", data: places });
+    map.addSource("topography", {
+      type: "geojson",
+      data: data.topography_url
+        ? { type: "FeatureCollection", features: [] }
+        : {
+          type: "FeatureCollection",
+          features: network.features.filter((feature) =>
+            ["gradient-section", "topography-profile"].includes(feature.properties.feature_type)
+          )
+        }
+    });
     map.addSource("inspection-path", {
       type: "geojson",
+      lineMetrics: true,
       data: { type: "FeatureCollection", features: [] }
     });
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#7fb8c9", "fill-opacity": .24 } });
@@ -710,8 +927,9 @@
     map.addLayer({ id: "school-access-obligations", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-obligation"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "service_status"], "served", "#1e8449", "served-provisional", "#f39c12", "network-gap", ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "#c0392b"], "#7f8c8d"], "circle-radius": 9, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-street-assessments", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-street-assessment"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "assessment_status"], "green", "#1e8449", "amber", "#f39c12", "red", "#c0392b", "#7f8c8d"], "circle-radius": 12, "circle-stroke-color": "white", "circle-stroke-width": 3 } });
-    map.addLayer({ id: "gradient-sections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "gradient-section"], layout: { visibility: "none" }, paint: { "line-color": ["match", ["get", "gradient_band"], "gentle", "#eff3ff", "noticeable", "#bdd7e7", "steep", "#6baed6", "very-steep", "#3182bd", "severe", "#08519c", "#7f8c8d"], "line-width": 9, "line-opacity": .92 } });
-    map.addLayer({ id: "topography-unavailable", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "topography-profile"], ["==", ["get", "evidence_status"], "evidence-unavailable"]], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 8, "line-dasharray": [1, 1], "line-opacity": .9 } });
+    map.addLayer({ id: "gradient-sections", type: "line", source: "topography", filter: ["==", ["get", "feature_type"], "gradient-section"], layout: { visibility: "none" }, paint: { "line-color": ["match", ["get", "gradient_band"], "gentle", "#eff3ff", "noticeable", "#bdd7e7", "steep", "#6baed6", "very-steep", "#3182bd", "severe", "#08519c", "#7f8c8d"], "line-width": 9, "line-opacity": .92 } });
+    map.addLayer({ id: "gradient-section-highlight", type: "line", source: "topography", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 13, "line-opacity": .95 } });
+    map.addLayer({ id: "topography-unavailable", type: "line", source: "topography", filter: ["all", ["==", ["get", "feature_type"], "topography-profile"], ["==", ["get", "evidence_status"], "evidence-unavailable"]], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 8, "line-dasharray": [1, 1], "line-opacity": .9 } });
     map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
     map.addLayer({ id: "ncn-route-evidence", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "ncn-route"], ["!=", ["coalesce", ["get", "ncn_evidence_role"], "established-route"], "connector-link"]], paint: { "line-color": "#2471a3", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 13, 4.5], "line-opacity": .78 } });
     map.addLayer({ id: "ncn-link-evidence", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "ncn-link"], paint: { "line-color": "#1f618d", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 13, 4], "line-dasharray": [2.5, 1.5], "line-opacity": .82 } });
@@ -725,6 +943,23 @@
     map.addLayer({ id: "crossing-warnings", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "crossing-warning"], paint: { "circle-color": "#f39c12", "circle-radius": 6, "circle-stroke-color": "#17202a", "circle-stroke-width": 1.5 } });
     map.addLayer({ id: "connections-highlight", type: "line", source: "network", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 8 } });
     map.addLayer({ id: "inspection-path", type: "line", source: "inspection-path", paint: { "line-color": "#f4d03f", "line-width": 10, "line-opacity": .82 } });
+    map.addLayer({
+      id: "inspection-path-direction",
+      type: "symbol",
+      source: "inspection-path",
+      layout: {
+        "symbol-placement": "line-center",
+        "text-field": ["concat", ["to-string", ["get", "inspection_order"]], " →"],
+        "text-size": 15,
+        "text-allow-overlap": true,
+        "text-rotation-alignment": "map"
+      },
+      paint: {
+        "text-color": "#17202a",
+        "text-halo-color": "#fdfefe",
+        "text-halo-width": 2
+      }
+    });
     const bounds = new maplibregl.LngLatBounds();
     [...network.features, ...places.features].forEach((feature) => {
       if (feature.geometry) extendBounds(bounds, feature.geometry.coordinates);

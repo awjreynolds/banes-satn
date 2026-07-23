@@ -34,8 +34,20 @@ def test_local_national_elevation_is_clipped_and_snapshotted_with_provenance(
     terrain = tmp_path / "national-terrain.geojson"
     gpd.GeoDataFrame(
         [
-            {"sample": "inside-1", "height": 10, "geometry": Point(-2.50, 51.40)},
-            {"sample": "inside-2", "height": 20, "geometry": Point(-2.48, 51.41)},
+            {
+                "sample": "inside-1",
+                "height": 10,
+                "source_resolution_m": 1,
+                "output_sample_spacing_m": 10,
+                "geometry": Point(-2.50, 51.40),
+            },
+            {
+                "sample": "inside-2",
+                "height": 20,
+                "source_resolution_m": 1,
+                "output_sample_spacing_m": 10,
+                "geometry": Point(-2.48, 51.41),
+            },
             {"sample": "outside", "height": 30, "geometry": Point(-1.0, 52.0)},
         ],
         geometry="geometry",
@@ -60,6 +72,8 @@ def test_local_national_elevation_is_clipped_and_snapshotted_with_provenance(
     assert set(loaded["evidence_id"]) == {"inside-1", "inside-2"}
     assert set(loaded["source_id"]) == {"national-dtm-2026"}
     assert list(loaded["elevation_m"]) == [10.0, 20.0]
+    assert list(loaded["source_resolution_m"]) == [1, 1]
+    assert list(loaded["output_sample_spacing_m"]) == [10, 10]
     assert manifest["evidence_sources"]["elevation"] | {
         "content_fingerprint": "ignored",
         "retrieved_at": "ignored",

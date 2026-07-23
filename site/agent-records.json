@@ -32,7 +32,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:18.045158Z"
+      "created_at": "2026-07-23T17:55:52.493564Z"
     },
     {
       "governing_status": "green",
@@ -64,7 +64,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:18.883909Z"
+      "created_at": "2026-07-23T17:55:53.268852Z"
     },
     {
       "governing_status": "green",
@@ -96,7 +96,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:20.039975Z"
+      "created_at": "2026-07-23T17:55:54.290053Z"
     },
     {
       "governing_status": "green",
@@ -128,7 +128,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:20.817221Z"
+      "created_at": "2026-07-23T17:55:55.018351Z"
     },
     {
       "governing_status": "green",
@@ -160,7 +160,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:21.608489Z"
+      "created_at": "2026-07-23T17:55:55.746489Z"
     },
     {
       "governing_status": "green",
@@ -192,7 +192,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:22.184562Z"
+      "created_at": "2026-07-23T17:55:56.280329Z"
     },
     {
       "governing_status": "green",
@@ -224,7 +224,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:23.075762Z"
+      "created_at": "2026-07-23T17:55:57.083571Z"
     },
     {
       "governing_status": "green",
@@ -256,7 +256,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:23.600868Z"
+      "created_at": "2026-07-23T17:55:57.573565Z"
     },
     {
       "governing_status": "green",
@@ -288,7 +288,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:24.609061Z"
+      "created_at": "2026-07-23T17:55:58.487847Z"
     },
     {
       "governing_status": "green",
@@ -320,7 +320,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:25.245581Z"
+      "created_at": "2026-07-23T17:55:59.077295Z"
     },
     {
       "governing_status": "green",
@@ -352,7 +352,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:25.862587Z"
+      "created_at": "2026-07-23T17:55:59.645410Z"
     },
     {
       "governing_status": "green",
@@ -384,7 +384,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:26.728444Z"
+      "created_at": "2026-07-23T17:56:00.438137Z"
     },
     {
       "governing_status": "green",
@@ -416,7 +416,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:27.379173Z"
+      "created_at": "2026-07-23T17:56:01.037500Z"
     },
     {
       "governing_status": "green",
@@ -448,7 +448,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:28.039190Z"
+      "created_at": "2026-07-23T17:56:01.664771Z"
     },
     {
       "governing_status": "green",
@@ -480,7 +480,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:28.727627Z"
+      "created_at": "2026-07-23T17:56:02.292337Z"
     },
     {
       "governing_status": "green",
@@ -512,7 +512,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:29.662614Z"
+      "created_at": "2026-07-23T17:56:03.123061Z"
     },
     {
       "governing_status": "green",
@@ -544,7 +544,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:30.410616Z"
+      "created_at": "2026-07-23T17:56:03.807440Z"
     },
     {
       "governing_status": "green",
@@ -576,7 +576,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:31.098065Z"
+      "created_at": "2026-07-23T17:56:04.449386Z"
     },
     {
       "governing_status": "green",
@@ -608,7 +608,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:31.864366Z"
+      "created_at": "2026-07-23T17:56:05.149777Z"
     },
     {
       "governing_status": "green",
@@ -640,7 +640,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:32.541434Z"
+      "created_at": "2026-07-23T17:56:05.766598Z"
     },
     {
       "governing_status": "green",
@@ -672,7 +672,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:33.147389Z"
+      "created_at": "2026-07-23T17:56:06.295501Z"
     },
     {
       "governing_status": "green",
@@ -704,7 +704,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:33.776630Z"
+      "created_at": "2026-07-23T17:56:06.900773Z"
     },
     {
       "governing_status": "green",
@@ -736,7 +736,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:34.604993Z"
+      "created_at": "2026-07-23T17:56:07.663821Z"
     },
     {
       "governing_status": "green",
@@ -768,7 +768,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:35.478700Z"
+      "created_at": "2026-07-23T17:56:08.433326Z"
     },
     {
       "governing_status": "green",
@@ -800,7 +800,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:36.337180Z"
+      "created_at": "2026-07-23T17:56:09.295111Z"
     },
     {
       "governing_status": "green",
@@ -832,7 +832,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:36.973003Z"
+      "created_at": "2026-07-23T17:56:09.905533Z"
     },
     {
       "governing_status": "green",
@@ -864,7 +864,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:37.660198Z"
+      "created_at": "2026-07-23T17:56:10.545753Z"
     },
     {
       "governing_status": "green",
@@ -896,7 +896,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:38.202256Z"
+      "created_at": "2026-07-23T17:56:11.075053Z"
     },
     {
       "governing_status": "green",
@@ -928,7 +928,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:39.000174Z"
+      "created_at": "2026-07-23T17:56:11.806932Z"
     },
     {
       "governing_status": "green",
@@ -960,7 +960,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:39.578500Z"
+      "created_at": "2026-07-23T17:56:12.375911Z"
     },
     {
       "governing_status": "green",
@@ -992,7 +992,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:40.268183Z"
+      "created_at": "2026-07-23T17:56:13.038635Z"
     },
     {
       "governing_status": "green",
@@ -1024,7 +1024,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:40.875365Z"
+      "created_at": "2026-07-23T17:56:13.638791Z"
     },
     {
       "governing_status": "green",
@@ -1056,7 +1056,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:41.430111Z"
+      "created_at": "2026-07-23T17:56:14.213703Z"
     },
     {
       "governing_status": "green",
@@ -1088,7 +1088,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:42.010689Z"
+      "created_at": "2026-07-23T17:56:14.792554Z"
     },
     {
       "governing_status": "green",
@@ -1120,7 +1120,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:42.681464Z"
+      "created_at": "2026-07-23T17:56:15.494322Z"
     },
     {
       "governing_status": "green",
@@ -1152,7 +1152,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:43.257349Z"
+      "created_at": "2026-07-23T17:56:16.016883Z"
     },
     {
       "governing_status": "green",
@@ -1184,7 +1184,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:43.780465Z"
+      "created_at": "2026-07-23T17:56:16.589688Z"
     },
     {
       "governing_status": "green",
@@ -1216,7 +1216,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:44.358129Z"
+      "created_at": "2026-07-23T17:56:17.120411Z"
     },
     {
       "governing_status": "green",
@@ -1248,7 +1248,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:44.847556Z"
+      "created_at": "2026-07-23T17:56:17.604710Z"
     },
     {
       "governing_status": "green",
@@ -1280,7 +1280,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:45.535224Z"
+      "created_at": "2026-07-23T17:56:18.295278Z"
     },
     {
       "governing_status": "green",
@@ -1312,7 +1312,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:45.947521Z"
+      "created_at": "2026-07-23T17:56:18.699466Z"
     },
     {
       "governing_status": "green",
@@ -1344,7 +1344,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:46.377556Z"
+      "created_at": "2026-07-23T17:56:19.182450Z"
     },
     {
       "governing_status": "green",
@@ -1376,7 +1376,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:46.839236Z"
+      "created_at": "2026-07-23T17:56:19.593071Z"
     },
     {
       "governing_status": "green",
@@ -1408,7 +1408,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:47.139355Z"
+      "created_at": "2026-07-23T17:56:19.896145Z"
     },
     {
       "governing_status": "green",
@@ -1440,7 +1440,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:47.455498Z"
+      "created_at": "2026-07-23T17:56:20.220853Z"
     },
     {
       "governing_status": "green",
@@ -1472,7 +1472,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:47.791768Z"
+      "created_at": "2026-07-23T17:56:20.559460Z"
     },
     {
       "governing_status": "green",
@@ -1504,7 +1504,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:48.237459Z"
+      "created_at": "2026-07-23T17:56:21.036834Z"
     },
     {
       "governing_status": "green",
@@ -1536,7 +1536,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:48.663800Z"
+      "created_at": "2026-07-23T17:56:21.504572Z"
     },
     {
       "governing_status": "green",
@@ -1568,7 +1568,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:49.123811Z"
+      "created_at": "2026-07-23T17:56:21.998246Z"
     },
     {
       "governing_status": "green",
@@ -1600,7 +1600,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:56:49.629304Z"
+      "created_at": "2026-07-23T17:56:22.538355Z"
     },
     {
       "governing_status": "red",
@@ -1628,7 +1628,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-a1ec719e50e7eed8",
-        "dependency_fingerprint": "8a0fdd3b9f411a75b474e173e0b98b35437d28472ecd53228708da7b9c0f46bd",
+        "dependency_fingerprint": "f5eaf70db038fc683f4fe3e3711edc1ffe754a852aaca13b723150094cbdc2f5",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "network-gap",
         "affected_identifiers": [
@@ -1728,7 +1728,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075023Z"
+      "created_at": "2026-07-23T17:57:25.502194Z"
     },
     {
       "governing_status": "green",
@@ -1765,7 +1765,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075123Z"
+      "created_at": "2026-07-23T17:57:25.502280Z"
     },
     {
       "governing_status": "green",
@@ -1802,7 +1802,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075208Z"
+      "created_at": "2026-07-23T17:57:25.502356Z"
     },
     {
       "governing_status": "green",
@@ -1839,7 +1839,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075299Z"
+      "created_at": "2026-07-23T17:57:25.502436Z"
     },
     {
       "governing_status": "green",
@@ -1876,7 +1876,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075373Z"
+      "created_at": "2026-07-23T17:57:25.502508Z"
     },
     {
       "governing_status": "green",
@@ -1913,7 +1913,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075447Z"
+      "created_at": "2026-07-23T17:57:25.502575Z"
     },
     {
       "governing_status": "green",
@@ -1950,7 +1950,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075515Z"
+      "created_at": "2026-07-23T17:57:25.502640Z"
     },
     {
       "governing_status": "green",
@@ -1987,7 +1987,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075586Z"
+      "created_at": "2026-07-23T17:57:25.502711Z"
     },
     {
       "governing_status": "green",
@@ -2024,7 +2024,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075650Z"
+      "created_at": "2026-07-23T17:57:25.502780Z"
     },
     {
       "governing_status": "green",
@@ -2061,7 +2061,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075717Z"
+      "created_at": "2026-07-23T17:57:25.502844Z"
     },
     {
       "governing_status": "green",
@@ -2098,7 +2098,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075782Z"
+      "created_at": "2026-07-23T17:57:25.502903Z"
     },
     {
       "governing_status": "green",
@@ -2135,7 +2135,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075859Z"
+      "created_at": "2026-07-23T17:57:25.502974Z"
     },
     {
       "governing_status": "green",
@@ -2172,7 +2172,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075925Z"
+      "created_at": "2026-07-23T17:57:25.503039Z"
     },
     {
       "governing_status": "green",
@@ -2209,7 +2209,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.075998Z"
+      "created_at": "2026-07-23T17:57:25.503120Z"
     },
     {
       "governing_status": "green",
@@ -2246,7 +2246,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.076275Z"
+      "created_at": "2026-07-23T17:57:25.503385Z"
     },
     {
       "governing_status": "green",
@@ -2283,7 +2283,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.076347Z"
+      "created_at": "2026-07-23T17:57:25.503454Z"
     },
     {
       "governing_status": "grey",
@@ -2315,7 +2315,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.172273Z"
+      "created_at": "2026-07-23T17:57:25.597151Z"
     },
     {
       "governing_status": "green",
@@ -2347,7 +2347,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.301652Z"
+      "created_at": "2026-07-23T17:57:25.730129Z"
     },
     {
       "governing_status": "grey",
@@ -2379,7 +2379,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.301744Z"
+      "created_at": "2026-07-23T17:57:25.730210Z"
     },
     {
       "governing_status": "green",
@@ -2411,7 +2411,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.499832Z"
+      "created_at": "2026-07-23T17:57:25.930916Z"
     },
     {
       "governing_status": "green",
@@ -2443,7 +2443,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.688466Z"
+      "created_at": "2026-07-23T17:57:26.077640Z"
     },
     {
       "governing_status": "grey",
@@ -2475,7 +2475,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.688542Z"
+      "created_at": "2026-07-23T17:57:26.077717Z"
     },
     {
       "governing_status": "green",
@@ -2507,7 +2507,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.846547Z"
+      "created_at": "2026-07-23T17:57:26.238352Z"
     },
     {
       "governing_status": "grey",
@@ -2539,7 +2539,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.846629Z"
+      "created_at": "2026-07-23T17:57:26.238428Z"
     },
     {
       "governing_status": "grey",
@@ -2571,7 +2571,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.846681Z"
+      "created_at": "2026-07-23T17:57:26.238481Z"
     },
     {
       "governing_status": "grey",
@@ -2603,7 +2603,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.846726Z"
+      "created_at": "2026-07-23T17:57:26.238527Z"
     },
     {
       "governing_status": "green",
@@ -2635,7 +2635,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.988817Z"
+      "created_at": "2026-07-23T17:57:26.381476Z"
     },
     {
       "governing_status": "grey",
@@ -2667,7 +2667,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.988900Z"
+      "created_at": "2026-07-23T17:57:26.381552Z"
     },
     {
       "governing_status": "grey",
@@ -2699,7 +2699,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.988951Z"
+      "created_at": "2026-07-23T17:57:26.381604Z"
     },
     {
       "governing_status": "grey",
@@ -2731,7 +2731,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.988998Z"
+      "created_at": "2026-07-23T17:57:26.381652Z"
     },
     {
       "governing_status": "grey",
@@ -2763,7 +2763,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:52.989040Z"
+      "created_at": "2026-07-23T17:57:26.381696Z"
     },
     {
       "governing_status": "green",
@@ -2795,7 +2795,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:53.137397Z"
+      "created_at": "2026-07-23T17:57:26.570046Z"
     },
     {
       "governing_status": "grey",
@@ -2827,7 +2827,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:53.137487Z"
+      "created_at": "2026-07-23T17:57:26.570124Z"
     },
     {
       "governing_status": "green",
@@ -2859,7 +2859,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:57:55.804662Z"
+      "created_at": "2026-07-23T17:57:29.147604Z"
     },
     {
       "governing_status": "grey",
@@ -2891,7 +2891,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.036515Z"
+      "created_at": "2026-07-23T17:57:43.051318Z"
     },
     {
       "governing_status": "red",
@@ -2919,7 +2919,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7765b355bbb01df4",
-        "dependency_fingerprint": "bf3ddf019f0a9071d8bcf6c4a79d3b726f31e121f7d0be37a714513e7ccac065",
+        "dependency_fingerprint": "dab90938f6a2d184c97fb86f275e5efc055fff93bacae2d5e4d29fd63242dd55",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3014,7 +3014,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f15225b0fffbf462",
-        "dependency_fingerprint": "6ba7703cb3b4bda920dc34fb15e3431f998d33aa1b583812bdfddefd82d1687b",
+        "dependency_fingerprint": "5d7b292f5cbc6027221cf086f8ea2f236e14ebf3e44216742dd8ee8db1450bcf",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3109,7 +3109,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-552e9c42bb93e022",
-        "dependency_fingerprint": "b841bd9ebad6c345ee78aa5910022312a83b6682fdb44b926f8f967880d3eee8",
+        "dependency_fingerprint": "d9ac989000dd8047e2fda250983c194d5ba8c178b893d13932da09513be95be6",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3204,7 +3204,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-707daaa39c4a3c28",
-        "dependency_fingerprint": "c00ca71876dfd1f499bd838ffea13154636330be601c2d28b96adf93190dbf5a",
+        "dependency_fingerprint": "a4209ba40f941f7e4045cd04611c22b12bbefc755ae4cb1c3ec7613841150b54",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3301,7 +3301,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f4233a59b5d27cae",
-        "dependency_fingerprint": "8a5c1e045aa0f34a3c000cee26eedc6523cb5ebbd422e7477d6b40fd760827e3",
+        "dependency_fingerprint": "b0b17ac2039f58aecef77140a2a0dd42f7a784f15501a0fa991940c2eef10001",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3396,7 +3396,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-fffcb604e6db5361",
-        "dependency_fingerprint": "8dc25e24a855a3321ddb58ea1f206cca506c61d7a5b50296627ec586d4429bb6",
+        "dependency_fingerprint": "ff4178405dfb6719083d7c356d9e87011e143c2f2d210990258bcc5384dd2bcc",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3493,7 +3493,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8f195089d1b76fc7",
-        "dependency_fingerprint": "a0ea1c8754cf48794653dba346465c36cb7d8d5b47b20e23be2aa30111b9988b",
+        "dependency_fingerprint": "a85ff289f8c9283958cf5ddd1209c9c18edb53942fa9fc1e5b67d143aa3c0910",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3590,7 +3590,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7851ec9b51c34e87",
-        "dependency_fingerprint": "3941b27c5bd3f1235069805d1a39ea47176e6b39f7ed5ee73726e4bc720492b9",
+        "dependency_fingerprint": "6cda80d32c67c2db7786ec7c81b252d3538731e61e47389a691c6f4133bb4e53",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3685,7 +3685,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-b468ee09cc8f9f1e",
-        "dependency_fingerprint": "1e4071c8b80d70632facbef7ba950673759636e8281fd9bd7de6158da4d77f6b",
+        "dependency_fingerprint": "7f2677b7aed3855b71afeca44ef6d963911c6e181dd946a1e26ee888702e5f99",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3782,7 +3782,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8fbd1372b7b79e5b",
-        "dependency_fingerprint": "34554a221ddfd41f2934cc522ebe67a705111785c57167033bd5b270de1ef1ac",
+        "dependency_fingerprint": "9f351adbfcadaae5d1800d2c7925eb48c8656671211f6f8a6418cbb2091332ed",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3877,7 +3877,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e233435219460d00",
-        "dependency_fingerprint": "0d2a6a8f9977bfe24d0dbf9e53e5f7c0d8c77626854dc73bb33aa8746e76b100",
+        "dependency_fingerprint": "a2744cb10c780f2bf3931edaf372842c5b8057589231bc3cd7a0eec89687fa0c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3976,7 +3976,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.038066Z"
+      "created_at": "2026-07-23T17:57:43.052823Z"
     },
     {
       "governing_status": "red",
@@ -4004,7 +4004,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7fff4313759b4763",
-        "dependency_fingerprint": "31c3f74e0b6022a64b7a642e3040631aec21a938f4c1ecec41a8ef6c7a527b14",
+        "dependency_fingerprint": "3ae2cecc41b236bb359f1bc684a05655674af8186701ec5de383f4ef9c997379",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4101,7 +4101,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-4e788e6fb4c2d0b4",
-        "dependency_fingerprint": "524fd651cd5bb1ecbcdeca2018757c337fcf6c44ea9b88b93834ce034b431ff2",
+        "dependency_fingerprint": "7756d1834ffb0242a923641faadebd96ef175ffe10d9feb355033dbe5f6d140e",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4200,7 +4200,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.038353Z"
+      "created_at": "2026-07-23T17:57:43.053109Z"
     },
     {
       "governing_status": "red",
@@ -4228,7 +4228,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-22d386fcff8b68dd",
-        "dependency_fingerprint": "1459570dc03ec33174ca5c6ad53c41ea4e63ec31191a75b7c4e64aeb02c38e0e",
+        "dependency_fingerprint": "d1a9890e889f1bed42752c2cca4bbcb88c670a5064a9ef64f34bd39a7a700bb7",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4323,7 +4323,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8aff469e48f618f8",
-        "dependency_fingerprint": "146e56256f5cd91d788527ceb67b61ac0c572e772924a847b561c776ba2ffa84",
+        "dependency_fingerprint": "23244b1b1cce632b4fcc2bd91fae40bbb9b8123f21faa31ce1dc3f3b547bedbd",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4418,7 +4418,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-178b7bdd77238148",
-        "dependency_fingerprint": "775c63b3c85dde2c19cb5e1cb1f3486d827d194c12a3988f41d179b10bb78ea7",
+        "dependency_fingerprint": "19b1134fb32c6cac6387759d7ad4e2810137991ff29540cd14830fe63a673a5c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4515,7 +4515,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e6025110de383d3e",
-        "dependency_fingerprint": "574f2e6371ec3a641da935da1cad13a9d48bb3f8827bc923f6b93945cefcdf16",
+        "dependency_fingerprint": "1b38330f0d44bfbdb8be83e3f30a611e006a0f6244f83ee18ffda575fd1745dd",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4612,7 +4612,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-605d2230b070f304",
-        "dependency_fingerprint": "6fb61363303f51f159010f4254331d5c72a318fb95fae54c82ce8d799fb51520",
+        "dependency_fingerprint": "a61de5fa34064381f1d67bf90517571e201fe7abba4a98cd3b30aa1fe80aa2c7",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4707,7 +4707,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-3ea8894b1d4d0590",
-        "dependency_fingerprint": "4880b2dcfbd225e5a4574574a07335056f525df5a9d3242fbd1ac285a9e93e20",
+        "dependency_fingerprint": "0196d08aa3c72485beb7ebc26ac9cd9381c8a1f1f5623697674e13e543fb9b8b",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4804,7 +4804,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-a1748ad5a28a2304",
-        "dependency_fingerprint": "c58f6cb595e275034e2a6dc4feb70582f90c63191136b44782ea6351483a4037",
+        "dependency_fingerprint": "47f47a55cf5806f0f0a5358ba75efbc2391afc6e8dc2fcb2f30d6eb5fd8d8d2e",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4903,7 +4903,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.039260Z"
+      "created_at": "2026-07-23T17:57:43.054028Z"
     },
     {
       "governing_status": "red",
@@ -4931,7 +4931,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-ac0438db81549fa2",
-        "dependency_fingerprint": "6129e790cd023029b895b149edfaf160d1164cfce232bdd531e33862ceeeddf3",
+        "dependency_fingerprint": "0b9c8da12cc0eb9c85a4cfcd4e54c130d3463e2f961d279db24afdf7e51f33ed",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5028,7 +5028,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-6d415ebabfecd148",
-        "dependency_fingerprint": "b591e5cb50e99567b456f694f756f1d0224e17041453e2d83363d65b97d398f1",
+        "dependency_fingerprint": "e4c76eb703d70b53c643fff252da9688773ee1da1832a8062832de163da51397",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5125,7 +5125,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-fefb7ebb1fb50091",
-        "dependency_fingerprint": "ed17c66c2760c75ac54baa45474747e310837d027bc518bce5c16a3431ca92c7",
+        "dependency_fingerprint": "6cfdf917d936f1918c75bf28f9b3c3390d68e44674ea8802cd38f0ec67570f28",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5222,7 +5222,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-fd311d8c62881496",
-        "dependency_fingerprint": "37c2a03d62ca24e77534f49b435dedbf14bccc8d6e9b0d57ef128937eb625589",
+        "dependency_fingerprint": "84c8a431056b5360ed02e1bd3d1edff2749084ba46fa7a70a59f782c23119f2a",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5319,7 +5319,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7c6beea131dee146",
-        "dependency_fingerprint": "7678fe555067ae26b9de9124674c5cde891bcf0e4cfed1cd29537f528247e1a1",
+        "dependency_fingerprint": "21d5f9f5ab74c65201e19f50213f4682536a50a8e21d2f8ae9c580d3312bdf5b",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5414,7 +5414,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-959dbca48e057c7e",
-        "dependency_fingerprint": "5596d125ca3d67e7e29a4d00adf2fb443b49d3907353670b28f49e8490d84e28",
+        "dependency_fingerprint": "24b50565df4667a7ae43aa769c8dfdea1480010432f798a15142ee439142eefc",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5509,7 +5509,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-b21690040fd24850",
-        "dependency_fingerprint": "1c7f39dc65e6ba8cb6f89929c3c2df714044d1fb283878338b2f24cc2034dd3f",
+        "dependency_fingerprint": "2f6246f72e8e014e668eb82ecf3adbba5a7ee7ce6c512e7bbc538598bb7c0217",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5608,7 +5608,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.040321Z"
+      "created_at": "2026-07-23T17:57:43.054974Z"
     },
     {
       "governing_status": "red",
@@ -5636,7 +5636,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-40bd6169b8dd7e5e",
-        "dependency_fingerprint": "58e6b6b0b63c09fd1d45d7d120cc7d0f7e3375729398222599be8e413616a8d7",
+        "dependency_fingerprint": "c930b0f5aff4ecf9233ea7b9c0b393a9cbbb431826b293f6835919cb3d0c50df",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5733,7 +5733,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-85778c31133c2ae3",
-        "dependency_fingerprint": "fbd881c97567559084749ca8deab44efc55a37dd8b2d5e6336d8ee3ab8278a15",
+        "dependency_fingerprint": "4b1f0de8489b9227489ab56990193a13d7f9050a310ee4156410c420edf81447",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5828,7 +5828,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f1132d327d355fa9",
-        "dependency_fingerprint": "37a468c0812fd86e4360bd5131f9cf9a8ee5cf2385944caa70c8a7cee5709913",
+        "dependency_fingerprint": "58b6a0d511cf5080abe453afee1d249813c1b18a0a7c479138a912e82a00cabd",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5925,7 +5925,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-3092785f5ca548c2",
-        "dependency_fingerprint": "77315d3a317c37420c82c54bf719cb9fa9c52be94d1a929a727c2d92bc5366bd",
+        "dependency_fingerprint": "781fffcdfbc09d18b4a5a9aa7dbf3c11c1e7d7022c22a5b6f6ca157ed1a3ac17",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6022,7 +6022,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e6f2a30569fd8567",
-        "dependency_fingerprint": "9b897d2d1e24dcdc9a9488f685cac824ab26977636bf47c7b9e2df2069e62504",
+        "dependency_fingerprint": "7f9171d615c347baf109be22818632cbea8ae04f24d2011709536663d5063a39",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6123,7 +6123,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.041083Z"
+      "created_at": "2026-07-23T17:57:43.055694Z"
     },
     {
       "governing_status": "red",
@@ -6151,7 +6151,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-68eb40e93b94d7c0",
-        "dependency_fingerprint": "c7a4e2919557141a7e8e7f67927438d3b29ac837d04c0a744e9b4252e95ac2fa",
+        "dependency_fingerprint": "145d285eb01c0c6cbdbaf3e09b933503209a3235b7e27fa7ad47aa41f5fdb857",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6246,7 +6246,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8bf93fd9b8a02e87",
-        "dependency_fingerprint": "38ee1e0a91d47ac2d2bed07980c7068d4667287f36437460ab013349fdc4dfae",
+        "dependency_fingerprint": "d84eb2334fd9dc269c9b0d09d430c416740db31f8c9e3ea247da596d301cb866",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6343,7 +6343,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-bfbb332c4566b207",
-        "dependency_fingerprint": "cc9fe5563e8121ce623ffeddbdf424261fdece0edcf7ee72078d4ee854a74300",
+        "dependency_fingerprint": "71edd4eb42f740ef86b603af9aade02c0fd27df1eea7b2008d11325265e95dc5",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6440,7 +6440,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-53a369587045568d",
-        "dependency_fingerprint": "9e8c7716ebf26a57a11029945c602cecd3d008908afde45fbfba53776a7d4c02",
+        "dependency_fingerprint": "68e4a7b9d3a62da502b37c452a1b9b430becd25ed105b0d07f389fce42922a40",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6535,7 +6535,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e8ca3990de9ff64b",
-        "dependency_fingerprint": "6fc29c03fc1026a45af78701344396f9b2d2a84ad361f7a2b7f026349b4ea36d",
+        "dependency_fingerprint": "8c152ac2de77792df208d5ab03ced76a56f45709be7f91aa94385dc2c6f98254",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6636,7 +6636,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.041820Z"
+      "created_at": "2026-07-23T17:57:43.056460Z"
     },
     {
       "governing_status": "red",
@@ -6664,7 +6664,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-9b74d322c35da627",
-        "dependency_fingerprint": "8722f9d047b5d4f446e0d179ce04014b1d492fec371a72eb85d123a9a2c55901",
+        "dependency_fingerprint": "13fe3cefde84a40accd8c10acc3eece43614d2c657f629a4b215b6bd6a6b1a73",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6761,7 +6761,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-2de53833b49e5e3c",
-        "dependency_fingerprint": "125c538cf033a7839ae42ceb75841079c4d4264cefdb27c386b1f9f700a628ad",
+        "dependency_fingerprint": "914aaf721906c3e2fa8f3ca1c6f925816b3ada9855edc6878f24ecdf164a431f",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6856,7 +6856,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-d0c36ea1b0f500b9",
-        "dependency_fingerprint": "eb3912c55ce27229e7b80fa62b5d4e045871f5ac91c46164c1773867f77023cc",
+        "dependency_fingerprint": "80194cc1caf1bbbc9d1d99be181e19a58e140cd37bef431efaf69ef2de12b3c0",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6953,7 +6953,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-5a2d13f04914e34c",
-        "dependency_fingerprint": "ca14de2a017b657b815220a3c8356c05bad141ac5e1e662605b4f2d3110aa0ff",
+        "dependency_fingerprint": "be754183e0efc951e249fc8231c6bea3e13e81b18566e5387be346da78644f71",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7050,7 +7050,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-85a4df768286fdf9",
-        "dependency_fingerprint": "9dde26de826d3344cf47712d3c37729853ef588b37590eb7594c2f4a105db0e9",
+        "dependency_fingerprint": "073f1091621101ddea7ebc766cbdae716d7c25da69f60450414dfd152fedb537",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7147,7 +7147,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-cbca4662ec9ca940",
-        "dependency_fingerprint": "de507f5ac08e9d17b8c3a345dcc67b998d996b91d802146d79f0abe7d6ebfbb7",
+        "dependency_fingerprint": "fc9e4d89cc254fdf011a202e0ddd683cfcb2431301207ff1db0abb1a5d847d74",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7248,7 +7248,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.042765Z"
+      "created_at": "2026-07-23T17:57:43.057374Z"
     },
     {
       "governing_status": "red",
@@ -7276,7 +7276,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-08356bd054ae370c",
-        "dependency_fingerprint": "ef24728ab369c377f7c7bd017ce1ed7438f0e6b89cfcaa6869946a8e2831c8c2",
+        "dependency_fingerprint": "0568422d2040bdf61db0a8e67f45548197633d1c38fe2981bff35290395034a7",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7373,7 +7373,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-3168ab22be0de263",
-        "dependency_fingerprint": "af2f736b7aa840d9ec1d4262e2a6900b8fa7c9bea6e5bb622419baa3bfa17880",
+        "dependency_fingerprint": "1967a02d0b96dbdd005ee97e46356802731f960216d95d36b6de3044e16c4327",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7474,7 +7474,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.043116Z"
+      "created_at": "2026-07-23T17:57:43.057719Z"
     },
     {
       "governing_status": "red",
@@ -7502,7 +7502,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-df48c88c727f15da",
-        "dependency_fingerprint": "eac6608e195dc3b432f33bddb5324c0ffb5881d931aad785a48c756d6594165a",
+        "dependency_fingerprint": "e6c2977ed7ae8e06ef02747c12b6368da24c85478f4fbc01984f3da88d911f2a",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7599,7 +7599,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-deaa1ccc3e95e058",
-        "dependency_fingerprint": "41c84845bbdf34712c585ca615f47a613a65c71012b8aeac6b3adb92782be0ec",
+        "dependency_fingerprint": "70b68b34dfc887274da63060f18d6e0b85c4cf40ad97e53e9e4d2baf1a81cc70",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7696,7 +7696,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8a8b70a74997c7e9",
-        "dependency_fingerprint": "421a2804ed34170012fd0af2a08508a6fb57730ddaa4d0d7d25e1fa51080e5bf",
+        "dependency_fingerprint": "209ed8700fd2a7fc3b5ac71291e910a3f60eadf8071668f69266eff963a4c442",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7793,7 +7793,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-60e859343d90b580",
-        "dependency_fingerprint": "1a9f26ed5aeab2c8bb5b862443d53d7adb5d8d21a7881dbafe76f889e86f1dfa",
+        "dependency_fingerprint": "885ba14ae0a619d887e0f054222ffc047445a1b93e768ec778cf77444c0fbc9f",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7890,7 +7890,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-79bd0f1d36821e9e",
-        "dependency_fingerprint": "ca8970831ecb5dd27ec32dfcaccede5cbbce508309d9ee5f818990e83bd52c2e",
+        "dependency_fingerprint": "69d47344075ddaf08c7951c653afeaab61a21aaffa804928f750c71a273b79c8",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7991,7 +7991,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.043928Z"
+      "created_at": "2026-07-23T17:57:43.058573Z"
     },
     {
       "governing_status": "red",
@@ -8019,7 +8019,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-1ee4cfb5c41a052e",
-        "dependency_fingerprint": "f874f7d93e3b346d35bc81e50de670e3f4d5d5bbe5f59c0c0454a5b59a700ee8",
+        "dependency_fingerprint": "497448f99b6ca6c3c8f6bc8a96b222c928c61acdfdd4665d50b5d2e59adba8cf",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8120,7 +8120,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.044134Z"
+      "created_at": "2026-07-23T17:57:43.058782Z"
     },
     {
       "governing_status": "grey",
@@ -8152,7 +8152,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.044185Z"
+      "created_at": "2026-07-23T17:57:43.058836Z"
     },
     {
       "governing_status": "grey",
@@ -8184,7 +8184,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.044234Z"
+      "created_at": "2026-07-23T17:57:43.058894Z"
     },
     {
       "governing_status": "red",
@@ -8212,7 +8212,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f72bba88a6774c38",
-        "dependency_fingerprint": "2407ffed18194ce51d02b711a29cf1feb1ad4c5f32d1099e5593694c01c086bd",
+        "dependency_fingerprint": "5cdc6c1d4e949662201c03133b40fe02e0ec88995c1426fb09508b797c37aeca",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8309,7 +8309,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-24abd294e9a33b5d",
-        "dependency_fingerprint": "221224b2bbc17aee568d372e52507658215007b25bddae49920b12044051d4e4",
+        "dependency_fingerprint": "c3ee9247190ea0ac5d7a62f2b36bdce47f4d30925676c440a1389abcda035a0d",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8408,7 +8408,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.044602Z"
+      "created_at": "2026-07-23T17:57:43.059254Z"
     },
     {
       "governing_status": "red",
@@ -8436,7 +8436,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8a1c257e9ea45b1b",
-        "dependency_fingerprint": "e10847b8ebef0f7db86ae2a138247873515f4c82787ec80fda1cab2f6c3538f5",
+        "dependency_fingerprint": "bab01a71a046496ebd38a99d2a8fcb820efbec95e5654df68b8eda5f75b79e83",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8537,7 +8537,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T15:58:10.044816Z"
+      "created_at": "2026-07-23T17:57:43.059495Z"
     },
     {
       "governing_status": "red",
@@ -8565,7 +8565,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-52e3cf97c32b2d24",
-        "dependency_fingerprint": "c34f5322151f232fd41f52dfa26b8d0ea0b4ba4cb4146eed57749a9999e85a0a",
+        "dependency_fingerprint": "919ff0265188888db791481227a770059122169946c030cd48b6ec95387514bc",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8660,7 +8660,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-99cef3df188e078c",
-        "dependency_fingerprint": "18d30abd92c2b90571d65ab30cdddc5ebcc6b7396ff0783089bf95cff1ee2474",
+        "dependency_fingerprint": "b2aacf7e8a3b51a2822cb6c59949ff4b448e7c39a6ae21cdf873ff5fb518547e",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8757,7 +8757,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-c652afe7a56c0c5c",
-        "dependency_fingerprint": "3e4788b48551154376caaa3256f8a7826716cae99c3842a272ce2587c0dd5326",
+        "dependency_fingerprint": "4fb8145ecb3c6675351c52213133ed64bde4af554849b2bd5b75a5ac337c3a0b",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8854,7 +8854,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-2f71c1dcad73419e",
-        "dependency_fingerprint": "4fdd4d261b29554e9bf975c1e51fe80d90fb67a6e6cc5f0d17239f8215f5fd22",
+        "dependency_fingerprint": "1a7bab6fea04f896fa52da48700b2e9e444760f1e9d7c1c099945d6f7b2652be",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8949,7 +8949,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-6477b3001f4f09c5",
-        "dependency_fingerprint": "7d3f2015d9645865a3cea6e4ed9b229ef9bd2e1b9909610abf5d43025e86a233",
+        "dependency_fingerprint": "d9b06591489145562d2b67d500d9d0d7ecdcdd6b6598dd5c41bd3519be198b83",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [

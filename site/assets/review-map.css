@@ -155,6 +155,7 @@ nav { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .78rem; }
 #linear-evidence-panel > header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
 #linear-evidence-panel h2 { margin: 0; font-size: 1rem; }
 #route-summary, #evidence-disclosure { margin: .15rem 0 .45rem; font-size: .78rem; color: var(--muted); }
+.evidence-rationale { margin: .1rem 0 .45rem; color: var(--muted); font-size: .72rem; }
 #evidence-disclosure { max-width: 32rem; text-align: right; }
 .empty-evidence { color: var(--muted); }
 .evidence-axis { position: relative; min-width: 38rem; }
@@ -178,6 +179,7 @@ nav { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .78rem; }
 .track-cell.severe { background: #08519c; color: white; }
 .track-cell.unavailable { background: repeating-linear-gradient(135deg, #d5d8dc 0 6px, #f4f6f7 6px 12px); }
 .track-cell.road { background: #e8daef; }
+.track-cell.boundary { background: #fef9e7; font-weight: 800; border-right: 3px solid #7f8c8d; }
 .track-cell.hovered { outline: 3px solid var(--focus); outline-offset: -3px; }
 .distance-axis { display: flex; justify-content: space-between; margin-left: 8rem; color: var(--muted); font-size: .68rem; }
 .map-evidence-hover { cursor: crosshair; }

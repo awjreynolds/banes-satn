@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-01de032b4605",
+  "run_id": "run-cfa888f6d6da",
   "status": "reviewable",
   "network_model": "backbone-outward",
   "connection_count": 73,
@@ -25,7 +25,7 @@
     "schools": 104,
     "school_street_assessments": 93,
     "topography_profiles": 1564,
-    "gradient_sections": 42185,
+    "gradient_sections": 41719,
     "elevation_corroboration": 0,
     "retail_centres": 55,
     "healthcare": 78
@@ -2955,5 +2955,6 @@
     }
   },
   "comparison_role": "superseded-reference-not-ground-truth",
+  "topography_profile_evidence_index": "topography-profile-evidence.json",
   "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan."
 }
