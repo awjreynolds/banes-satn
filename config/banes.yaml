@@ -44,12 +44,21 @@ source:
     source_id: os-open-roads-2026-04-07
     effective_date: 2026-04-07
     licence: Open Government Licence v3.0
+  national_elevation:
+    provider: local-geojson
+    path: ../data/local/ea-lidar-dtm-1m-banes-samples.geojson
+    source_id: ea-lidar-composite-dtm-1m
+    effective_date: 2023-02-08
+    licence: Open Government Licence v3.0
+    attribution: "© Environment Agency copyright and/or database right 2022."
+    elevation_field: elevation_m
+    identifier_field: evidence_id
 compilation:
   max_connection_km: 15
   criteria_version: "1"
   agent:
     provider: fake
-    response_mode: caller
+    response_mode: direct-runtime
     review_statuses:
       - amber
       - red

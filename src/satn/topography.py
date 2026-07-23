@@ -53,6 +53,8 @@ PROFILE_COLUMNS = [
     "gradient_section_ids",
     "elevation_evidence_ids",
     "elevation_source_ids",
+    "micro_gradient_capability",
+    "micro_gradient_intervals",
     "geometry",
 ]
 
@@ -138,6 +140,7 @@ def build_topography_profiles(
                 maximum_sample_spacing_m,
                 minimum_sustained_spacing_m,
             )
+            profile = _apply_edge_micro_gradient_limitations(profile, edge)
             profile_rows.append(profile)
             section_rows.extend(sections)
             _apply_profile(frame, index, profile)
@@ -285,6 +288,12 @@ def _profile_edge(
     ]
     evidence_ids = sorted({item[2] for item in samples})
     source_ids = sorted({item[3] for item in samples if item[3]})
+    micro_capability, micro_intervals = _micro_gradient_evidence(
+        observed_samples,
+        metric_line.length,
+        thresholds,
+        source_metadata=_elevation_source_metadata(metric_evidence, observed_samples),
+    )
     return (
         {
             "profile_id": profile_id,
@@ -313,6 +322,8 @@ def _profile_edge(
             "gradient_section_ids": json.dumps([section["section_id"] for section in section_rows]),
             "elevation_evidence_ids": json.dumps(evidence_ids),
             "elevation_source_ids": json.dumps(source_ids),
+            "micro_gradient_capability": json.dumps(micro_capability, sort_keys=True),
+            "micro_gradient_intervals": json.dumps(micro_intervals, sort_keys=True),
             "geometry": geometry,
         },
         section_rows,
@@ -341,7 +352,11 @@ def _samples_on_line(
     if evidence.empty or "elevation_m" not in evidence:
         return []
     samples: dict[float, tuple[float, float, str, str]] = {}
-    for index, row in evidence.iterrows():
+    candidate_positions = evidence.sindex.query(
+        line.buffer(tolerance_m),
+        predicate="intersects",
+    )
+    for index, row in evidence.iloc[candidate_positions].iterrows():
         if (
             row.geometry is None
             or row.geometry.is_empty
@@ -359,6 +374,193 @@ def _samples_on_line(
         source_id = str(row.get("source_id") or "")
         samples[round(distance, 6)] = (distance, elevation, evidence_id, source_id)
     return sorted(samples.values())
+
+
+def _micro_gradient_evidence(
+    samples: list[tuple[float, float, str, str]],
+    distance_m: float,
+    thresholds: GradientThresholds,
+    *,
+    windows_m: tuple[float, ...] = (20.0, 50.0),
+    maximum_supported_spacing_m: float = 12.5,
+    source_metadata: dict[str, float | None] | None = None,
+) -> tuple[dict[str, object], list[dict[str, object]]]:
+    """Return distance-aligned gradients only when the evidence supports their scale."""
+
+    coverage_gaps = (
+        [samples[0][0]]
+        + [right[0] - left[0] for left, right in pairwise(samples)]
+        + [distance_m - samples[-1][0]]
+        if samples
+        else []
+    )
+    observed_spacing = max(coverage_gaps, default=None)
+    metadata = source_metadata or {}
+    vertical_accuracy = metadata.get("vertical_accuracy_m")
+    source_resolution = metadata.get("source_resolution_m")
+    output_spacing = metadata.get("output_sample_spacing_m")
+    evidence_quality_status = "available" if vertical_accuracy is not None else "uncertain"
+    uncertainty = {
+        "gradient_is_derived": True,
+        "maximum_observed_sample_spacing_m": observed_spacing,
+        "vertical_accuracy_m": vertical_accuracy,
+        "source_resolution_m": source_resolution,
+        "declared_output_sample_spacing_m": output_spacing,
+        "status": evidence_quality_status,
+        "caveat": (
+            "Gradient is derived from governed elevation samples; source vertical "
+            "accuracy is not declared, so values are analytical indicators rather "
+            "than survey-grade measurements."
+            if vertical_accuracy is None
+            else "Gradient is derived from governed elevation samples with declared "
+            "source vertical accuracy."
+        ),
+    }
+    capability: dict[str, object] = {
+        "status": "unavailable",
+        "windows_m": list(windows_m),
+        "sample_count": len(samples),
+        "maximum_observed_sample_spacing_m": observed_spacing,
+        "maximum_supported_sample_spacing_m": maximum_supported_spacing_m,
+        "coverage_start_m": samples[0][0] if samples else None,
+        "coverage_end_m": samples[-1][0] if samples else None,
+        "evidence_quality_status": evidence_quality_status,
+        "uncertainty": uncertainty,
+    }
+    if observed_spacing is None:
+        capability["rationale"] = "At least two elevation samples are required."
+        return capability, []
+    if observed_spacing > maximum_supported_spacing_m + 1e-6:
+        capability["rationale"] = (
+            f"Micro-gradient evidence requires samples no more than "
+            f"{maximum_supported_spacing_m:.1f} m apart; the largest observed "
+            f"spacing is {observed_spacing:.1f} m."
+        )
+        return capability, []
+    supported_windows = [window for window in windows_m if distance_m + 1e-6 >= window]
+    if not supported_windows:
+        capability["rationale"] = (
+            f"The edge is shorter than the smallest {min(windows_m):.1f} m window."
+        )
+        return capability, []
+
+    intervals: list[dict[str, object]] = []
+    rolling_step_m = min(10.0, min(supported_windows))
+    for window_m in supported_windows:
+        start_m = 0.0
+        while start_m + window_m <= distance_m + 1e-6:
+            end_m = min(start_m + window_m, distance_m)
+            start_elevation, start_ids = _interpolated_elevation(samples, start_m)
+            end_elevation, end_ids = _interpolated_elevation(samples, end_m)
+            gradient = (end_elevation - start_elevation) / (end_m - start_m) * 100
+            intervals.append(
+                {
+                    "window_m": window_m,
+                    "rolling_step_m": rolling_step_m,
+                    "calculation_method": "rolling-endpoint-difference",
+                    "start_distance_m": round(start_m, 3),
+                    "end_distance_m": round(end_m, 3),
+                    "forward_gradient_pct": round(gradient, 3),
+                    "absolute_gradient_pct": round(abs(gradient), 3),
+                    "gradient_band": thresholds.band(abs(gradient)),
+                    "uphill_direction": (
+                        "forward" if gradient > 0 else "reverse" if gradient < 0 else "level"
+                    ),
+                    "elevation_evidence_ids": list(dict.fromkeys([*start_ids, *end_ids])),
+                    "uncertainty": uncertainty,
+                    "status": "available",
+                }
+            )
+            start_m += rolling_step_m
+
+    capability["status"] = "available"
+    capability["windows_m"] = supported_windows
+    capability["rolling_step_m"] = rolling_step_m
+    capability["calculation_method"] = "rolling-endpoint-difference"
+    capability["rationale"] = (
+        "Governed elevation samples support overlapping rolling micro-gradient windows."
+        + (
+            " Source vertical accuracy is not declared, so values remain analytical indicators."
+            if evidence_quality_status == "uncertain"
+            else ""
+        )
+    )
+    return capability, intervals
+
+
+def _elevation_source_metadata(
+    evidence: gpd.GeoDataFrame,
+    samples: list[tuple[float, float, str, str]],
+) -> dict[str, float | None]:
+    """Return conservative optional metadata shared by governed elevation samples."""
+
+    evidence_ids = {sample[2] for sample in samples}
+    selected = (
+        evidence[evidence["evidence_id"].astype(str).isin(evidence_ids)]
+        if "evidence_id" in evidence
+        else evidence.iloc[0:0]
+    )
+    metadata: dict[str, float | None] = {}
+    for field in (
+        "vertical_accuracy_m",
+        "source_resolution_m",
+        "output_sample_spacing_m",
+    ):
+        values = pd.to_numeric(selected[field], errors="coerce") if field in selected else None
+        metadata[field] = (
+            float(values.max())
+            if values is not None and len(values) == len(samples) and values.notna().all()
+            else None
+        )
+    return metadata
+
+
+def _apply_edge_micro_gradient_limitations(
+    profile: dict[str, object],
+    edge: pd.Series,
+) -> dict[str, object]:
+    """Suppress ground-model precision where an edge is carried above or below terrain."""
+
+    limitations = [
+        field
+        for field in ("bridge", "tunnel")
+        if str(edge.get(field, "")).strip().lower() not in {"", "0", "false", "no", "none", "nan"}
+    ]
+    if not limitations:
+        return profile
+    capability = json.loads(str(profile["micro_gradient_capability"]))
+    capability["status"] = "unavailable"
+    capability["rationale"] = (
+        "Micro-gradient evidence is unavailable because the edge is tagged "
+        f"{' and '.join(limitations)}; a ground terrain model does not establish "
+        "the carried route surface."
+    )
+    uncertainty = dict(capability.get("uncertainty") or {})
+    uncertainty["infrastructure_limitation"] = limitations
+    capability["uncertainty"] = uncertainty
+    return {
+        **profile,
+        "micro_gradient_capability": json.dumps(capability, sort_keys=True),
+        "micro_gradient_intervals": "[]",
+    }
+
+
+def _interpolated_elevation(
+    samples: list[tuple[float, float, str, str]],
+    target_m: float,
+) -> tuple[float, list[str]]:
+    if target_m <= samples[0][0]:
+        return samples[0][1], [samples[0][2]]
+    if target_m >= samples[-1][0]:
+        return samples[-1][1], [samples[-1][2]]
+    for sample in samples:
+        if abs(sample[0] - target_m) <= 1e-6:
+            return sample[1], [sample[2]]
+    for left, right in pairwise(samples):
+        if left[0] <= target_m <= right[0]:
+            fraction = (target_m - left[0]) / (right[0] - left[0])
+            return left[1] + (right[1] - left[1]) * fraction, [left[2], right[2]]
+    raise ValueError("micro-gradient target lies outside elevation evidence coverage")
 
 
 def _sustained_samples(
@@ -526,6 +728,26 @@ def _unavailable_profile(
         "gradient_section_ids": "[]",
         "elevation_evidence_ids": "[]",
         "elevation_source_ids": "[]",
+        "micro_gradient_capability": json.dumps(
+            {
+                "status": "unavailable",
+                "windows_m": [20.0, 50.0],
+                "sample_count": 0,
+                "maximum_observed_sample_spacing_m": None,
+                "maximum_supported_sample_spacing_m": 12.5,
+                "coverage_start_m": None,
+                "coverage_end_m": None,
+                "rationale": rationale,
+                "uncertainty": {
+                    "gradient_is_derived": True,
+                    "maximum_observed_sample_spacing_m": None,
+                    "vertical_accuracy_m": None,
+                    "caveat": "No usable governed elevation profile is available.",
+                },
+            },
+            sort_keys=True,
+        ),
+        "micro_gradient_intervals": "[]",
         "geometry": geometry,
     }
 

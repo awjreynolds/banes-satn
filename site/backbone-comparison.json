@@ -11,7 +11,7 @@
     "cross_spine_connector_count": 16,
     "served_obligation_count": 122,
     "network_gap_count": 88,
-    "linework_length_m": 114616.9,
+    "linework_length_m": 114707.0,
     "typed_role_count": 73,
     "selection_rationale_count": 73
   },
@@ -47,7 +47,7 @@
   },
   "visual_noise": {
     "connection_count_delta": -90,
-    "linework_length_m_delta": -205032.1
+    "linework_length_m_delta": -204942.0
   },
   "explainability": {
     "all_current_connections_have_typed_roles": true,

@@ -574,22 +574,41 @@ def _snapshot_national_elevation(config: CouncilConfig, temporary: Path) -> None
                 "effective_date": evidence_date,
                 "licence": governed.licence,
                 "elevation_m": elevation,
+                **{
+                    field: sample.get(field)
+                    for field in (
+                        "vertical_accuracy_m",
+                        "source_resolution_m",
+                        "output_sample_spacing_m",
+                    )
+                    if field in sample and pd.notna(sample.get(field))
+                },
                 "geometry": sample.geometry,
             }
         )
     identifiers = [str(row["evidence_id"]) for row in rows]
     if len(identifiers) != len(set(identifiers)):
         raise ValueError("national Elevation Evidence has duplicate sample identifiers")
+    columns = [
+        "evidence_id",
+        "source_id",
+        "effective_date",
+        "licence",
+        "elevation_m",
+        *[
+            field
+            for field in (
+                "vertical_accuracy_m",
+                "source_resolution_m",
+                "output_sample_spacing_m",
+            )
+            if any(field in row for row in rows)
+        ],
+        "geometry",
+    ]
     evidence = gpd.GeoDataFrame(
         rows,
-        columns=[
-            "evidence_id",
-            "source_id",
-            "effective_date",
-            "licence",
-            "elevation_m",
-            "geometry",
-        ],
+        columns=columns,
         geometry="geometry",
         crs=source.crs,
     ).sort_values("evidence_id")
