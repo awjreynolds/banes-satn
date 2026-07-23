@@ -194,9 +194,10 @@ def test_public_compile_accounts_for_every_urban_community_without_centrelines()
     assert chained["urban_spine_id"]
 
     nearby = json.loads(obligations.loc["nearby-community", "provenance"])
-    assert nearby["service_via"] == "adjoining-community-graph-chain"
-    assert nearby["target_community_id"] == "chained-community"
-    assert 0 <= nearby["attachment_distance_m"] <= 250.0
+    assert nearby["service_via"] == "routable-urban-main-road-spine"
+    assert nearby["target_community_id"] is None
+    assert nearby["community_chain"] == []
+    assert nearby["attachment_distance_m"] == 0.0
     assert nearby["attachment_maximum_m"] == 2000.0
     assert nearby["low_traffic_area_chain"]
     assert nearby["urban_spine_id"]
@@ -210,7 +211,7 @@ def test_public_compile_accounts_for_every_urban_community_without_centrelines()
     assert chained_community["service_via"] == "adjoining-community-graph-chain"
     assert chained_community["target_community_id"] == "nearby-community"
     assert chained_community["target_community_name"] == "Nearby Community"
-    assert chained_community["community_chain"] == ["nearby-community", "chained-community"]
+    assert chained_community["community_chain"] == ["nearby-community"]
     assert chained_community["portal_id"] == nearby["portal_id"]
     assert chained_community["urban_spine_id"] == nearby["urban_spine_id"]
     assert chained_community["route_edge_source_ids"]

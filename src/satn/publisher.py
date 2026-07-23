@@ -749,6 +749,7 @@ def _write_review_map(
     asset_root = files("satn.assets")
     asset_output = review / "assets"
     asset_output.mkdir()
+    fingerprinted_assets: dict[str, str] = {}
     for name in (
         "maplibre-gl.js",
         "maplibre-gl.css",
@@ -756,7 +757,14 @@ def _write_review_map(
         "review-map.js",
         "review-map.css",
     ):
-        (asset_output / name).write_bytes((asset_root / name).read_bytes())
+        content = (asset_root / name).read_bytes()
+        (asset_output / name).write_bytes(content)
+        if name.startswith("review-map."):
+            path = Path(name)
+            digest = hashlib.sha256(content).hexdigest()[:12]
+            fingerprinted_name = f"{path.stem}.{digest}{path.suffix}"
+            (asset_output / fingerprinted_name).write_bytes(content)
+            fingerprinted_assets[name] = fingerprinted_name
     template = (asset_root / "review-map.html").read_text(encoding="utf-8")
     atm_state = "" if compiled.atm_reference is not None else "disabled"
     atm_status = (
@@ -767,6 +775,8 @@ def _write_review_map(
     html = (
         template.replace("__TITLE__", escape(config.publication.title))
         .replace("__DISCLAIMER__", DISCLAIMER)
+        .replace("__REVIEW_MAP_CSS__", fingerprinted_assets["review-map.css"])
+        .replace("__REVIEW_MAP_JS__", fingerprinted_assets["review-map.js"])
         .replace("__ATM_STATE__", atm_state)
         .replace("__ATM_STATUS__", atm_status)
         .replace(

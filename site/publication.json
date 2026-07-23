@@ -1,30 +1,30 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-35e409f6e3f3",
+  "run_id": "run-83c71695cef1",
   "status": "reviewable",
   "network_model": "backbone-outward",
-  "connection_count": 68,
-  "gap_count": 59,
+  "connection_count": 73,
+  "gap_count": 88,
   "human_intervention_request_count": 0,
   "superseded_hypotheses": 0,
   "layer_counts": {
-    "strategic_spines": 87,
+    "strategic_spines": 92,
     "access_obligations": 210,
     "school_access_obligations": 93,
-    "gaps": 59,
-    "spine_access_connections": 52,
-    "spine_access_branches": 42,
+    "gaps": 88,
+    "spine_access_connections": 57,
+    "spine_access_branches": 44,
     "branch_meeting_connections": 16,
     "cross_spine_connectors": 16,
     "a_road_spines": 2424,
     "ncn_routes": 266,
-    "urban_spines": 1771,
-    "urban_classification_unknowns": 2214,
-    "candidate_low_traffic_areas": 129,
-    "low_traffic_area_portals": 2426,
+    "urban_spines": 1383,
+    "urban_classification_unknowns": 2075,
+    "candidate_low_traffic_areas": 41,
+    "low_traffic_area_portals": 532,
     "schools": 104,
     "school_street_assessments": 93,
-    "topography_profiles": 1942,
+    "topography_profiles": 1564,
     "gradient_sections": 0,
     "elevation_corroboration": 0,
     "retail_centres": 55,
@@ -82,19 +82,19 @@
   },
   "compilation_diagnostics": {
     "assembly_strategy": "backbone-outward",
-    "candidate_evaluations": 5304,
-    "initial_frontiers": 87,
-    "final_frontiers": 134,
-    "served_communities": 47,
+    "candidate_evaluations": 5967,
+    "initial_frontiers": 92,
+    "final_frontiers": 142,
+    "served_communities": 50,
     "unserved_communities": 1,
     "optimization_findings": [
       {
         "finding_id": "serial-frontier-candidate-evaluation",
         "finding": "Backbone candidates were evaluated serially across a large finite frontier-obligation search space.",
         "evidence": {
-          "candidate_evaluations": 5304,
-          "initial_frontiers": 87,
-          "final_frontiers": 134
+          "candidate_evaluations": 5967,
+          "initial_frontiers": 92,
+          "final_frontiers": 142
         },
         "potential_optimization": "Batch or safely parallelise independent initial-frontier searches while preserving deterministic candidate ranking."
       },
@@ -103,8 +103,8 @@
         "status": "optimized-during-compilation-development",
         "finding": "Multiple spine candidates reused the same community-to-node association set.",
         "evidence": {
-          "unique_candidate_sets": 54,
-          "candidate_set_reuses": 3283
+          "unique_candidate_sets": 59,
+          "candidate_set_reuses": 3822
         },
         "applied_optimization": "Cache immutable point-to-node candidate sets for the duration of a run."
       },
@@ -113,7 +113,7 @@
         "status": "bounded-and-visible",
         "finding": "Some graph paths could not be merged into valid governed linework.",
         "evidence": {
-          "path_count": 29
+          "path_count": 51
         },
         "applied_optimization": "Reject the affected candidate pair without exhaustive start/end retries; continue evaluating other governed frontiers.",
         "potential_optimization": "Normalize disconnected OSM edge geometry at snapshot ingestion."
@@ -123,19 +123,19 @@
     "road_graph_edges": 40745,
     "reciprocal_routing_nodes": 18517,
     "reciprocal_routing_edges": 39369,
-    "nearby_node_candidate_sets": 54,
-    "nearby_node_candidate_set_reuses": 3283,
-    "unmaterializable_attachment_paths": 29,
+    "nearby_node_candidate_sets": 59,
+    "nearby_node_candidate_set_reuses": 3822,
+    "unmaterializable_attachment_paths": 51,
     "community_coverage": {
-      "identified_rural": 48,
-      "served_rural": 47,
+      "identified_rural": 51,
+      "served_rural": 50,
       "gaps_rural": 1,
-      "identified_urban": 69,
-      "served_urban": 68,
-      "gaps_urban": 1,
+      "identified_urban": 66,
+      "served_urban": 64,
+      "gaps_urban": 2,
       "identified_total": 117,
-      "served_total": 115,
-      "gaps_total": 2
+      "served_total": 114,
+      "gaps_total": 3
     },
     "urban_settlement_form_profiles": [
       {
@@ -160,7 +160,7 @@
           "school": 3
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-03d5576693",
@@ -168,7 +168,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 12.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.753 km minor-street fabric (minimum 10.000 km); 10 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 12.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.753 km minor-street fabric (minimum 10.000 km); 10 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -184,7 +184,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-042d921b57",
@@ -192,7 +192,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 158.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.059 km minor-street fabric (minimum 10.000 km); 15 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 158.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.059 km minor-street fabric (minimum 10.000 km); 15 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -208,7 +208,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-04f6e73a86",
@@ -232,7 +232,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-0b5e57ecd1",
@@ -240,7 +240,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 98.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 1.898 km minor-street fabric (minimum 10.000 km); 3 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 98.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 1.898 km minor-street fabric (minimum 10.000 km); 3 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -256,7 +256,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-0c46292b22",
@@ -280,7 +280,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-0f377d16a7",
@@ -288,7 +288,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 63.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.011 km minor-street fabric (minimum 10.000 km); 19 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 63.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.011 km minor-street fabric (minimum 10.000 km); 19 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -304,7 +304,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-0f5123b7a2",
@@ -328,7 +328,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-10477b1e69",
@@ -352,7 +352,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-114dfac26c",
@@ -360,7 +360,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 58.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.094 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 58.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.094 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -376,7 +376,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-164ccdb522",
@@ -384,7 +384,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 112.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 12.311 km minor-street fabric (minimum 10.000 km); 41 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 112.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 12.311 km minor-street fabric (minimum 10.000 km); 41 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -400,7 +400,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-16ecb9142c",
@@ -408,7 +408,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 54.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 1.653 km minor-street fabric (minimum 10.000 km); 4 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 54.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 1.653 km minor-street fabric (minimum 10.000 km); 4 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -424,7 +424,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-182770f443",
@@ -432,7 +432,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 49.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.441 km minor-street fabric (minimum 10.000 km); 26 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 49.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.441 km minor-street fabric (minimum 10.000 km); 26 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -448,7 +448,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-19db6ef591",
@@ -472,15 +472,15 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-1dd48a30ee",
         "community_name": "Timsbury",
         "place_class": "village",
-        "eligibility_basis": "settlement-form",
-        "urban_circulation_eligible": true,
-        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 73.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.702 km minor-street fabric (minimum 10.000 km); 70 junctions (minimum 70).",
+        "eligibility_basis": "insufficient-settlement-form",
+        "urban_circulation_eligible": false,
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 73.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.702 km minor-street fabric (minimum 10.000 km); 70 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -496,7 +496,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-1fa4d7f16e",
@@ -504,7 +504,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 209.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 2.316 km minor-street fabric (minimum 10.000 km); 6 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 209.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 2.316 km minor-street fabric (minimum 10.000 km); 6 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -520,7 +520,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-2d22696674",
@@ -528,7 +528,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 130.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.711 km minor-street fabric (minimum 10.000 km); 63 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 130.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.711 km minor-street fabric (minimum 10.000 km); 63 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -544,7 +544,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-2f66056e13",
@@ -552,7 +552,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 33.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 12.819 km minor-street fabric (minimum 10.000 km); 63 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 33.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 12.819 km minor-street fabric (minimum 10.000 km); 63 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -568,7 +568,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-2ff971d1c5",
@@ -576,7 +576,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 101.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 4.122 km minor-street fabric (minimum 10.000 km); 18 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 101.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 4.122 km minor-street fabric (minimum 10.000 km); 18 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -592,7 +592,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-3334ddc6ee",
@@ -600,7 +600,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 86.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 3.707 km minor-street fabric (minimum 10.000 km); 25 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 86.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 3.707 km minor-street fabric (minimum 10.000 km); 25 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -616,7 +616,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-33cbc80177",
@@ -640,7 +640,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-366e9309b9",
@@ -648,7 +648,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 85.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 4.009 km minor-street fabric (minimum 10.000 km); 22 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 85.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 4.009 km minor-street fabric (minimum 10.000 km); 22 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -664,7 +664,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-36e026b422",
@@ -672,7 +672,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 50.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 12.635 km minor-street fabric (minimum 10.000 km); 66 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 50.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 12.635 km minor-street fabric (minimum 10.000 km); 66 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -688,7 +688,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-3aef327590",
@@ -712,7 +712,7 @@
           "school": 3
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-3f1df6b6ce",
@@ -720,7 +720,7 @@
         "place_class": "village",
         "eligibility_basis": "settlement-form",
         "urban_circulation_eligible": true,
-        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 4.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 15.280 km minor-street fabric (minimum 10.000 km); 101 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 4.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 15.280 km minor-street fabric (minimum 10.000 km); 101 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -736,7 +736,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-45955be9bb",
@@ -760,15 +760,15 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-493513132f",
         "community_name": "Bathampton",
         "place_class": "village",
-        "eligibility_basis": "settlement-form",
-        "urban_circulation_eligible": true,
-        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 8.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.006 km minor-street fabric (minimum 10.000 km); 71 junctions (minimum 70).",
+        "eligibility_basis": "insufficient-settlement-form",
+        "urban_circulation_eligible": false,
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 8.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.006 km minor-street fabric (minimum 10.000 km); 71 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -784,7 +784,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-4aa79bae7e",
@@ -808,7 +808,7 @@
           "school": 9
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-4f157e8a5f",
@@ -832,7 +832,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-4f8e534c12",
@@ -840,7 +840,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 36.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.517 km minor-street fabric (minimum 10.000 km); 32 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 36.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.517 km minor-street fabric (minimum 10.000 km); 32 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -856,7 +856,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-503b26859f",
@@ -880,7 +880,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-51ef7bb1ee",
@@ -904,7 +904,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-5571c8a9b7",
@@ -928,7 +928,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-57c8e99c87",
@@ -936,7 +936,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 86.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.245 km minor-street fabric (minimum 10.000 km); 2 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 86.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.245 km minor-street fabric (minimum 10.000 km); 2 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -952,7 +952,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-57e3650b45",
@@ -976,7 +976,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-57ee6cd30c",
@@ -1000,15 +1000,15 @@
           "school": 12
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-58c88f846e",
         "community_name": "Saltford",
         "place_class": "village",
-        "eligibility_basis": "settlement-form",
-        "urban_circulation_eligible": true,
-        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 61.6 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.449 km minor-street fabric (minimum 10.000 km); 89 junctions (minimum 70).",
+        "eligibility_basis": "insufficient-settlement-form",
+        "urban_circulation_eligible": false,
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 61.6 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.449 km minor-street fabric (minimum 10.000 km); 89 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1024,7 +1024,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-5bd3810847",
@@ -1048,7 +1048,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-5d26c9ef65",
@@ -1056,7 +1056,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 53.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.045 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 53.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.045 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1072,7 +1072,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-5d969fbe19",
@@ -1096,7 +1096,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-5ece248069",
@@ -1120,7 +1120,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-5f1b8f5881",
@@ -1128,7 +1128,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 85.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.442 km minor-street fabric (minimum 10.000 km); 33 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 85.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.442 km minor-street fabric (minimum 10.000 km); 33 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1144,7 +1144,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-608e84441d",
@@ -1152,7 +1152,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 90.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 9.851 km minor-street fabric (minimum 10.000 km); 30 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 90.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 9.851 km minor-street fabric (minimum 10.000 km); 30 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1168,7 +1168,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-608ec1edb0",
@@ -1176,7 +1176,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 51.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.228 km minor-street fabric (minimum 10.000 km); 23 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 51.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.228 km minor-street fabric (minimum 10.000 km); 23 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1192,7 +1192,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-63058b66dd",
@@ -1200,7 +1200,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 15.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.835 km minor-street fabric (minimum 10.000 km); 26 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 15.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.835 km minor-street fabric (minimum 10.000 km); 26 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1216,7 +1216,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-63162699e2",
@@ -1224,7 +1224,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 63.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.773 km minor-street fabric (minimum 10.000 km); 14 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 63.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.773 km minor-street fabric (minimum 10.000 km); 14 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1240,7 +1240,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-644cff6e0a",
@@ -1264,7 +1264,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-64df30cdaa",
@@ -1288,7 +1288,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-65c493a328",
@@ -1312,7 +1312,7 @@
           "school": 3
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-6dc53f007d",
@@ -1336,7 +1336,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-6eb5b47612",
@@ -1344,7 +1344,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 106.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 4.047 km minor-street fabric (minimum 10.000 km); 13 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 106.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 4.047 km minor-street fabric (minimum 10.000 km); 13 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1360,7 +1360,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-6f29cb3e90",
@@ -1384,7 +1384,7 @@
           "school": 11
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-6f3a4e77ad",
@@ -1408,7 +1408,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-70540fd128",
@@ -1432,7 +1432,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-71bfead7ec",
@@ -1440,7 +1440,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 123.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 1.340 km minor-street fabric (minimum 10.000 km); 2 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 123.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 1.340 km minor-street fabric (minimum 10.000 km); 2 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1456,7 +1456,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-750c86240b",
@@ -1480,7 +1480,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-765651d2cc",
@@ -1488,7 +1488,7 @@
         "place_class": "village",
         "eligibility_basis": "settlement-form",
         "urban_circulation_eligible": true,
-        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 37.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 11.105 km minor-street fabric (minimum 10.000 km); 96 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community satisfies both governed settlement-form thresholds: The associated component is 37.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 11.105 km minor-street fabric (minimum 10.000 km); 96 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1504,7 +1504,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-7995e0741a",
@@ -1512,7 +1512,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 51.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 3.710 km minor-street fabric (minimum 10.000 km); 41 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 51.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 3.710 km minor-street fabric (minimum 10.000 km); 41 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1528,7 +1528,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-8707b4f813",
@@ -1552,7 +1552,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-88515732a5",
@@ -1560,7 +1560,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 36.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.928 km minor-street fabric (minimum 10.000 km); 29 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 36.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.928 km minor-street fabric (minimum 10.000 km); 29 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1576,7 +1576,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-8a03b53d9e",
@@ -1584,7 +1584,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 4.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.809 km minor-street fabric (minimum 10.000 km); 43 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 4.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.809 km minor-street fabric (minimum 10.000 km); 43 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1600,7 +1600,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-93011f66eb",
@@ -1624,7 +1624,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-93feb545ee",
@@ -1648,7 +1648,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-98dc976f46",
@@ -1656,7 +1656,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 166.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 9.616 km minor-street fabric (minimum 10.000 km); 82 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 166.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 9.616 km minor-street fabric (minimum 10.000 km); 82 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1672,7 +1672,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-99125c7234",
@@ -1696,7 +1696,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-9a65e50e35",
@@ -1720,7 +1720,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-9aba84dfca",
@@ -1744,7 +1744,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-9be6e5c1f7",
@@ -1768,7 +1768,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-9bfaafd626",
@@ -1792,7 +1792,7 @@
           "school": 3
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-9dc6d06226",
@@ -1800,7 +1800,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 52.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.643 km minor-street fabric (minimum 10.000 km); 3 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 52.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.643 km minor-street fabric (minimum 10.000 km); 3 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1816,7 +1816,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-a048f0efa6",
@@ -1824,7 +1824,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 98.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.485 km minor-street fabric (minimum 10.000 km); 33 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 98.1 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.485 km minor-street fabric (minimum 10.000 km); 33 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1840,7 +1840,7 @@
           "school": 3
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-a091dc981e",
@@ -1864,7 +1864,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-a35a74acaa",
@@ -1888,7 +1888,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-a38aff0302",
@@ -1896,7 +1896,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 122.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.963 km minor-street fabric (minimum 10.000 km); 26 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 122.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.963 km minor-street fabric (minimum 10.000 km); 26 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -1912,7 +1912,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-a3cf4e5c19",
@@ -1936,7 +1936,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-aa45f13869",
@@ -1960,7 +1960,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ae6b3b16f8",
@@ -1984,7 +1984,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ae79bcc776",
@@ -1992,7 +1992,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 124.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.025 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 124.5 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.025 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2008,7 +2008,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-af990e12a6",
@@ -2032,7 +2032,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-b25021cf84",
@@ -2056,7 +2056,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-b376a78546",
@@ -2064,7 +2064,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 52.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.213 km minor-street fabric (minimum 10.000 km); 14 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 52.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 6.213 km minor-street fabric (minimum 10.000 km); 14 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2080,7 +2080,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-b627e2867a",
@@ -2104,7 +2104,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-b7d0bc19a2",
@@ -2128,7 +2128,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-bb4372b14e",
@@ -2152,7 +2152,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-bd0c27881c",
@@ -2160,7 +2160,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 15.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.888 km minor-street fabric (minimum 10.000 km); 38 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 15.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.888 km minor-street fabric (minimum 10.000 km); 38 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2176,7 +2176,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-bd6d40740e",
@@ -2184,7 +2184,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 139.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.466 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 139.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.466 km minor-street fabric (minimum 10.000 km); 0 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2200,7 +2200,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-c0a156beec",
@@ -2208,7 +2208,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 69.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 2.653 km minor-street fabric (minimum 10.000 km); 28 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 69.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 2.653 km minor-street fabric (minimum 10.000 km); 28 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2224,7 +2224,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-c16cb9c1de",
@@ -2232,7 +2232,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 40.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 2.732 km minor-street fabric (minimum 10.000 km); 3 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 40.3 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 2.732 km minor-street fabric (minimum 10.000 km); 3 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2248,7 +2248,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ccee90fe67",
@@ -2272,7 +2272,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-cd4cfc1ac8",
@@ -2296,7 +2296,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ced1e38fbb",
@@ -2320,7 +2320,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-cedce05392",
@@ -2328,7 +2328,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 155.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.775 km minor-street fabric (minimum 10.000 km); 6 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 155.9 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.775 km minor-street fabric (minimum 10.000 km); 6 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2344,7 +2344,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-d2ee84afaf",
@@ -2368,7 +2368,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-d4f1ce5e3c",
@@ -2392,7 +2392,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-d70c9dfa4f",
@@ -2400,7 +2400,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 89.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 9.809 km minor-street fabric (minimum 10.000 km); 37 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 89.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 9.809 km minor-street fabric (minimum 10.000 km); 37 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2416,7 +2416,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-d965761836",
@@ -2440,7 +2440,7 @@
           "school": 8
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-d9f43e322f",
@@ -2448,7 +2448,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 91.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.295 km minor-street fabric (minimum 10.000 km); 27 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 91.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.295 km minor-street fabric (minimum 10.000 km); 27 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2464,7 +2464,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-e00cf66ef6",
@@ -2488,7 +2488,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-e79331aa6b",
@@ -2512,7 +2512,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-eab512a258",
@@ -2520,7 +2520,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 83.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.102 km minor-street fabric (minimum 10.000 km); 1 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 83.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 0.102 km minor-street fabric (minimum 10.000 km); 1 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2536,7 +2536,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ebd732dbde",
@@ -2560,7 +2560,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ec7d82ad68",
@@ -2584,7 +2584,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ed2bcca86d",
@@ -2608,7 +2608,7 @@
           "school": 8
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ef57e9e8c7",
@@ -2616,7 +2616,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 13.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.790 km minor-street fabric (minimum 10.000 km); 29 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 13.4 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 8.790 km minor-street fabric (minimum 10.000 km); 29 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2632,7 +2632,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-f0a77d5e88",
@@ -2656,7 +2656,7 @@
           "school": 7
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-f234324940",
@@ -2680,7 +2680,7 @@
           "school": 4
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-f2d414fd7a",
@@ -2704,7 +2704,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-f44ae41191",
@@ -2728,7 +2728,7 @@
           "school": 6
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-f533fcb299",
@@ -2736,7 +2736,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 72.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.815 km minor-street fabric (minimum 10.000 km); 12 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 72.7 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.815 km minor-street fabric (minimum 10.000 km); 12 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2752,7 +2752,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-f6306748bd",
@@ -2760,7 +2760,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 63.6 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.540 km minor-street fabric (minimum 10.000 km); 16 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 63.6 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 5.540 km minor-street fabric (minimum 10.000 km); 16 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2776,7 +2776,7 @@
           "school": 0
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-fb2a8fc564",
@@ -2784,7 +2784,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 82.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 14.443 km minor-street fabric (minimum 10.000 km); 60 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 82.8 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 14.443 km minor-street fabric (minimum 10.000 km); 60 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2800,7 +2800,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-fc00d28ce2",
@@ -2808,7 +2808,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 48.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.992 km minor-street fabric (minimum 10.000 km); 35 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 48.0 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 7.992 km minor-street fabric (minimum 10.000 km); 35 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2824,7 +2824,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-fcbbb23fe2",
@@ -2848,7 +2848,7 @@
           "school": 5
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-fd04356a24",
@@ -2872,7 +2872,7 @@
           "school": 2
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-fd2f478add",
@@ -2896,7 +2896,7 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-fd64d00c38",
@@ -2920,7 +2920,7 @@
           "school": 3
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       },
       {
         "community_id": "community-ff3ef5a31b",
@@ -2928,7 +2928,7 @@
         "place_class": "village",
         "eligibility_basis": "insufficient-settlement-form",
         "urban_circulation_eligible": false,
-        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 1.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.268 km minor-street fabric (minimum 10.000 km); 51 junctions (minimum 70).",
+        "urban_eligibility_rationale": "The Community does not satisfy both governed settlement-form thresholds: The associated component is 1.2 m from the Community Reference Point (maximum 250.0 m); near-equivalent components within 10.0 m were compared by junctions then length; 10.268 km minor-street fabric (minimum 10.000 km); 51 junctions (minimum 90).",
         "settlement_form_radius_km": 1.0,
         "maximum_component_association_m": 250.0,
         "component_association_tolerance_m": 10.0,
@@ -2944,13 +2944,13 @@
           "school": 1
         },
         "minimum_minor_street_length_km": 10.0,
-        "minimum_junction_count": 70
+        "minimum_junction_count": 90
       }
     ],
     "urban_a_road_spine_coverage": {
       "source_alignment_tolerance_m": 100.0,
-      "evidence_segment_count": 1735,
-      "total_km": 90.915,
+      "evidence_segment_count": 1647,
+      "total_km": 85.319,
       "unmatched_km": 0.0
     }
   },

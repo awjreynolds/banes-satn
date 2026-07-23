@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import geopandas as gpd
 from shapely.geometry import LineString, Point
-from shapely.ops import unary_union
 
 from satn.agents import FakeAgentRuntime
-from satn.compiler import compile_network
+from satn.compiler import _close_public_route_termini, compile_network
 from satn.models import CouncilConfig
 from satn.routing import RoadGraph, choose_alignment
 from satn.urban import derive_urban_structure
@@ -115,18 +115,11 @@ def test_urban_spines_and_low_traffic_fabrics_share_one_representation() -> None
     assert set(spines["classification_status"]) == {"governed-official"}
     assert unknowns.empty
     assert "Major engineering" in spines.iloc[0]["intervention_assumption"]
-    assert len(areas) == 2
-    assert set(areas["role"]) == {"candidate-low-traffic-area"}
-    assert areas.iloc[0].geometry.geom_type in {"Polygon", "MultiPolygon"}
-    projected_spine = spines.to_crs(27700).iloc[0].geometry
-    assert all(not geometry.crosses(projected_spine) for geometry in areas.to_crs(27700).geometry)
-    assert len(portals) == 2
-    assert portals["portal_id"].is_unique
-    assert set(portals["area_id"]) == set(areas["structure_id"])
-    assert all("A road" in name for name in portals["name"])
+    assert areas.empty
+    assert portals.empty
 
 
-def test_open_urban_street_fabric_uses_its_built_up_edge_to_form_candidate_areas() -> None:
+def test_open_urban_street_fabric_is_not_promoted_to_candidate_areas() -> None:
     places = gpd.GeoDataFrame(
         [
             {
@@ -181,13 +174,11 @@ def test_open_urban_street_fabric_uses_its_built_up_edge_to_form_candidate_areas
 
     urban = derive_urban_structure(places, network, official)
 
-    assert len(urban.low_traffic_areas) >= 2
-    divider = official.geometry.iloc[0]
-    assert all(not area.crosses(divider) for area in urban.low_traffic_areas.geometry)
-    assert urban.low_traffic_area_portals["area_id"].nunique() >= 2
+    assert urban.low_traffic_areas.empty
+    assert urban.low_traffic_area_portals.empty
 
 
-def test_candidate_area_geometry_does_not_annex_open_land_between_sparse_streets() -> None:
+def test_sparse_open_street_fabric_is_not_promoted_to_a_candidate_area() -> None:
     places = gpd.GeoDataFrame(
         [
             {
@@ -247,12 +238,8 @@ def test_candidate_area_geometry_does_not_annex_open_land_between_sparse_streets
     )
 
     urban = derive_urban_structure(places, network, official)
-    areas = urban.low_traffic_areas.to_crs(27700)
-    street_fabric = unary_union(minor_lines).buffer(150)
-
-    assert not areas.empty
-    assert all(area.difference(street_fabric).area < 1 for area in areas.geometry)
-    assert not areas.geometry.union_all().covers(Point(400000, 200800))
+    assert urban.low_traffic_areas.empty
+    assert urban.low_traffic_area_portals.empty
 
 
 def test_geojson_array_tags_preserve_urban_fabric_and_a_road_routing(tmp_path: Path) -> None:
@@ -266,7 +253,7 @@ def test_geojson_array_tags_preserve_urban_fabric_and_a_road_routing(tmp_path: P
                 "geometry": Point(0, 0),
             }
         ],
-        crs=4326,
+        crs=27700,
     )
     network = gpd.GeoDataFrame(
         [
@@ -336,7 +323,7 @@ def test_geojson_array_tags_preserve_urban_fabric_and_a_road_routing(tmp_path: P
     )
 
     assert type(reloaded.iloc[0]["highway"]).__name__ == "ndarray"
-    assert len(urban.low_traffic_areas) == 2
+    assert urban.low_traffic_areas.empty
     assert selected is not None
     assert selected.role == "strategic-spine"
     assert selected.a_road_share == 1
@@ -455,12 +442,23 @@ def test_official_a_b_and_classified_unnumbered_are_stable_urban_spines() -> Non
                 "effective_date": "2026-01-01",
                 "licence": "OGL v3.0",
                 "content_fingerprint": "abc123",
-                "geometry": LineString([(offset, -0.01), (offset, 0.01)]),
+                "geometry": geometry,
             }
-            for classification, offset in (
-                ("a-road", -0.005),
-                ("b-road", 0.0),
-                ("classified-unnumbered", 0.005),
+            for classification, geometry in (
+                (
+                    "a-road",
+                    LineString(
+                        [
+                            (-0.01, -0.01),
+                            (0.01, -0.01),
+                            (0.01, 0.01),
+                            (-0.01, 0.01),
+                            (-0.01, -0.01),
+                        ]
+                    ),
+                ),
+                ("b-road", LineString([(0.0, -0.01), (0.0, 0.01)])),
+                ("classified-unnumbered", LineString([(0.005, -0.01), (0.005, 0.01)])),
             )
         ],
         crs=4326,
@@ -656,7 +654,7 @@ def test_compiler_requires_every_urban_a_road_evidence_segment_to_have_an_offici
         "total_km": 2.0,
         "unmatched_km": 0.0,
     }
-    assert "b-road" in set(represented.urban_spines["official_classification"])
+    assert "b-road" not in set(represented.urban_spines["official_classification"])
 
 
 def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic() -> None:
@@ -670,7 +668,7 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
                 "geometry": Point(0, 0),
             }
         ],
-        crs=4326,
+        crs=27700,
     )
     network = gpd.GeoDataFrame(
         [
@@ -678,34 +676,34 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
                 "osmid": "residential-1",
                 "highway": "residential",
                 "observed_through_traffic": True,
-                "geometry": LineString([(-0.012, 0), (0, 0)]),
+                "geometry": LineString([(-100, 0), (0, 0)]),
             },
             {
                 "osmid": "residential-2",
                 "highway": "unclassified",
                 "observed_through_traffic": False,
-                "geometry": LineString([(0, 0), (0.012, 0.005)]),
+                "geometry": LineString([(0, 0), (100, 0)]),
             },
             {
                 "osmid": "residential-3",
                 "highway": "residential",
                 "observed_through_traffic": False,
-                "geometry": LineString([(0, 0), (0, 0.005)]),
+                "geometry": LineString([(0, 0), (0, 100)]),
             },
             {
                 "osmid": "disconnected-1",
                 "highway": "residential",
                 "observed_through_traffic": False,
-                "geometry": LineString([(-0.012, 0.008), (-0.005, 0.008)]),
+                "geometry": LineString([(-80, 80), (-40, 80)]),
             },
             {
                 "osmid": "disconnected-2",
                 "highway": "residential",
                 "observed_through_traffic": False,
-                "geometry": LineString([(-0.005, 0.008), (-0.005, 0.009)]),
+                "geometry": LineString([(-40, 80), (-40, 90)]),
             },
         ],
-        crs=4326,
+        crs=27700,
     )
     context = gpd.GeoDataFrame(
         [
@@ -717,11 +715,11 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
                 "source_id": "built-edge-source",
                 "geometry": LineString(
                     [
-                        (-0.01, -0.01),
-                        (0.01, -0.01),
-                        (0.01, 0.01),
-                        (-0.01, 0.01),
-                        (-0.01, -0.01),
+                        (-100, -100),
+                        (100, -100),
+                        (100, 100),
+                        (-100, 100),
+                        (-100, -100),
                     ]
                 ),
             },
@@ -731,10 +729,10 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
                 "name": "Ward boundary",
                 "category": "administrative-boundary",
                 "source_id": "ward-source",
-                "geometry": LineString([(-0.01, -0.01), (-0.01, 0.01)]),
+                "geometry": LineString([(-100, -100), (-100, 100)]),
             },
         ],
-        crs=4326,
+        crs=27700,
     )
 
     urban = derive_urban_structure(places, network, context=context)
@@ -750,6 +748,217 @@ def test_candidate_areas_use_only_qualifying_boundaries_and_flag_through_traffic
     assert "ward-line" not in area["boundary_ids"]
     assert set(portals["boundary_id"]) == {"built-edge"}
     assert portals["portal_id"].is_unique
+
+
+def test_candidate_area_requires_a_complete_governed_enclosure() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=27700,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "west-residential",
+                "highway": "residential",
+                "geometry": LineString([(-250, 0), (0, 0)]),
+            },
+            {
+                "osmid": "east-residential",
+                "highway": "residential",
+                "geometry": LineString([(0, 0), (250, 0)]),
+            },
+        ],
+        crs=27700,
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "open-boundary",
+                "feature_type": "circulation-boundary",
+                "name": "Railway",
+                "category": "railway",
+                "source_id": "railway-source",
+                "geometry": LineString([(0, -500), (0, 500)]),
+            }
+        ],
+        crs=27700,
+    )
+
+    urban = derive_urban_structure(places, network, context=context)
+
+    assert urban.low_traffic_areas.empty
+    assert urban.low_traffic_area_portals.empty
+
+
+def test_candidate_area_requires_residential_street_fabric() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=27700,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "industrial-service",
+                "highway": "service",
+                "geometry": LineString([(-500, 0), (0, 0)]),
+            },
+            {
+                "osmid": "industrial-unclassified",
+                "highway": "unclassified",
+                "geometry": LineString([(0, 0), (500, 0)]),
+            },
+        ],
+        crs=27700,
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "built-edge",
+                "feature_type": "circulation-boundary",
+                "name": "Built-up edge",
+                "category": "built-up-edge",
+                "source_id": "built-edge-source",
+                "geometry": LineString(
+                    [(-500, -500), (500, -500), (500, 500), (-500, 500), (-500, -500)]
+                ),
+            }
+        ],
+        crs=27700,
+    )
+
+    urban = derive_urban_structure(places, network, context=context)
+
+    assert urban.low_traffic_areas.empty
+    assert urban.low_traffic_area_portals.empty
+
+
+def test_urban_spines_are_pruned_until_every_terminus_reaches_primary_network() -> None:
+    places = gpd.GeoDataFrame(
+        [
+            {
+                "place_id": "urban-centre",
+                "name": "Urban Centre",
+                "kind": "community",
+                "place_class": "town",
+                "geometry": Point(0, 0),
+            }
+        ],
+        crs=27700,
+    )
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "local-street",
+                "highway": "residential",
+                "geometry": LineString([(-100, 0), (100, 0)]),
+            }
+        ],
+        crs=27700,
+    )
+    official = gpd.GeoDataFrame(
+        [
+            {
+                "official_feature_id": feature_id,
+                "official_classification": classification,
+                "source_id": "official-roads",
+                "effective_date": "2026-01-01",
+                "licence": "OGL v3.0",
+                "content_fingerprint": "abc123",
+                "geometry": geometry,
+            }
+            for feature_id, classification, geometry in (
+                ("primary-a", "a-road", LineString([(-1000, 0), (1000, 0)])),
+                ("anchored-b", "b-road", LineString([(0, 0), (0, 1000)])),
+                ("orphan-b", "b-road", LineString([(500, 0), (500, 600)])),
+            )
+        ],
+        crs=27700,
+    )
+    context = gpd.GeoDataFrame(
+        [
+            {
+                "evidence_id": "ncn-primary",
+                "feature_type": "ncn-route",
+                "name": "NCN",
+                "category": "National Cycle Network",
+                "source_id": "ncn-source",
+                "network_scope": "urban",
+                "geometry": LineString([(-1000, 1000), (1000, 1000)]),
+            }
+        ],
+        crs=27700,
+    )
+
+    urban = derive_urban_structure(places, network, official, context)
+
+    assert set(urban.spines["official_feature_id"]) == {"primary-a", "anchored-b"}
+
+
+def test_cross_spine_near_miss_is_closed_to_governed_primary_network() -> None:
+    connectors = gpd.GeoDataFrame(
+        [
+            {
+                "cross_spine_connector_id": "connector",
+                "distance_km": 0.1,
+                "provenance": "{}",
+                "geometry_semantics": "validated connector",
+                "geometry": LineString([(0, 0), (100, 0)]),
+            }
+        ],
+        crs=27700,
+    )
+    urban_spines = gpd.GeoDataFrame(geometry=[], crs=27700)
+    strategic_spines = gpd.GeoDataFrame(
+        [
+            {
+                "spine_id": "left-primary",
+                "geometry": LineString([(-30, -100), (-30, 100)]),
+            },
+            {
+                "spine_id": "right-primary",
+                "geometry": LineString([(130, -100), (130, 100)]),
+            },
+        ],
+        crs=27700,
+    )
+    context = gpd.GeoDataFrame(
+        columns=["feature_type", "geometry"],
+        geometry="geometry",
+        crs=27700,
+    )
+    boundary = gpd.GeoDataFrame(geometry=[], crs=27700)
+
+    closed = _close_public_route_termini(
+        connectors,
+        urban_spines,
+        strategic_spines,
+        context,
+        boundary,
+    ).iloc[0]
+    provenance = json.loads(closed["provenance"])
+
+    assert closed.geometry.distance(strategic_spines.geometry.iloc[0]) == 0
+    assert closed.geometry.distance(strategic_spines.geometry.iloc[1]) == 0
+    assert provenance["terminus_closures"] == [
+        {"distance_m": 30.0, "target_id": "left-primary"},
+        {"distance_m": 30.0, "target_id": "right-primary"},
+    ]
 
 
 def test_urban_portals_do_not_create_internal_peer_to_peer_routes() -> None:

@@ -11,7 +11,9 @@ from numbers import Number
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import MultiPoint
+from shapely import get_parts
+from shapely.geometry import LineString, MultiPoint, Point
+from shapely.ops import nearest_points, unary_union
 
 from satn.agents import AgentDecisionResolver, AgentRuntimeSource, CompilationGate
 from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
@@ -50,6 +52,8 @@ from satn.urban_community import assess_urban_community_access, urban_community_
 from satn.urban_school import assess_urban_school_access
 
 URBAN_A_ROAD_SOURCE_ALIGNMENT_TOLERANCE_M = 100.0
+PUBLIC_ROUTE_TERMINUS_TOLERANCE_M = 25.0
+PUBLIC_ROUTE_TERMINUS_CLOSURE_MAX_M = 100.0
 
 
 @dataclass
@@ -183,11 +187,19 @@ def compile_network(
         official_road_classification,
         context,
         source.get("observed_through_traffic"),
+        source["boundary"],
     )
     urban_spines = urban.spines
     urban_classification_unknowns = urban.classification_unknowns
     low_traffic_areas = urban.low_traffic_areas
     low_traffic_area_portals = urban.low_traffic_area_portals
+    cross_spine_connectors = _close_public_route_termini(
+        cross_spine_connectors,
+        urban_spines,
+        strategic_spines,
+        context,
+        source["boundary"],
+    )
     urban_community_access = assess_urban_community_access(
         urban_communities,
         source["network"],
@@ -877,6 +889,118 @@ def _urban_a_road_spine_coverage(
         diagnostics,
         TrafficLight.GREEN if unmatched_length_m <= 0.01 else TrafficLight.RED,
     )
+
+
+def _close_public_route_termini(
+    cross_spine_connectors: gpd.GeoDataFrame,
+    urban_spines: gpd.GeoDataFrame,
+    strategic_spines: gpd.GeoDataFrame,
+    context: gpd.GeoDataFrame,
+    council_boundary: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    if cross_spine_connectors.empty:
+        return cross_spine_connectors
+    crs = cross_spine_connectors.crs
+    projected_cross = cross_spine_connectors.to_crs(27700).copy()
+    public_linework = unary_union(
+        [
+            projected_cross.geometry.union_all(),
+            urban_spines.to_crs(27700).geometry.union_all(),
+        ]
+    )
+    primary_rows: list[tuple[str, object]] = [
+        (str(row["spine_id"]), row.geometry)
+        for _, row in strategic_spines.to_crs(27700).iterrows()
+    ]
+    feature_type = context.get("feature_type", pd.Series("", index=context.index, dtype=object))
+    context_primary = context[
+        feature_type.isin({"a-road-spine", "ncn-route", "ncn-link"})
+    ].to_crs(27700)
+    primary_rows.extend(
+        (
+            str(row.get("evidence_id") or row.get("source_id") or f"context-primary-{index}"),
+            row.geometry,
+        )
+        for index, row in context_primary.iterrows()
+    )
+    if (
+        not council_boundary.empty
+        and "geometry" in council_boundary.columns
+        and council_boundary.crs is not None
+    ):
+        for index, row in council_boundary.to_crs(27700).iterrows():
+            geometry = row.geometry
+            primary_rows.append(
+                (
+                    f"council-boundary-{index}",
+                    geometry.boundary
+                    if geometry.geom_type in {"Polygon", "MultiPolygon"}
+                    else geometry,
+                )
+            )
+    primary_network = unary_union([geometry for _, geometry in primary_rows])
+    incident: dict[tuple[int, int], int] = {}
+    endpoint_points: dict[tuple[int, int], Point] = {}
+    for geometry in get_parts(public_linework):
+        if not isinstance(geometry, LineString) or geometry.length <= 0.01:
+            continue
+        for coordinate in (geometry.coords[0], geometry.coords[-1]):
+            endpoint = (
+                round(coordinate[0] / PUBLIC_ROUTE_TERMINUS_TOLERANCE_M),
+                round(coordinate[1] / PUBLIC_ROUTE_TERMINUS_TOLERANCE_M),
+            )
+            incident[endpoint] = incident.get(endpoint, 0) + 1
+            endpoint_points[endpoint] = Point(coordinate)
+    for endpoint, degree in incident.items():
+        if degree != 1:
+            continue
+        point = endpoint_points[endpoint]
+        primary_distance_m = float(point.distance(primary_network))
+        if primary_distance_m <= PUBLIC_ROUTE_TERMINUS_TOLERANCE_M:
+            continue
+        if primary_distance_m > PUBLIC_ROUTE_TERMINUS_CLOSURE_MAX_M:
+            raise ValueError(
+                "public route terminus is not bounded by primary network: "
+                f"{point.x:.3f},{point.y:.3f} is {primary_distance_m:.1f} m away"
+            )
+        cross_distances = projected_cross.geometry.distance(point)
+        row_index = cross_distances.idxmin()
+        if float(cross_distances.loc[row_index]) > PUBLIC_ROUTE_TERMINUS_TOLERANCE_M:
+            raise ValueError(
+                "unbounded public route terminus belongs to non-connector linework: "
+                f"{point.x:.3f},{point.y:.3f}"
+            )
+        target_id, target_geometry = min(
+            primary_rows,
+            key=lambda item: (point.distance(item[1]), item[0]),
+        )
+        _, target_point = nearest_points(point, target_geometry)
+        closure = LineString([point.coords[0], target_point.coords[0]])
+        projected_cross.at[row_index, "geometry"] = unary_union(
+            [projected_cross.at[row_index, "geometry"], closure]
+        )
+        projected_cross.at[row_index, "distance_km"] = round(
+            float(projected_cross.at[row_index, "distance_km"])
+            + primary_distance_m / 1000.0,
+            3,
+        )
+        provenance = json.loads(str(projected_cross.at[row_index, "provenance"]))
+        closures = provenance.setdefault("terminus_closures", [])
+        closures.append(
+            {
+                "target_id": target_id,
+                "distance_m": round(primary_distance_m, 3),
+            }
+        )
+        projected_cross.at[row_index, "provenance"] = json.dumps(
+            provenance,
+            sort_keys=True,
+        )
+        projected_cross.at[row_index, "geometry_semantics"] = (
+            f"{projected_cross.at[row_index, 'geometry_semantics']}; "
+            "bounded source-alignment closure to governed primary network"
+        )
+    return projected_cross.to_crs(crs)
 
 
 def _rural_communities(

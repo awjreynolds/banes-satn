@@ -37,7 +37,7 @@ source:
     maximum_component_association_m: 250
     component_association_tolerance_m: 10
     minimum_minor_street_length_km: 10
-    minimum_junction_count: 70
+    minimum_junction_count: 90
   urban_scope_buffer_km: 2
   official_road_classification:
     path: ../data/governed/banes-os-open-roads-2026-04-07.geojson

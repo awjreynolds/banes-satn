@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 
 import geopandas as gpd
@@ -37,6 +38,10 @@ URBAN_STREET_FABRIC_CLASSES = {
 }
 URBAN_STREET_FABRIC_BUFFER_M = 150.0
 URBAN_STREET_CLUSTER_OPENING_M = 200.0
+URBAN_SPINE_TERMINUS_TOLERANCE_M = 25.0
+LTA_BOUNDARY_ALIGNMENT_TOLERANCE_M = 1.0
+LTA_MAXIMUM_UNGOVERNED_BOUNDARY_SHARE = 0.01
+LTA_RESIDENTIAL_STREET_CLASSES = {"living_street", "residential"}
 
 
 @dataclass(frozen=True)
@@ -55,6 +60,7 @@ class _MinorStreetEvidence:
     observed_through_traffic: bool
     observed_evidence_ids: tuple[str, ...]
     observed_source_ids: tuple[str, ...]
+    street_classes: tuple[str, ...]
     geometry: LineString
 
 
@@ -64,6 +70,7 @@ def derive_urban_structure(
     official_classification: gpd.GeoDataFrame | None = None,
     context: gpd.GeoDataFrame | None = None,
     observed_through_traffic: gpd.GeoDataFrame | None = None,
+    council_boundary: gpd.GeoDataFrame | None = None,
 ) -> UrbanStructure:
     columns = [
         "structure_id",
@@ -140,10 +147,13 @@ def derive_urban_structure(
     if highway is None:
         highway = [""] * len(projected_network)
     projected_network["_classes"] = [_tag_values(value) for value in highway]
-    main, spine_rows, unknown_rows = _official_urban_evidence(
+    _, spine_rows, unknown_rows = _official_urban_evidence(
         official_classification,
         urban_zone,
     )
+    primary_network = _primary_network_geometry(context, council_boundary, spine_rows)
+    spine_rows = _retain_anchored_spine_rows(spine_rows, primary_network)
+    main = _urban_spine_boundaries(spine_rows)
     circulation_boundaries = _qualifying_circulation_boundaries(context, urban_zone)
     boundary_frames = [frame for frame in (main, circulation_boundaries) if not frame.empty]
     boundary_network = (
@@ -283,6 +293,110 @@ def _official_urban_evidence(
     )
 
 
+def _primary_network_geometry(
+    context: gpd.GeoDataFrame | None,
+    council_boundary: gpd.GeoDataFrame | None,
+    spine_rows: list[dict[str, object]],
+) -> object:
+    geometries = [
+        row["geometry"]
+        for row in spine_rows
+        if row["official_classification"] == OfficialRoadClassification.A_ROAD.value
+    ]
+    if context is not None and not context.empty:
+        feature_type = context.get(
+            "feature_type", pd.Series("", index=context.index, dtype=object)
+        )
+        primary = context[
+            feature_type.isin({"a-road-spine", "ncn-route", "ncn-link", "strategic-spine"})
+        ]
+        geometries.extend(primary.to_crs(27700).geometry.tolist())
+    if council_boundary is not None and not council_boundary.empty:
+        for geometry in council_boundary.to_crs(27700).geometry:
+            geometries.append(
+                geometry.boundary if geometry.geom_type in {"Polygon", "MultiPolygon"} else geometry
+            )
+    return unary_union(geometries)
+
+
+def _retain_anchored_spine_rows(
+    spine_rows: list[dict[str, object]],
+    primary_network: object,
+) -> list[dict[str, object]]:
+    if not spine_rows or primary_network is None or primary_network.is_empty:
+        return []
+    noded = unary_union([row["geometry"] for row in spine_rows])
+    edges = [
+        geometry
+        for geometry in continuous_linework(noded)
+        if isinstance(geometry, LineString) and geometry.length > TOPOLOGY_PRECISION_GRID_M
+    ]
+    endpoints = [
+        (_coordinate(geometry.coords[0]), _coordinate(geometry.coords[-1]))
+        for geometry in edges
+    ]
+    active = set(range(len(edges)))
+    while active:
+        incident: dict[str, list[int]] = defaultdict(list)
+        for edge_index in active:
+            for endpoint in endpoints[edge_index]:
+                incident[endpoint].append(edge_index)
+        dangling = {
+            edge_indexes[0]
+            for endpoint, edge_indexes in incident.items()
+            if len(edge_indexes) == 1
+            and Point(tuple(float(value) for value in endpoint.split(":"))).distance(
+                primary_network
+            )
+            > URBAN_SPINE_TERMINUS_TOLERANCE_M
+        }
+        if not dangling:
+            break
+        active.difference_update(dangling)
+    if not active:
+        return []
+    retained_linework = unary_union([edges[index] for index in sorted(active)])
+    retained_rows: list[dict[str, object]] = []
+    for row in spine_rows:
+        for raw_geometry in continuous_linework(row["geometry"].intersection(retained_linework)):
+            geometry = _normalise_topology(raw_geometry)
+            if geometry.length <= TOPOLOGY_PRECISION_GRID_M:
+                continue
+            retained = row | {"geometry": geometry}
+            retained["structure_id"] = _geometry_id(
+                "urban-spine",
+                geometry,
+                retained["source_id"],
+                retained["official_feature_id"],
+                retained["official_classification"],
+                retained["content_fingerprint"],
+            )
+            retained_rows.append(retained)
+    return retained_rows
+
+
+def _urban_spine_boundaries(
+    spine_rows: list[dict[str, object]],
+) -> gpd.GeoDataFrame:
+    return gpd.GeoDataFrame(
+        [
+            {
+                "boundary_id": row["structure_id"],
+                "boundary_name": (
+                    f"{_classification_name(str(row['official_classification']))} "
+                    f"({row['official_feature_id']})"
+                ),
+                "boundary_kind": "urban-main-road-spine",
+                "geometry": row["geometry"],
+            }
+            for row in spine_rows
+        ],
+        columns=["boundary_id", "boundary_name", "boundary_kind", "geometry"],
+        geometry="geometry",
+        crs=27700,
+    )
+
+
 def _minor_road_areas(
     minor: gpd.GeoDataFrame,
     boundaries: gpd.GeoDataFrame,
@@ -306,6 +420,10 @@ def _minor_road_areas(
     )
     if street_fabric is None or street_fabric.is_empty:
         return [], []
+    governed_boundary_linework = unary_union(boundaries.geometry.tolist())
+    governed_boundary_zone = governed_boundary_linework.buffer(
+        LTA_BOUNDARY_ALIGNMENT_TOLERANCE_M
+    )
     dividing_linework = [street_fabric.boundary]
     for geometry in boundaries.geometry:
         dividing_linework.extend(continuous_linework(geometry.intersection(street_fabric)))
@@ -341,11 +459,24 @@ def _minor_road_areas(
             )
         if cell is None or cell.is_empty or cell.area <= 1.0:
             continue
+        uncovered_boundary_m = float(
+            cell.boundary.difference(governed_boundary_zone).length
+        )
+        if uncovered_boundary_m > max(
+            LTA_BOUNDARY_ALIGNMENT_TOLERANCE_M,
+            float(cell.boundary.length) * LTA_MAXIMUM_UNGOVERNED_BOUNDARY_SHARE,
+        ):
+            continue
         evidence = _minor_evidence_in_cell(minor, cell, governed_observations)
         component_records = [
             record for component in _connected_components(evidence) for record in component
         ]
         if len(component_records) < 2:
+            continue
+        if not any(
+            set(record.street_classes) & LTA_RESIDENTIAL_STREET_CLASSES
+            for record in component_records
+        ):
             continue
         source_ids = sorted({record.source_id for record in component_records})
         structure_id = _geometry_id("low-traffic-area", cell, *source_ids)
@@ -437,6 +568,7 @@ def _minor_evidence_in_cell(
                     ),
                     observed_evidence_ids=observed_evidence_ids,
                     observed_source_ids=observed_source_ids,
+                    street_classes=tuple(sorted(_tag_values(row.get("highway")))),
                     geometry=geometry,
                 )
             )

@@ -295,7 +295,9 @@ def test_failed_final_install_rolls_back_the_previous_complete_output(
 
 
 def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Path) -> None:
-    result = compile(prepared_governed_urban_config(tmp_path))
+    config = prepared_governed_urban_config(tmp_path)
+    config.compilation.agent.review_statuses = ()
+    result = compile(config)
     network = json.loads(result.artifacts["geojson"].read_text())
     run = json.loads(result.artifacts["run"].read_text())
     urban_spines = [
@@ -341,14 +343,13 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
 
     assert network["urban_classification_status"] == "explicit-unknown"
     assert run["urban_classification_status"] == "explicit-unknown"
-    assert run["layer_counts"]["urban_spines"] == 5
+    assert run["layer_counts"]["urban_spines"] == 4
     assert run["layer_counts"]["urban_classification_unknowns"] == 1
     assert {feature["properties"]["official_classification"] for feature in urban_spines} == {
         "a-road",
         "b-road",
-        "classified-unnumbered",
     }
-    assert len({feature["id"] for feature in urban_spines}) == 5
+    assert len({feature["id"] for feature in urban_spines}) == 4
     assert all(feature["id"].startswith("urban-spine-") for feature in urban_spines)
     assert all(
         feature["properties"]["source_id"] == "tiny-council-highways"
@@ -358,38 +359,19 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     )
     assert len(classification_unknowns) == 1
     assert classification_unknowns[0]["properties"]["classification_status"] == ("explicit-unknown")
-    assert len(candidate_areas) == 1
-    assert candidate_areas[0]["properties"]["status"] == "candidate"
-    assert candidate_areas[0]["properties"]["intervention_need"] == ("observed-through-traffic")
-    assert json.loads(
-        candidate_areas[0]["properties"]["observed_through_traffic_evidence_ids"]
-    ) == ["traffic-study-1"]
-    assert json.loads(candidate_areas[0]["properties"]["observed_through_traffic_source_ids"]) == [
-        "tiny-council-traffic-study"
-    ]
-    assert candidate_areas[0]["properties"]["permeability_representation"] == (
-        "area-no-internal-centreline"
-    )
-    assert len(area_portals) == candidate_areas[0]["properties"]["portal_count"]
-    assert all(
-        portal["id"] == portal["properties"]["portal_id"]
-        and portal["id"].startswith("low-traffic-area-portal-")
-        for portal in area_portals
-    )
-    assert {portal["properties"]["area_id"] for portal in area_portals} == {
-        candidate_areas[0]["id"]
-    }
+    assert not candidate_areas
+    assert not area_portals
     assert len(school_obligations) == 1
     urban_school = school_obligations[0]
     assert urban_school["geometry"]["type"] == "Point"
     assert urban_school["properties"]["network_role"] == ("urban-school-access-obligation")
-    assert urban_school["properties"]["service_status"] == "served"
-    assert urban_school["properties"]["low_traffic_area_id"] == candidate_areas[0]["id"]
-    assert urban_school["properties"]["portal_id"] in {portal["id"] for portal in area_portals}
+    assert urban_school["properties"]["service_status"] == "network-gap"
+    assert urban_school["properties"].get("low_traffic_area_id") is None
+    assert urban_school["properties"].get("portal_id") is None
     assert urban_school["properties"]["geometry_semantics"] == (
         "area-permeability-no-internal-centreline"
     )
-    assert json.loads(urban_school["properties"]["fabric_source_ids"])
+    assert json.loads(urban_school["properties"]["fabric_source_ids"]) == []
     assert not school_connections
     assert len(school_street_assessments) == 1
     school_street = school_street_assessments[0]
@@ -416,22 +398,18 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert {
         "urban_spines",
         "urban_classification_unknowns",
-        "candidate_low_traffic_areas",
-        "low_traffic_area_portals",
         "school_street_assessments",
     } <= published_layers
-    published_portals = gpd.read_file(
-        result.artifacts["geopackage"], layer="low_traffic_area_portals"
-    )
-    assert {portal["id"] for portal in area_portals} == set(published_portals["portal_id"])
+    assert "candidate_low_traffic_areas" not in published_layers
+    assert "low_traffic_area_portals" not in published_layers
     published_obligations = gpd.read_file(
         result.artifacts["geopackage"], layer="access_obligations"
     )
     published_urban_school = published_obligations[
         published_obligations["network_role"] == "urban-school-access-obligation"
     ].iloc[0]
-    assert published_urban_school["low_traffic_area_id"] == candidate_areas[0]["id"]
-    assert published_urban_school["portal_id"] == urban_school["properties"]["portal_id"]
+    assert pd.isna(published_urban_school["low_traffic_area_id"])
+    assert pd.isna(published_urban_school["portal_id"])
     assert published_urban_school["geometry_semantics"] == (
         "area-permeability-no-internal-centreline"
     )
@@ -442,8 +420,19 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert list(published_school_streets["rationale"]) == [school_street["properties"]["rationale"]]
     review_html = result.artifacts["review_map"].read_text()
     review_js = (result.artifacts["review_map"].parent / "assets/review-map.js").read_text()
+    review_css_path = result.artifacts["review_map"].parent / "assets/review-map.css"
+    css_digest = hashlib.sha256(review_css_path.read_bytes()).hexdigest()[:12]
+    js_digest = hashlib.sha256(review_js.encode()).hexdigest()[:12]
     assert "Urban Main-Road Spines" in review_html
-    assert 'href="assets/review-map.css?v=legend-1"' in review_html
+    assert f'href="assets/review-map.{css_digest}.css"' in review_html
+    assert f'src="assets/review-map.{js_digest}.js"' in review_html
+    assert "?v=" not in review_html
+    assert (
+        result.artifacts["review_map"].parent / f"assets/review-map.{css_digest}.css"
+    ).read_bytes() == review_css_path.read_bytes()
+    assert (
+        result.artifacts["review_map"].parent / f"assets/review-map.{js_digest}.js"
+    ).read_text() == review_js
     assert 'aria-label="Map legend"' in review_html
     assert "Cross-spine connector" in review_html
     assert "Candidate low-traffic area" in review_html

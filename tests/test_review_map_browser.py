@@ -36,6 +36,9 @@ def test_mobile_map_has_a_visible_compact_legend(tmp_path: Path) -> None:
 
         legend = page.get_by_role("region", name="Map legend")
         assert legend.is_visible()
+        assert legend.get_attribute("open") is None
+        page.get_by_text("Map legend", exact=True).click()
+        assert legend.get_attribute("open") is not None
         legend_text = legend.inner_text()
         assert all(
             label in legend_text
@@ -44,7 +47,6 @@ def test_mobile_map_has_a_visible_compact_legend(tmp_path: Path) -> None:
                 "NCN spine",
                 "Access connection",
                 "Cross-spine connector",
-                "Branch meeting",
                 "Urban through-road",
                 "Candidate low-traffic area",
                 "Served community",
@@ -87,11 +89,19 @@ def test_accessible_hover_pin_layers_and_criteria(tmp_path: Path) -> None:
         )
         assert layer_ids.index("places") < layer_ids.index("access-obligations")
         assert "low-traffic-area-outlines" in layer_ids
+        fill_opacity = page.evaluate(
+            "window.SATN_REVIEW_MAP.getPaintProperty('low-traffic-areas', 'fill-opacity')"
+        )
+        assert (
+            0.15
+            <= fill_opacity
+            <= 0.3
+        )
         assert (
             page.evaluate(
-                "window.SATN_REVIEW_MAP.getPaintProperty('low-traffic-areas', 'fill-opacity')"
+                "window.SATN_REVIEW_MAP.getPaintProperty('osm', 'raster-saturation')"
             )
-            >= 0.4
+            <= -0.5
         )
         card = page.locator('[data-feature-id^="spine-access-"]').first
         assert card.get_attribute("data-feature-id").startswith("spine-access-")
