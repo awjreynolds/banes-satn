@@ -25,7 +25,9 @@ PROJECT = Path(__file__).parents[1]
 
 
 def base_config() -> CouncilConfig:
-    return CouncilConfig.from_yaml(PROJECT / "config" / "banes.yaml")
+    config = CouncilConfig.from_yaml(PROJECT / "config" / "banes.yaml")
+    config.source.national_elevation = None
+    return config
 
 
 def source_frames() -> OSMData:
