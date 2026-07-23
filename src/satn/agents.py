@@ -4,18 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import signal
+import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from threading import Lock
+from threading import Lock, current_thread, main_thread
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from satn.models import (
-    AgentAttempt,
     AgentConfig,
     AgentDecisionAction,
     AgentDecisionChoice,
@@ -24,80 +25,37 @@ from satn.models import (
     AgentDecisionResponse,
     AgentRecord,
     AgentReviewDecision,
+    AgentRuntimeDecisionResponse,
     DivergenceRecord,
     TrafficLight,
 )
 from satn.models import (
-    AgentCritique as RoleReview,
-)
-from satn.models import (
     AgentFinding as ChallengeFinding,
-)
-from satn.models import (
-    AgentProposal as RouteProposal,
-)
-from satn.models import (
-    AgentSynthesis as RouteSynthesis,
 )
 
 
 class AgentRole(StrEnum):
-    PROPOSER = "proposer"
-    EVIDENCE_CRITIC = "evidence-critic"
-    NETWORK_RED_TEAM = "network-red-team"
-    SYNTHESISER = "synthesiser"
-    DIVERGENCE = "divergence"
-
-
-class EvidenceFacts(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    from_place: str
-    to_place: str
-    target_role: str | None = None
-    selection_reason: str = ""
-    evidence_ids: tuple[str, ...] = ()
-
-
-class EvidencePacket(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    schema_version: str = "1"
-    connection_id: str
-    governing_status: TrafficLight
-    current_role: str | None
-    available_roles: tuple[str, ...]
-    facts: EvidenceFacts
-    deterministic_findings: tuple[ChallengeFinding, ...]
-    prior_feedback: tuple[ChallengeFinding, ...] = ()
-    attempt: int
-
-
-class SynthesisInput(BaseModel):
-    packet: EvidencePacket
-    proposal: RouteProposal
-    critique: RoleReview
-    red_team: RoleReview
-
-
-class DivergenceInput(BaseModel):
-    connection_id: str
-    status: str
-    atm_feature_ids: list[str]
-    overlap_ratio: float
-    attempt: int = 1
-
-
-class DivergenceAssessment(BaseModel):
-    explanation: str
-    resolution: str
-    resolved: bool
+    DECISION = "decision"
 
 
 @dataclass
 class RuntimeReply:
     output: BaseModel
     tokens: int = 0
+
+
+@dataclass(frozen=True)
+class ResolvedAgentDecision:
+    response: AgentDecisionResponse
+    choice: AgentDecisionChoice
+    responder_mode: Literal["caller", "direct-runtime"]
+    runtime: str
+    model: str
+    usage: dict[str, int]
+
+
+class _RuntimeDeadlineExceeded(BaseException):
+    pass
 
 
 class AgentRuntime(ABC):
@@ -147,10 +105,16 @@ class FakeAgentRuntime(AgentRuntime):
     """Deterministic adapter with optional scripted responses for contract tests."""
 
     name = "fake"
-    model = "deterministic-roles-v1"
+    model = "deterministic-choices-v1"
 
-    def __init__(self, scripts: dict[AgentRole, list[object]] | None = None):
+    def __init__(
+        self,
+        scripts: dict[AgentRole, list[object]] | None = None,
+        *,
+        tokens_per_reply: int = 1,
+    ):
         self.scripts = defaultdict(list, scripts or {})
+        self.tokens_per_reply = tokens_per_reply
 
     def run(
         self,
@@ -162,59 +126,27 @@ class FakeAgentRuntime(AgentRuntime):
             scripted = self.scripts[role].pop(0)
             if isinstance(scripted, Exception):
                 raise scripted
-            return RuntimeReply(output_type.model_validate(scripted), tokens=1)
+            if isinstance(scripted, dict) and scripted.get("request_id") == "$request":
+                request = AgentDecisionRequest.model_validate(payload)
+                scripted = {**scripted, "request_id": request.request_id}
+            return RuntimeReply(
+                output_type.model_validate(scripted),
+                tokens=self.tokens_per_reply,
+            )
         output = self._default(role, payload)
-        return RuntimeReply(output_type.model_validate(output), tokens=1)
+        return RuntimeReply(
+            output_type.model_validate(output),
+            tokens=self.tokens_per_reply,
+        )
 
     def _default(self, role: AgentRole, payload: BaseModel) -> dict[str, object]:
-        if role == AgentRole.DIVERGENCE:
-            divergence = DivergenceInput.model_validate(payload)
-            return {
-                "explanation": (
-                    f"{divergence.status.title()} identified from the governed geometry comparison."
-                ),
-                "resolution": (
-                    "No correction is required."
-                    if divergence.status == "match"
-                    else "Retain for red-team inspection; agreement is not assumed correct."
-                ),
-                "resolved": divergence.status == "match",
-            }
-        if role == AgentRole.PROPOSER:
-            packet = EvidencePacket.model_validate(payload)
-            return {
-                "selected_role": packet.current_role,
-                "rationale": "Use the best current OSM alignment under the governed rules.",
-                "evidence_ids": ["osm-network", *packet.facts.evidence_ids],
-            }
-        if role in {AgentRole.EVIDENCE_CRITIC, AgentRole.NETWORK_RED_TEAM}:
-            packet = EvidencePacket.model_validate(payload)
-            findings = [finding.model_dump() for finding in packet.deterministic_findings]
-            return {
-                "summary": "Mandatory findings remain." if findings else "No blocking finding.",
-                "findings": findings,
-            }
-        synthesis = SynthesisInput.model_validate(payload)
-        findings = [*synthesis.critique.findings, *synthesis.red_team.findings]
-        blocking = [finding for finding in findings if finding.severity == "blocking"]
-        if not blocking:
-            return {
-                "decision": "accept",
-                "selected_role": synthesis.proposal.selected_role,
-                "rationale": "Proposal passes deterministic and adversarial review.",
-            }
-        alternatives = [
-            role
-            for role in synthesis.packet.available_roles
-            if role != synthesis.packet.current_role
-        ]
-        return {
-            "decision": "revise" if alternatives else "gap",
-            "selected_role": alternatives[0] if alternatives else None,
-            "rationale": (
-                "Try an untested alignment." if alternatives else "No viable revision remains."
-            ),
-        }
+        if role != AgentRole.DECISION:
+            raise ValueError(f"unsupported bounded runtime role: {role}")
+        request = AgentDecisionRequest.model_validate(payload)
+        selected = next(
+            choice for choice in request.choices if choice.choice_id != "terminate"
+        )
+        return {"request_id": request.request_id, "choice_id": selected.choice_id}
 
 
 class PydanticAIRuntime(AgentRuntime):
@@ -242,11 +174,11 @@ class PydanticAIRuntime(AgentRuntime):
             output_type=output_type,
             instructions=_ROLE_INSTRUCTIONS[role],
             model_settings={"max_tokens": self.max_tokens},
-            retries=1,
+            retries=0,
         )
         result = agent.run_sync(
             payload.model_dump_json(),
-            usage_limits=UsageLimits(total_tokens_limit=self.max_tokens, request_limit=2),
+            usage_limits=UsageLimits(total_tokens_limit=self.max_tokens, request_limit=1),
         )
         usage = result.usage()
         return RuntimeReply(result.output, tokens=int(usage.total_tokens or 0))
@@ -318,6 +250,16 @@ class AgentDecisionResolver:
         self,
         request: AgentDecisionRequest,
     ) -> tuple[AgentDecisionResponse, AgentDecisionChoice]:
+        resolved = self.ledger_choice(request)
+        if resolved is None:
+            self.validation = "response-required"
+            raise AgentDecisionRequired(request, self)
+        return resolved
+
+    def ledger_choice(
+        self,
+        request: AgentDecisionRequest,
+    ) -> tuple[AgentDecisionResponse, AgentDecisionChoice] | None:
         response = next(
             (
                 candidate
@@ -330,7 +272,19 @@ class AgentDecisionResolver:
             unconsumed = {
                 candidate.request_id for candidate in self.ledger.responses
             } - self.consumed_request_ids
-            self.validation = "unknown-request" if unconsumed else "response-required"
+            if unconsumed:
+                self.validation = "unknown-request"
+                raise AgentDecisionRequired(request, self)
+            return None
+        return response, self.validate_response(request, response)
+
+    def validate_response(
+        self,
+        request: AgentDecisionRequest,
+        response: AgentDecisionResponse,
+    ) -> AgentDecisionChoice:
+        if response.request_id != request.request_id:
+            self.validation = "response-for-another-request"
             raise AgentDecisionRequired(request, self)
         if response.dependency_fingerprint != request.dependency_fingerprint:
             self.validation = "stale-fingerprint"
@@ -342,7 +296,7 @@ class AgentDecisionResolver:
         if choice is None:
             self.validation = "unknown-choice"
             raise AgentDecisionRequired(request, self)
-        return response, choice
+        return choice
 
     def accept(
         self,
@@ -355,6 +309,96 @@ class AgentDecisionResolver:
             self.applied_records.append(record)
         else:
             self.applied_divergence_records.append(record)
+
+
+def resolve_agent_decision(
+    request: AgentDecisionRequest,
+    resolver: AgentDecisionResolver,
+    runtime_source: AgentRuntimeSource,
+    config: AgentConfig,
+) -> ResolvedAgentDecision:
+    """Resolve one menu through a caller ledger or one deadline-bound runtime call."""
+    ledger_choice = resolver.ledger_choice(request)
+    if ledger_choice is not None:
+        response, choice = ledger_choice
+        return ResolvedAgentDecision(
+            response=response,
+            choice=choice,
+            responder_mode="caller",
+            runtime="caller",
+            model="decision-ledger",
+            usage={"requests": 0, "tokens": 0},
+        )
+    if runtime_source is None or config.response_mode != "direct-runtime":
+        resolver.validation = "response-required"
+        raise AgentDecisionRequired(request, resolver)
+    try:
+        runtime = materialize_agent_runtime(runtime_source)
+        reply = _run_with_deadline(
+            lambda: runtime.run(
+                AgentRole.DECISION,
+                request,
+                AgentRuntimeDecisionResponse,
+            ),
+            config.deadline_seconds,
+        )
+        direct_response = AgentRuntimeDecisionResponse.model_validate(reply.output)
+        if isinstance(reply.tokens, bool) or not isinstance(reply.tokens, int):
+            raise TypeError("runtime token usage must be an integer")
+    except _RuntimeDeadlineExceeded:
+        resolver.validation = "runtime-timeout"
+        raise AgentDecisionRequired(request, resolver) from None
+    except (AttributeError, TypeError, ValueError, ValidationError):
+        resolver.validation = "runtime-schema-failure"
+        raise AgentDecisionRequired(request, resolver) from None
+    except Exception:
+        resolver.validation = "runtime-unavailable"
+        raise AgentDecisionRequired(request, resolver) from None
+    if reply.tokens < 0 or reply.tokens > config.max_tokens:
+        resolver.validation = "runtime-token-limit"
+        raise AgentDecisionRequired(request, resolver)
+    if direct_response.request_id != request.request_id:
+        resolver.validation = "response-for-another-request"
+        raise AgentDecisionRequired(request, resolver)
+    response = AgentDecisionResponse(
+        request_id=direct_response.request_id,
+        dependency_fingerprint=request.dependency_fingerprint,
+        choice_id=direct_response.choice_id,
+    )
+    choice = resolver.validate_response(request, response)
+    return ResolvedAgentDecision(
+        response=response,
+        choice=choice,
+        responder_mode="direct-runtime",
+        runtime=runtime.name,
+        model=runtime.model,
+        usage={"requests": 1, "tokens": reply.tokens},
+    )
+
+
+def _run_with_deadline(call: Callable[[], RuntimeReply], seconds: float) -> RuntimeReply:
+    """Interrupt a synchronous runtime call in-process without leaving an orphan worker."""
+    if current_thread() is not main_thread() or not hasattr(signal, "setitimer"):
+        raise _RuntimeDeadlineExceeded("hard deadlines require the compiler main thread")
+
+    def expire(_signum: int, _frame: object) -> None:
+        raise _RuntimeDeadlineExceeded("direct Agent Runtime deadline exceeded")
+
+    started = time.monotonic()
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, expire)
+    previous_timer = signal.setitimer(signal.ITIMER_REAL, seconds)
+    if 0 < previous_timer[0] < seconds:
+        signal.setitimer(signal.ITIMER_REAL, previous_timer[0])
+    try:
+        return call()
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_timer != (0.0, 0.0):
+            elapsed = time.monotonic() - started
+            remaining = max(previous_timer[0] - elapsed, 1e-6)
+            signal.setitimer(signal.ITIMER_REAL, remaining, previous_timer[1])
 
 
 def build_agent_decision_request(
@@ -482,294 +526,96 @@ class CompilationGate:
                 ),
                 initial_role,
             )
-
-        if self.runtime_source is None:
-            scope = {
-                "direct": "spine-access",
-                "cross-spine-connector": "branch-meeting",
-                "gap": "network-gap",
-                "school-access-gap": "urban-school-access-gap",
-            }.get(initial_role or "", "network-decision")
-            findings = _deterministic_findings(
-                facts,
-                initial_role,
-                governing_criterion=governing_criterion,
-                governing_status=governing_status,
-            )
-            request = build_agent_decision_request(
-                compilation_scope=scope,
-                affected_identifiers=[
-                    connection_id,
-                    str(facts.get("from_place") or ""),
-                    str(facts.get("to_place") or ""),
-                ],
-                criterion=governing_criterion,
-                status=governing_status,
-                evidence_references=[
-                    str(value) for value in facts.get("evidence_ids", ())
-                ],
-                findings=findings,
-                choices=_route_decision_choices(
-                    available_roles,
-                    include_candidate_controls=scope == "spine-access",
-                ),
-                review_policy=review.review_policy,
-                governed_input_fingerprint=(
-                    self.decision_resolver.request_context_fingerprint()
-                ),
-            )
-            response, choice = self.decision_resolver.offered_choice(request)
-            action = choice.compiler_action
-            selected_role = action.network_role
-            if action.kind == "terminate":
-                record = _caller_choice_record(
-                    connection_id,
-                    governing_criterion,
-                    review,
-                    request,
-                    response,
-                    choice,
-                    initial_role,
-                    "gap",
-                )
-                self.decision_resolver.accept(response, record)
-                raise AgentCompilationTerminated(self.decision_resolver)
-            if action.kind in {"reject-candidate", "retain-network-gap"}:
-                decision = (
-                    "reject" if action.kind == "reject-candidate" else "gap"
-                )
-                record = _caller_choice_record(
-                    connection_id,
-                    governing_criterion,
-                    review,
-                    request,
-                    response,
-                    choice,
-                    initial_role,
-                    decision,
-                )
-                self.decision_resolver.accept(response, record)
-                return GateOutcome(record, initial_role)
-            if action.kind != "select-network-role" or selected_role not in available_roles:
-                self.decision_resolver.validation = "invalid-action"
-                raise AgentDecisionRequired(request, self.decision_resolver)
-            selected_checks = facts.get("checks_by_role", {}).get(selected_role, {})
-            if selected_role not in {"gap", "school-access-gap"} and any(
-                status == "red" for status in selected_checks.values()
-            ):
-                self.decision_resolver.validation = "mandatory-red"
-                raise AgentDecisionRequired(request, self.decision_resolver)
-            decision = (
-                "gap"
-                if selected_role in {"gap", "school-access-gap"}
-                else deterministic_decision
-            )
-            record = _caller_choice_record(
+        scope = {
+            "direct": "spine-access",
+            "cross-spine-connector": "branch-meeting",
+            "gap": "network-gap",
+            "school-access-gap": "urban-school-access-gap",
+        }.get(initial_role or "", "network-decision")
+        findings = _deterministic_findings(
+            facts,
+            initial_role,
+            governing_criterion=governing_criterion,
+            governing_status=governing_status,
+        )
+        request = build_agent_decision_request(
+            compilation_scope=scope,
+            affected_identifiers=[
+                connection_id,
+                str(facts.get("from_place") or ""),
+                str(facts.get("to_place") or ""),
+            ],
+            criterion=governing_criterion,
+            status=governing_status,
+            evidence_references=[str(value) for value in facts.get("evidence_ids", ())],
+            findings=findings,
+            choices=_route_decision_choices(
+                available_roles,
+                include_candidate_controls=scope in {"spine-access", "branch-meeting"},
+            ),
+            review_policy=review.review_policy,
+            governed_input_fingerprint=(
+                self.decision_resolver.request_context_fingerprint()
+            ),
+        )
+        resolved = resolve_agent_decision(
+            request,
+            self.decision_resolver,
+            self.runtime_source,
+            self.config,
+        )
+        action = resolved.choice.compiler_action
+        selected_role = action.network_role
+        if action.kind == "terminate":
+            record = _choice_record(
                 connection_id,
                 governing_criterion,
                 review,
                 request,
-                response,
-                choice,
-                selected_role,
-                decision,
+                resolved,
+                initial_role,
+                "gap",
             )
-            self.decision_resolver.accept(response, record)
-            return GateOutcome(record, selected_role)
-
-        runtime = self._runtime()
-        attempts: list[AgentAttempt] = []
-        feedback: list[ChallengeFinding] = []
-        current_role = initial_role
-        requests = 0
-        tokens = 0
-        seen: set[str] = set()
-        outcome_reason = "Compilation gate exhausted its bounded attempts."
-
-        for attempt_number in range(1, self.config.max_attempts + 1):
-            findings = _deterministic_findings(facts, current_role)
-            packet = EvidencePacket(
-                connection_id=connection_id,
-                governing_status=governing_status,
-                current_role=current_role,
-                available_roles=tuple(available_roles),
-                facts=EvidenceFacts.model_validate(
-                    {
-                        key: value
-                        for key, value in facts.items()
-                        if key not in {"checks_by_role", "governing_status"}
-                    }
-                ),
-                deterministic_findings=tuple(findings),
-                prior_feedback=tuple(feedback),
-                attempt=attempt_number,
-            )
-            try:
-                proposal, used = self._call(
-                    AgentRole.PROPOSER, packet, RouteProposal, requests, tokens
-                )
-                requests += 1
-                tokens += used
-                proposed_role = proposal.selected_role
-                if proposed_role not in available_roles:
-                    packet = packet.model_copy(
-                        update={
-                            "deterministic_findings": (
-                                *packet.deterministic_findings,
-                                ChallengeFinding(
-                                    code="unknown-alignment",
-                                    severity="blocking",
-                                    message="The proposal selected an unavailable alignment.",
-                                ),
-                            )
-                        }
-                    )
-                else:
-                    current_role = proposed_role
-                    packet = packet.model_copy(
-                        update={
-                            "current_role": current_role,
-                            "deterministic_findings": tuple(
-                                _deterministic_findings(facts, current_role)
-                            ),
-                        }
-                    )
-                critique, used = self._call(
-                    AgentRole.EVIDENCE_CRITIC, packet, RoleReview, requests, tokens
-                )
-                requests += 1
-                tokens += used
-                red_team, used = self._call(
-                    AgentRole.NETWORK_RED_TEAM, packet, RoleReview, requests, tokens
-                )
-                requests += 1
-                tokens += used
-                synthesis_input = SynthesisInput(
-                    packet=packet,
-                    proposal=proposal,
-                    critique=critique,
-                    red_team=red_team,
-                )
-                synthesis, used = self._call(
-                    AgentRole.SYNTHESISER,
-                    synthesis_input,
-                    RouteSynthesis,
-                    requests,
-                    tokens,
-                )
-                requests += 1
-                tokens += used
-            except (ValidationError, ValueError, RuntimeError) as error:
-                requests += 1
-                schema_finding = ChallengeFinding(
-                    code="agent-schema-error",
-                    severity="blocking",
-                    message=str(error),
-                )
-                attempts.append(
-                    AgentAttempt(
-                        attempt=attempt_number,
-                        selected_role=current_role,
-                        findings=[schema_finding],
-                        decision="retry",
-                    )
-                )
-                fingerprint = json.dumps(
-                    attempts[-1].model_dump(exclude={"attempt"}, mode="json"),
-                    sort_keys=True,
-                )
-                if fingerprint in seen:
-                    outcome_reason = "Agent output made no progress after schema rejection."
-                    break
-                seen.add(fingerprint)
-                feedback = [schema_finding]
-                continue
-
-            all_findings = [*packet.deterministic_findings, *critique.findings, *red_team.findings]
-            attempt = AgentAttempt(
-                attempt=attempt_number,
-                proposal=proposal,
-                critique=critique,
-                red_team=red_team,
-                synthesis=synthesis,
-                deterministic_findings=list(packet.deterministic_findings),
-            )
-            attempts.append(attempt)
-            mandatory_pass = not any(finding.severity == "blocking" for finding in all_findings)
-            if (
-                synthesis.decision == "accept"
-                and mandatory_pass
-                and deterministic_outcome == "accept"
-            ):
-                return GateOutcome(
-                    _record(
-                        runtime,
-                        connection_id,
-                        governing_criterion,
-                        "accept",
-                        current_role,
-                        "All mandatory checks and bounded agent reviews passed.",
-                        attempts,
-                        requests,
-                        tokens,
-                        review,
-                    ),
-                    current_role,
-                )
-            if synthesis.decision == "accept" and deterministic_outcome == "gap":
-                outcome_reason = (
-                    "Bounded review completed; the deterministic gap remains authoritative."
-                )
-                break
-            fingerprint = json.dumps(
-                attempt.model_dump(exclude={"attempt"}, mode="json"),
-                sort_keys=True,
-            )
-            if fingerprint in seen:
-                outcome_reason = "Compilation gate stopped after a no-progress revision."
-                break
-            seen.add(fingerprint)
-            feedback = all_findings
-            if synthesis.decision != "revise" or synthesis.selected_role not in available_roles:
-                outcome_reason = synthesis.rationale
-                break
-            current_role = synthesis.selected_role
-
-        return GateOutcome(
-            _record(
-                runtime,
+            self.decision_resolver.accept(resolved.response, record)
+            raise AgentCompilationTerminated(self.decision_resolver)
+        if action.kind in {"reject-candidate", "retain-network-gap"}:
+            decision = "reject" if action.kind == "reject-candidate" else "gap"
+            record = _choice_record(
                 connection_id,
                 governing_criterion,
-                "gap",
-                current_role,
-                outcome_reason,
-                attempts,
-                requests,
-                tokens,
                 review,
-            ),
-            current_role,
+                request,
+                resolved,
+                initial_role,
+                decision,
+            )
+            self.decision_resolver.accept(resolved.response, record)
+            return GateOutcome(record, initial_role)
+        if action.kind != "select-network-role" or selected_role not in available_roles:
+            self.decision_resolver.validation = "invalid-action"
+            raise AgentDecisionRequired(request, self.decision_resolver)
+        selected_checks = facts.get("checks_by_role", {}).get(selected_role, {})
+        if selected_role not in {"gap", "school-access-gap"} and any(
+            status == "red" for status in selected_checks.values()
+        ):
+            self.decision_resolver.validation = "mandatory-red"
+            raise AgentDecisionRequired(request, self.decision_resolver)
+        decision = (
+            "gap"
+            if selected_role in {"gap", "school-access-gap"}
+            else deterministic_decision
         )
-
-    def _call(
-        self,
-        role: AgentRole,
-        payload: BaseModel,
-        output_type: type[BaseModel],
-        requests: int,
-        tokens: int,
-    ) -> tuple[Any, int]:
-        if requests >= self.config.max_requests:
-            raise RuntimeError("agent request limit exhausted")
-        if tokens >= self.config.max_tokens:
-            raise RuntimeError("agent token limit exhausted")
-        reply = self._runtime().run(role, payload, output_type)
-        if tokens + reply.tokens > self.config.max_tokens:
-            raise RuntimeError("agent token limit exhausted")
-        return reply.output, reply.tokens
-
-    def _runtime(self) -> AgentRuntime:
-        return materialize_agent_runtime(self.runtime_source)
+        record = _choice_record(
+            connection_id,
+            governing_criterion,
+            review,
+            request,
+            resolved,
+            selected_role,
+            decision,
+        )
+        self.decision_resolver.accept(resolved.response, record)
+        return GateOutcome(record, selected_role)
 
 
 def runtime_for(config: AgentConfig) -> AgentRuntime:
@@ -876,81 +722,44 @@ def _route_decision_choices(
     return choices
 
 
-def _caller_choice_record(
+def _choice_record(
     connection_id: str,
     governing_criterion: str,
     review: AgentReviewDecision,
     request: AgentDecisionRequest,
-    response: AgentDecisionResponse,
-    choice: AgentDecisionChoice,
+    resolved: ResolvedAgentDecision,
     selected_role: str | None,
     decision: Literal["accept", "reject", "gap"],
 ) -> AgentRecord:
+    choice = resolved.choice
     return AgentRecord(
         connection_id=connection_id,
         governing_criterion=governing_criterion,
         network_role=selected_role,
         **review.model_dump(),
-        runtime="caller",
-        model="decision-ledger",
+        runtime=resolved.runtime,
+        model=resolved.model,
         decision=decision,
         selected_role=selected_role,
         outcome_reason=(
-            f"Caller selected choice {response.choice_id}: {choice.label}. "
+            f"{resolved.responder_mode.title()} selected choice "
+            f"{resolved.response.choice_id}: {choice.label}. "
             "The compiler validated and applied its predefined action."
         ),
-        usage={"requests": 0, "tokens": 0},
+        usage=resolved.usage,
         decision_request=request,
-        selected_choice_id=response.choice_id,
+        selected_choice_id=resolved.response.choice_id,
         mapped_action=choice.compiler_action,
-        responder_mode="caller",
+        responder_mode=resolved.responder_mode,
         choice_validation="accepted",
         affected_feature_identifiers=request.affected_identifiers,
         created_at=None,
     )
 
 
-def _record(
-    runtime: AgentRuntime,
-    connection_id: str,
-    governing_criterion: str,
-    decision: str,
-    selected_role: str | None,
-    reason: str,
-    attempts: list[AgentAttempt],
-    requests: int,
-    tokens: int,
-    review: AgentReviewDecision,
-) -> AgentRecord:
-    latest = attempts[-1] if attempts else None
-    return AgentRecord(
-        connection_id=connection_id,
-        governing_criterion=governing_criterion,
-        **review.model_dump(),
-        runtime=runtime.name,
-        model=runtime.model,
-        proposal=latest.proposal if latest else None,
-        critique=latest.critique if latest else None,
-        revision=latest.synthesis if latest else None,
-        decision=decision,
-        selected_role=selected_role,
-        outcome_reason=reason,
-        attempts=attempts,
-        usage={"requests": requests, "tokens": tokens},
-    )
-
-
 _ROLE_INSTRUCTIONS = {
-    AgentRole.PROPOSER: (
-        "Select and justify one available OSM alignment. Return only the typed output."
-    ),
-    AgentRole.EVIDENCE_CRITIC: "Challenge evidence sufficiency. Preserve deterministic findings.",
-    AgentRole.NETWORK_RED_TEAM: "Try to falsify continuity, endpoint and network claims.",
-    AgentRole.SYNTHESISER: (
-        "Accept only when mandatory findings are clear; otherwise revise or gap."
-    ),
-    AgentRole.DIVERGENCE: (
-        "Explain the ATM comparison status, challenge both sources and attempt a bounded "
-        "resolution."
-    ),
+    AgentRole.DECISION: (
+        "Select exactly one offered choice from the fingerprinted request. Return only "
+        "the request identifier and choice identifier; never invent or parameterise an action."
+    )
 }

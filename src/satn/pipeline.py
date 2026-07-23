@@ -13,6 +13,8 @@ from satn.agents import (
     AgentCompilationTerminated,
     AgentDecisionRequired,
     AgentDecisionResolver,
+    AgentRuntimeProvider,
+    runtime_for,
 )
 from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
@@ -67,7 +69,12 @@ def compile(
         len(source["network"]),
         len(source.get("context", [])),
     )
-    runtime = None
+    runtime = (
+        AgentRuntimeProvider(lambda: runtime_for(council.compilation.agent))
+        if council.compilation.agent.response_mode == "direct-runtime"
+        and council.compilation.agent.review_statuses
+        else None
+    )
     atm_reference = None
     if council.atm.enabled and council.atm.mode == "seeded":
         atm_reference = load_atm(council).to_crs(source["network"].crs)

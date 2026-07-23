@@ -8,15 +8,30 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 import pyogrio
+from pydantic import BaseModel
 from shapely.geometry import LineString, Point, Polygon
 from test_backbone_assembly import parallel_spine_source
 
 from satn import compile
+from satn.agents import AgentRole, AgentRuntime, RuntimeReply
 from satn.constants import DISCLAIMER
 from satn.models import CouncilConfig, TrafficLight
 from satn.sources import snapshot
 
 PROJECT = Path(__file__).parents[1]
+
+
+class UnavailableRuntime(AgentRuntime):
+    name = "unavailable"
+    model = "offline-test"
+
+    def run(
+        self,
+        role: AgentRole,
+        payload: BaseModel,
+        output_type: type[BaseModel],
+    ) -> RuntimeReply:
+        raise RuntimeError("provider unavailable")
 
 
 def fixture_config(tmp_path: Path) -> Path:
@@ -237,6 +252,7 @@ def test_empty_review_policy_compiles_without_constructing_an_agent_runtime(
 ) -> None:
     config = CouncilConfig.from_yaml(fixture_config(tmp_path))
     config.compilation.agent.review_statuses = ()
+    config.compilation.agent.response_mode = "direct-runtime"
     config.compilation.agent.provider = "provider-that-must-not-be-constructed"
     snapshot(config)
 
@@ -269,6 +285,7 @@ def test_runtime_is_not_constructed_until_a_configured_status_occurs(
 ) -> None:
     config = CouncilConfig.from_yaml(fixture_config(tmp_path))
     config.compilation.agent.provider = "provider-that-must-remain-lazy"
+    config.compilation.agent.response_mode = "direct-runtime"
     snapshot(config)
 
     result = compile(config)
@@ -277,6 +294,43 @@ def test_runtime_is_not_constructed_until_a_configured_status_occurs(
     assert all(record.governing_status == "green" for record in result.agent_records)
     assert all(record.review_required is False for record in result.agent_records)
     assert all(record.runtime == "not-invoked" for record in result.agent_records)
+
+
+def test_public_compiler_applies_bounded_direct_runtime_choices(tmp_path: Path) -> None:
+    config = CouncilConfig.from_yaml(fixture_config(tmp_path))
+    config.compilation.agent.response_mode = "direct-runtime"
+    config.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+    snapshot(config)
+
+    result = compile(config)
+
+    assert result.status == "complete"
+    direct_records = [
+        record for record in result.agent_records if record.review_required
+    ]
+    assert direct_records
+    assert all(record.responder_mode == "direct-runtime" for record in direct_records)
+    assert all(record.selected_choice_id == "1" for record in direct_records)
+    assert all(record.usage == {"requests": 1, "tokens": 1} for record in direct_records)
+    assert all(record.attempts == [] for record in direct_records)
+
+
+def test_public_direct_runtime_failure_returns_non_publishing_decision_required(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = CouncilConfig.from_yaml(fixture_config(tmp_path))
+    config.compilation.agent.response_mode = "direct-runtime"
+    config.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+    snapshot(config)
+    monkeypatch.setattr("satn.pipeline.runtime_for", lambda _config: UnavailableRuntime())
+
+    result = compile(config)
+
+    assert result.status == "decision-required"
+    assert result.artifacts == {}
+    assert result.metadata["decision_response_validation"] == "runtime-unavailable"
+    assert result.decision_requests
 
 
 def test_public_compilation_routes_a_configured_red_gap_to_review(tmp_path: Path) -> None:

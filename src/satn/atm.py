@@ -13,12 +13,9 @@ from satn.agents import (
     AgentCompilationTerminated,
     AgentDecisionRequired,
     AgentDecisionResolver,
-    AgentRole,
     AgentRuntimeSource,
-    DivergenceAssessment,
-    DivergenceInput,
     build_agent_decision_request,
-    materialize_agent_runtime,
+    resolve_agent_decision,
     termination_choice,
 )
 from satn.models import (
@@ -183,104 +180,79 @@ def _assess(
             resolution_attempts=[],
             resolved=status == "match",
         )
-    if runtime is None:
-        finding = AgentFinding(
-            code=f"atm-{status}",
-            severity="advisory",
-            message=f"The governed ATM geometry comparison is {status}.",
-            evidence_ids=atm_ids,
-        )
-        request = build_agent_decision_request(
-            compilation_scope="atm-comparison",
-            affected_identifiers=[connection_id, *atm_ids],
-            criterion="atm-geometry-comparison",
-            status=governing_status,
-            evidence_references=atm_ids,
-            findings=[finding],
-            choices=[
-                AgentDecisionChoice(
-                    choice_id="1",
-                    label=f"Retain the {status} comparison",
-                    compiler_action=AgentDecisionAction(
-                        kind="retain-atm-comparison",
-                        comparison_status=status,
-                    ),
-                    expected_consequence=(
-                        "Keep the governed comparison visible without changing compiled "
-                        "network geometry."
-                    ),
-                    mandatory_constraints=(
-                        "ATM geometry remains a non-truth comparison source.",
-                        "The choice cannot mutate authoritative compiled geometry.",
-                    ),
+    finding = AgentFinding(
+        code=f"atm-{status}",
+        severity="advisory",
+        message=f"The governed ATM geometry comparison is {status}.",
+        evidence_ids=atm_ids,
+    )
+    request = build_agent_decision_request(
+        compilation_scope="atm-comparison",
+        affected_identifiers=[connection_id, *atm_ids],
+        criterion="atm-geometry-comparison",
+        status=governing_status,
+        evidence_references=atm_ids,
+        findings=[finding],
+        choices=[
+            AgentDecisionChoice(
+                choice_id="1",
+                label=f"Retain the {status} comparison",
+                compiler_action=AgentDecisionAction(
+                    kind="retain-atm-comparison",
+                    comparison_status=status,
                 ),
-                termination_choice(),
-            ],
-            review_policy=review.review_policy,
-            governed_input_fingerprint=(
-                decision_resolver.request_context_fingerprint()
+                expected_consequence=(
+                    "Keep the governed comparison visible without changing compiled "
+                    "network geometry."
+                ),
+                mandatory_constraints=(
+                    "ATM geometry remains a non-truth comparison source.",
+                    "The choice cannot mutate authoritative compiled geometry.",
+                ),
             ),
-        )
-        response, choice = decision_resolver.offered_choice(request)
-        action = choice.compiler_action
-        if action.kind not in {"retain-atm-comparison", "terminate"} or (
-            action.kind == "retain-atm-comparison"
-            and action.comparison_status != status
-        ):
-            decision_resolver.validation = "invalid-action"
-            raise AgentDecisionRequired(request, decision_resolver)
-        record = DivergenceRecord(
-            connection_id=connection_id,
-            status=status,
-            **review.model_dump(),
-            atm_feature_ids=atm_ids,
-            overlap_ratio=overlap,
-            explanation=f"Caller selected choice {response.choice_id}: {choice.label}.",
-            resolution_attempts=[],
-            resolved=status == "match",
-            decision_request=request,
-            selected_choice_id=response.choice_id,
-            mapped_action=action,
-            responder_mode="caller",
-            choice_validation="accepted",
-            affected_feature_identifiers=request.affected_identifiers,
-        )
-        decision_resolver.accept(response, record)
-        if action.kind == "terminate":
-            raise AgentCompilationTerminated(decision_resolver)
-        return record
-    active_runtime = materialize_agent_runtime(runtime)
-    payload = DivergenceInput(
+            termination_choice(),
+        ],
+        review_policy=review.review_policy,
+        governed_input_fingerprint=decision_resolver.request_context_fingerprint(),
+    )
+    resolved = resolve_agent_decision(
+        request,
+        decision_resolver,
+        runtime,
+        agent_config,
+    )
+    action = resolved.choice.compiler_action
+    if action.kind not in {"retain-atm-comparison", "terminate"} or (
+        action.kind == "retain-atm-comparison" and action.comparison_status != status
+    ):
+        decision_resolver.validation = "invalid-action"
+        raise AgentDecisionRequired(request, decision_resolver)
+    record = DivergenceRecord(
         connection_id=connection_id,
         status=status,
+        **review.model_dump(),
         atm_feature_ids=atm_ids,
         overlap_ratio=overlap,
+        explanation=(
+            f"{resolved.responder_mode.title()} selected choice "
+            f"{resolved.response.choice_id}: {resolved.choice.label}."
+        ),
+        resolution_attempts=[],
+        resolved=status == "match",
+        runtime=resolved.runtime,
+        model=resolved.model,
+        usage=resolved.usage,
+        decision_request=request,
+        selected_choice_id=resolved.response.choice_id,
+        mapped_action=action,
+        responder_mode=resolved.responder_mode,
+        choice_validation="accepted",
+        affected_feature_identifiers=request.affected_identifiers,
     )
-    try:
-        reply = active_runtime.run(AgentRole.DIVERGENCE, payload, DivergenceAssessment)
-        assessment = DivergenceAssessment.model_validate(reply.output)
-        attempts = [assessment.model_dump() | {"attempt": 1, "tokens": reply.tokens}]
-        return DivergenceRecord(
-            connection_id=connection_id,
-            status=status,
-            **review.model_dump(),
-            atm_feature_ids=atm_ids,
-            overlap_ratio=overlap,
-            explanation=assessment.explanation,
-            resolution_attempts=attempts,
-            resolved=assessment.resolved,
-        )
-    except Exception as error:  # the governed record must survive provider failure
-        return DivergenceRecord(
-            connection_id=connection_id,
-            status=status,
-            **review.model_dump(),
-            atm_feature_ids=atm_ids,
-            overlap_ratio=overlap,
-            explanation=f"Divergence review failed: {error}",
-            resolution_attempts=[{"attempt": 1, "error": str(error)}],
-            resolved=False,
-        )
+    decision_resolver.accept(resolved.response, record)
+    if action.kind == "terminate":
+        raise AgentCompilationTerminated(decision_resolver)
+    return record
 
 
 def _feature_id(row: object, index: object) -> str:

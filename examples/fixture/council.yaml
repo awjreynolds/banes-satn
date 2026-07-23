@@ -31,6 +31,7 @@ compilation:
     material_ascent_reduction_ratio: 0.25
   agent:
     provider: fake
+    response_mode: caller
     review_statuses:
       - amber
       - red

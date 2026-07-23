@@ -49,6 +49,7 @@ def gate(runtime: FakeAgentRuntime, *, attempts: int = 3) -> CompilationGate:
     return CompilationGate(
         runtime,
         AgentConfig(
+            response_mode="direct-runtime",
             review_statuses=tuple(TrafficLight),
             max_attempts=attempts,
             max_requests=12,
@@ -87,7 +88,7 @@ def test_decision_uses_the_declared_governing_criterion_without_status_rollup() 
     assert outcome.record.review_required is False
 
 
-def test_reviewed_record_exposes_typed_agent_outputs() -> None:
+def test_reviewed_record_exposes_only_the_bounded_choice_audit() -> None:
     outcome = gate(FakeAgentRuntime(), attempts=1).evaluate(
         "connection-a-b",
         facts(),
@@ -97,11 +98,14 @@ def test_reviewed_record_exposes_typed_agent_outputs() -> None:
         governing_status=TrafficLight.GREEN,
     )
 
-    assert outcome.record.proposal is not None
-    assert outcome.record.proposal.selected_role == "direct"
-    assert outcome.record.critique is not None
-    assert outcome.record.revision is not None
-    assert outcome.record.attempts[0].proposal == outcome.record.proposal
+    assert outcome.record.responder_mode == "direct-runtime"
+    assert outcome.record.selected_choice_id == "1"
+    assert outcome.record.mapped_action is not None
+    assert outcome.record.mapped_action.network_role == "direct"
+    assert outcome.record.proposal is None
+    assert outcome.record.critique is None
+    assert outcome.record.revision is None
+    assert outcome.record.attempts == []
 
 
 def test_review_audit_records_reject_contradictory_execution_state() -> None:
@@ -281,7 +285,7 @@ def test_unselected_status_is_deterministic_and_never_needs_a_runtime(
     assert outcome.record.usage == {"requests": 0, "tokens": 0}
 
 
-def test_success_records_all_typed_roles() -> None:
+def test_success_records_one_typed_bounded_runtime_choice() -> None:
     outcome = gate(FakeAgentRuntime()).evaluate(
         "connection-a-b",
         facts(),
@@ -293,58 +297,35 @@ def test_success_records_all_typed_roles() -> None:
 
     assert outcome.record.decision == "accept"
     assert outcome.selected_role == "direct"
-    assert outcome.record.usage == {"requests": 4, "tokens": 4}
-    assert outcome.record.attempts[0].model_fields_set >= {
-        "proposal",
-        "critique",
-        "red_team",
-        "synthesis",
-        "deterministic_findings",
-    }
+    assert outcome.record.usage == {"requests": 1, "tokens": 1}
+    assert outcome.record.decision_request is not None
+    assert outcome.record.choice_validation == "accepted"
 
 
-def test_schema_rejection_retries_then_accepts() -> None:
+def test_schema_rejection_does_not_retry_or_apply_a_result() -> None:
     runtime = FakeAgentRuntime(
-        {
-            AgentRole.PROPOSER: [
-                {"invalid": "record"},
-                {
-                    "selected_role": "direct",
-                    "rationale": "Valid retry",
-                    "evidence_ids": ["edge-1"],
-                },
-            ]
-        }
+        {AgentRole.DECISION: [{"invalid": "record"}]}
     )
 
-    outcome = gate(runtime).evaluate(
-        "connection-a-b",
-        facts(),
-        "direct",
-        ["direct", "low-traffic"],
-        governing_criterion="continuity",
-        governing_status=TrafficLight.GREEN,
-    )
+    with pytest.raises(AgentDecisionRequired) as raised:
+        gate(runtime).evaluate(
+            "connection-a-b",
+            facts(),
+            "direct",
+            ["direct", "low-traffic"],
+            governing_criterion="continuity",
+            governing_status=TrafficLight.GREEN,
+        )
 
-    assert outcome.record.decision == "accept"
-    assert len(outcome.record.attempts) == 2
-    assert outcome.record.attempts[0].findings[0].code == "agent-schema-error"
+    assert raised.value.validation == "runtime-schema-failure"
+    assert raised.value.applied_records == []
 
 
-def test_structured_revision_changes_alignment_before_acceptance() -> None:
+def test_direct_runtime_can_select_an_alternative_offered_alignment() -> None:
     runtime = FakeAgentRuntime(
         {
-            AgentRole.SYNTHESISER: [
-                {
-                    "decision": "revise",
-                    "selected_role": "low-traffic",
-                    "rationale": "Challenge the direct option.",
-                },
-                {
-                    "decision": "accept",
-                    "selected_role": "low-traffic",
-                    "rationale": "Revision clears review.",
-                },
+            AgentRole.DECISION: [
+                {"request_id": "$request", "choice_id": "2"}
             ]
         }
     )
@@ -360,51 +341,36 @@ def test_structured_revision_changes_alignment_before_acceptance() -> None:
 
     assert outcome.record.decision == "accept"
     assert outcome.selected_role == "low-traffic"
-    assert len(outcome.record.attempts) == 2
-
-
-def test_no_progress_revision_terminates_as_gap() -> None:
-    repeated = {
-        "decision": "revise",
-        "selected_role": "direct",
-        "rationale": "Repeat the same option.",
-    }
-    runtime = FakeAgentRuntime({AgentRole.SYNTHESISER: [repeated, repeated]})
-
-    outcome = gate(runtime).evaluate(
-        "connection-a-b",
-        facts(),
-        "direct",
-        ["direct", "low-traffic"],
-        governing_criterion="continuity",
-        governing_status=TrafficLight.GREEN,
-    )
-
-    assert outcome.record.decision == "gap"
-    assert len(outcome.record.attempts) == 2
-    assert "no-progress" in outcome.record.outcome_reason
+    assert outcome.record.selected_choice_id == "2"
 
 
 def test_unresolved_mandatory_failure_cannot_be_overridden() -> None:
-    outcome = gate(FakeAgentRuntime()).evaluate(
-        "connection-a-b",
-        facts(direct="red", low_traffic="red"),
-        "direct",
-        ["direct"],
-        governing_criterion="continuity",
-        governing_status=TrafficLight.RED,
-    )
+    with pytest.raises(AgentDecisionRequired) as raised:
+        gate(FakeAgentRuntime()).evaluate(
+            "connection-a-b",
+            facts(direct="red", low_traffic="red"),
+            "direct",
+            ["direct"],
+            governing_criterion="continuity",
+            governing_status=TrafficLight.RED,
+        )
 
-    assert outcome.record.decision == "gap"
-    assert outcome.record.attempts[0].deterministic_findings
-    assert outcome.record.attempts[0].synthesis is not None
-    assert outcome.record.attempts[0].synthesis.decision == "gap"
+    assert raised.value.validation == "mandatory-red"
 
 
 def test_reviewed_red_candidate_can_be_repaired_to_a_green_alternative() -> None:
     outcome = CompilationGate(
-        FakeAgentRuntime(),
-        AgentConfig(review_statuses=(TrafficLight.RED,)),
+        FakeAgentRuntime(
+            {
+                AgentRole.DECISION: [
+                    {"request_id": "$request", "choice_id": "2"}
+                ]
+            }
+        ),
+        AgentConfig(
+            response_mode="direct-runtime",
+            review_statuses=(TrafficLight.RED,),
+        ),
     ).evaluate(
         "connection-a-b",
         facts(direct="red", low_traffic="green"),
@@ -418,7 +384,7 @@ def test_reviewed_red_candidate_can_be_repaired_to_a_green_alternative() -> None
     assert outcome.record.review_required is True
     assert outcome.record.decision == "accept"
     assert outcome.selected_role == "low-traffic"
-    assert len(outcome.record.attempts) == 2
+    assert outcome.record.selected_choice_id == "2"
 
 
 @pytest.mark.live_agent
@@ -429,6 +395,7 @@ def test_live_provider_contract() -> None:
     agent_config = AgentConfig(
         provider="pydantic-ai",
         model=model,
+        response_mode="direct-runtime",
         max_attempts=1,
         max_requests=4,
         max_tokens=1000,
@@ -442,4 +409,4 @@ def test_live_provider_contract() -> None:
         governing_status=TrafficLight.GREEN,
     )
     assert outcome.record.runtime == "pydantic-ai"
-    assert outcome.record.attempts
+    assert outcome.record.responder_mode == "direct-runtime"

@@ -269,7 +269,7 @@ A provider-neutral definition of one agent role's instructions, Evidence Packet,
 _Avoid_: Codex prompt, model-specific workflow
 
 **Agent Runtime**:
-The provider-neutral seam through which compilation invokes proposal, critique, red-team and divergence roles using typed inputs and outputs. A concrete model provider is an Adapter at this seam; Codex is not required.
+The optional provider-neutral seam through which compilation submits one complete fingerprinted Agent Decision Request and accepts only its request identifier plus one offered choice identifier. Calls are lazy, single-attempt, request- and token-limited, and protected by a configurable hard wall-clock deadline. Timeout, provider failure, schema failure or an unoffered choice ends the invocation with the same non-waiting decision-required result. A concrete model provider is an Adapter at this seam; Codex is not required.
 _Avoid_: embedded chatbot, Codex dependency, free-form agent call
 
 **Council Configuration**:
@@ -281,11 +281,11 @@ The typed result of compiling one Community Connection, including its selected A
 _Avoid_: drawn route, agent response
 
 **Compilation Gate**:
-The deterministic decision boundary that applies the Agent Review Policy to one explicitly governing criterion. An unselected status follows deterministic semantics; a selected status returns an Agent Decision Request through the caller-mediated interface before any partial result can be published.
+The deterministic decision boundary that applies the Agent Review Policy to one explicitly governing criterion. An unselected status follows deterministic semantics; a selected status creates the same bounded Agent Decision Request for either the controlling caller or the optional direct Agent Runtime before any partial result can be published.
 _Avoid_: approval screen, silent acceptance, traffic-light rollup, suspended process
 
 **Network Compilation Unit**:
-A recursively compiled subgraph assembled from Compiled Connections or smaller Network Compilation Units and assessed through the same proposal, critique, synthesis and validation protocol.
+A recursively compiled subgraph assembled from Compiled Connections or smaller Network Compilation Units and assessed through the same deterministic criteria and bounded decision-menu validation protocol.
 _Avoid_: map tile, administrative area
 
 **Validated Connection**:

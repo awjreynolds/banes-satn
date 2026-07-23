@@ -19,7 +19,9 @@ PROJECT = Path(__file__).parents[1]
 
 
 def config() -> CouncilConfig:
-    return CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    council.compilation.agent.response_mode = "direct-runtime"
+    return council
 
 
 def frame(rows: list[dict[str, object]]) -> gpd.GeoDataFrame:
@@ -374,27 +376,12 @@ def test_first_meetings_connect_three_roots_without_forming_a_mesh() -> None:
 
 
 def test_rejected_first_meeting_falls_through_to_next_adjacency() -> None:
-    accept_direct = {
-        "decision": "accept",
-        "selected_role": "direct",
-        "rationale": "Access candidate accepted.",
-    }
     runtime = FakeAgentRuntime(
         {
-            AgentRole.SYNTHESISER: [
-                accept_direct.copy(),
-                accept_direct.copy(),
-                accept_direct.copy(),
-                {
-                    "decision": "gap",
-                    "selected_role": None,
-                    "rationale": "Reject the first meeting candidate.",
-                },
-                {
-                    "decision": "accept",
-                    "selected_role": "cross-spine-connector",
-                    "rationale": "Accept the next meeting candidate.",
-                },
+            AgentRole.DECISION: [
+                *({"request_id": "$request", "choice_id": "1"} for _ in range(3)),
+                {"request_id": "$request", "choice_id": "2"},
+                {"request_id": "$request", "choice_id": "1"},
             ]
         }
     )
@@ -417,24 +404,12 @@ def test_rejected_first_meeting_falls_through_to_next_adjacency() -> None:
 
 
 def test_rejected_meetings_superseded_when_other_tree_edges_connect_the_roots() -> None:
-    accept = {
-        "decision": "accept",
-        "selected_role": "direct",
-        "rationale": "Candidate accepted.",
-    }
-    reject = {
-        "decision": "gap",
-        "selected_role": None,
-        "rationale": "Reject this meeting candidate.",
-    }
     runtime = FakeAgentRuntime(
         {
-            AgentRole.SYNTHESISER: [
-                *(accept.copy() for _ in range(4)),
-                reject.copy(),
-                reject.copy(),
-                accept.copy(),
-                accept.copy(),
+            AgentRole.DECISION: [
+                *({"request_id": "$request", "choice_id": "1"} for _ in range(4)),
+                *({"request_id": "$request", "choice_id": "2"} for _ in range(2)),
+                *({"request_id": "$request", "choice_id": "1"} for _ in range(2)),
             ]
         }
     )
@@ -613,12 +588,13 @@ def test_unreachable_community_becomes_a_gap_without_fabricated_linework() -> No
 
 
 def test_agent_gate_rejection_cannot_enter_validated_backbone_state() -> None:
-    rejected = {
-        "decision": "gap",
-        "selected_role": None,
-        "rationale": "Evidence review rejected this candidate.",
-    }
-    runtime = FakeAgentRuntime({AgentRole.SYNTHESISER: [rejected.copy() for _ in range(6)]})
+    runtime = FakeAgentRuntime(
+        {
+            AgentRole.DECISION: [
+                {"request_id": "$request", "choice_id": "3"} for _ in range(6)
+            ]
+        }
+    )
 
     council = config()
     council.compilation.agent.review_statuses = (TrafficLight.GREEN,)
@@ -631,8 +607,9 @@ def test_agent_gate_rejection_cannot_enter_validated_backbone_state() -> None:
         for record in compiled.agent_records
         if record.connection_id.startswith("spine-access-")
     ]
-    assert len(access_records) == 6
+    assert len(access_records) == 3
     assert {record.decision for record in access_records} == {"gap"}
+    assert {record.selected_choice_id for record in access_records} == {"3"}
 
 
 def test_meaningful_cross_boundary_gateway_attaches_to_the_assembled_frontier() -> None:

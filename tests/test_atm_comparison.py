@@ -120,6 +120,7 @@ def test_local_or_permitted_output_can_include_the_atm_overlay(tmp_path: Path) -
 def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> None:
     config, _ = prepared(tmp_path)
     config.compilation.agent.review_statuses = ("amber",)
+    config.compilation.agent.response_mode = "direct-runtime"
     source = load_snapshot(config)
     compiled = compile_network(config, source, FakeAgentRuntime())
     route = compiled.spine_access_connections.to_crs(27700)
@@ -144,7 +145,9 @@ def test_divergence_statuses_cover_deviation_and_addition(tmp_path: Path) -> Non
 
     assert "deviation" in {record.status for record in deviation}
     assert {record.status for record in addition} == {"addition", "omission"}
-    assert all(record.resolution_attempts for record in [*deviation, *addition])
+    assert all(record.responder_mode == "direct-runtime" for record in [*deviation, *addition])
+    assert all(record.selected_choice_id == "1" for record in [*deviation, *addition])
+    assert all(record.resolution_attempts == [] for record in [*deviation, *addition])
 
 
 def test_empty_review_policy_handles_atm_decisions_without_an_agent_runtime(
@@ -183,6 +186,27 @@ def test_caller_mediated_atm_review_returns_the_same_bounded_request_shape(
     assert request.status == "amber"
     assert request.deterministic_findings
     assert [choice.choice_id for choice in request.choices] == ["1", "terminate"]
+
+
+def test_public_direct_runtime_applies_the_same_bounded_atm_choice(tmp_path: Path) -> None:
+    config, _ = prepared(tmp_path)
+    config.compilation.agent.response_mode = "direct-runtime"
+    config.compilation.agent.review_statuses = ("amber",)
+
+    result = compile(config)
+
+    assert result.status == "complete"
+    direct_records = [
+        record
+        for record in result.divergence_records
+        if record.review_required
+    ]
+    assert direct_records
+    assert all(record.responder_mode == "direct-runtime" for record in direct_records)
+    assert all(record.runtime == "fake" for record in direct_records)
+    assert all(record.model == "deterministic-choices-v1" for record in direct_records)
+    assert all(record.usage == {"requests": 1, "tokens": 1} for record in direct_records)
+    assert all(record.selected_choice_id == "1" for record in direct_records)
 
 
 def test_atm_choices_replay_to_a_complete_published_divergence_audit(

@@ -264,6 +264,7 @@ is used to choose review.
 compilation:
   agent:
     provider: fake
+    response_mode: caller
     review_statuses: [amber, red]
 ```
 
@@ -309,10 +310,35 @@ choices remain in typed divergence records because they never mutate authoritati
 geometry. Identical governed inputs and the same ledger reproduce the same identifiers
 and authoritative artifacts.
 
-Routine unresolved refinements remain typed findings and visible gaps. A
-`human-intervention-requests.json` record is emitted only when a material blocking
-ambiguity survives every bounded revision attempt. It records attempted revisions,
-unresolved findings, missing evidence, available choices and the smallest human input
+Set `response_mode: direct-runtime` to let the configured Agent Runtime answer the
+same menu in-process. The runtime receives the complete fingerprinted request and may
+return only `request_id` and one offered `choice_id`; the compiler supplies and validates
+the fingerprint and applies its own predefined action. Each call is limited to one
+request and attempt, `max_tokens`, and the hard `deadline_seconds` wall-clock limit.
+Timeout, provider failure, malformed output, request mismatch or an unknown choice
+returns the same non-publishing `decision-required` result immediately. The accepted
+record identifies `direct-runtime` as the responder and includes provider, model, usage
+and choice-validation provenance. A caller decision ledger still takes precedence and
+does not construct the runtime.
+
+```yaml
+compilation:
+  agent:
+    provider: pydantic-ai
+    model: your-model-name
+    response_mode: direct-runtime
+    review_statuses: [amber, red]
+    deadline_seconds: 30
+    max_requests: 1
+    max_attempts: 1
+    max_tokens: 4000
+```
+
+Routine unresolved refinements remain typed findings and visible gaps. Historical
+free-form Agent Runtime records remain readable, but compilation no longer creates
+proposal, critique, red-team, synthesis or divergence action-selection calls. A
+`human-intervention-requests.json` record records any retained historical exhausted
+review, unresolved findings, missing evidence, available choices and the smallest human input
 needed. Ordinary no-path or missing-spine gaps do not create intervention requests.
 
 `fake` is the deterministic default. Any Pydantic AI model identifier can be supplied

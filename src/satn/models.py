@@ -199,6 +199,7 @@ class AgentConfig(BaseModel):
 
     provider: str = "fake"
     model: str | None = None
+    response_mode: Literal["caller", "direct-runtime"] = "caller"
     review_statuses: tuple[TrafficLight, ...] = (
         TrafficLight.AMBER,
         TrafficLight.RED,
@@ -206,6 +207,7 @@ class AgentConfig(BaseModel):
     max_attempts: int = Field(default=3, ge=1, le=10)
     max_requests: int = Field(default=12, ge=1)
     max_tokens: int = Field(default=4000, ge=100)
+    deadline_seconds: float = Field(default=30.0, gt=0, le=300)
 
     @model_validator(mode="before")
     @classmethod
@@ -463,6 +465,15 @@ class AgentDecisionResponse(BaseModel):
     choice_id: str = Field(pattern=r"^(?:[1-9][0-9]*|terminate)$")
 
 
+class AgentRuntimeDecisionResponse(BaseModel):
+    """The only executable output accepted from a direct Agent Runtime."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    request_id: str = Field(min_length=1)
+    choice_id: str = Field(pattern=r"^(?:[1-9][0-9]*|terminate)$")
+
+
 class AgentDecisionLedger(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -512,25 +523,34 @@ class AgentRecord(AgentReviewAudit):
     def validate_review_execution(self) -> AgentRecord:
         requests = self.usage.get("requests", 0)
         tokens = self.usage.get("tokens", 0)
-        caller_response = self.responder_mode == "caller"
-        if self.review_required and caller_response:
+        bounded_response = self.responder_mode in {"caller", "direct-runtime"}
+        if self.review_required and bounded_response:
             if (
-                self.runtime != "caller"
-                or self.decision_request is None
+                self.decision_request is None
                 or self.selected_choice_id is None
                 or self.mapped_action is None
                 or self.choice_validation != "accepted"
             ):
-                raise ValueError("caller review must record the complete accepted choice")
+                raise ValueError("bounded review must record the complete accepted choice")
             if (
                 self.attempts
                 or self.proposal is not None
                 or self.critique is not None
                 or self.revision is not None
-                or requests
-                or tokens
+            ):
+                raise ValueError("bounded choice review cannot contain free-form agent activity")
+            if self.responder_mode == "caller" and (
+                self.runtime != "caller" or requests or tokens
             ):
                 raise ValueError("caller review cannot contain direct-runtime activity")
+            if self.responder_mode == "direct-runtime" and (
+                not self.runtime
+                or not self.model
+                or self.runtime in {"caller", "not-invoked"}
+                or requests != 1
+                or tokens < 0
+            ):
+                raise ValueError("direct-runtime review must record provider and usage")
             selected = next(
                 (
                     choice
@@ -545,11 +565,11 @@ class AgentRecord(AgentReviewAudit):
                 or self.affected_feature_identifiers
                 != self.decision_request.affected_identifiers
             ):
-                raise ValueError("caller review choice must match the offered request action")
+                raise ValueError("bounded review choice must match the offered request action")
         elif self.review_required and (
             self.runtime == "not-invoked" or not self.attempts
         ):
-            raise ValueError("required review must record an invoked runtime and attempt")
+            raise ValueError("required review must record an accepted bounded choice")
         if not self.review_required and (
             self.runtime != "not-invoked" or requests or tokens or self.attempts
         ):
@@ -565,6 +585,9 @@ class DivergenceRecord(AgentReviewAudit):
     explanation: str
     resolution_attempts: list[dict[str, Any]] = Field(default_factory=list)
     resolved: bool = False
+    runtime: str | None = None
+    model: str | None = None
+    usage: dict[str, int] = Field(default_factory=dict)
     decision_request: AgentDecisionRequest | None = None
     selected_choice_id: str | None = None
     mapped_action: AgentDecisionAction | None = None
@@ -574,17 +597,29 @@ class DivergenceRecord(AgentReviewAudit):
 
     @model_validator(mode="after")
     def validate_review_execution(self) -> DivergenceRecord:
-        caller_response = self.responder_mode == "caller"
-        if self.review_required and caller_response:
+        bounded_response = self.responder_mode in {"caller", "direct-runtime"}
+        requests = self.usage.get("requests", 0)
+        tokens = self.usage.get("tokens", 0)
+        if self.review_required and bounded_response:
             if (
                 self.decision_request is None
                 or self.selected_choice_id is None
                 or self.mapped_action is None
                 or self.choice_validation != "accepted"
             ):
-                raise ValueError("caller review must record the complete accepted choice")
+                raise ValueError("bounded review must record the complete accepted choice")
             if self.resolution_attempts:
-                raise ValueError("caller review cannot contain direct-runtime attempts")
+                raise ValueError("bounded choice review cannot contain free-form attempts")
+            if self.responder_mode == "caller" and (requests or tokens):
+                raise ValueError("caller review cannot contain direct-runtime usage")
+            if self.responder_mode == "direct-runtime" and (
+                not self.runtime
+                or not self.model
+                or self.runtime in {"caller", "not-invoked"}
+                or requests != 1
+                or tokens < 0
+            ):
+                raise ValueError("direct-runtime review must record provider and usage")
             selected = next(
                 (
                     choice
@@ -599,11 +634,11 @@ class DivergenceRecord(AgentReviewAudit):
                 or self.affected_feature_identifiers
                 != self.decision_request.affected_identifiers
             ):
-                raise ValueError("caller review choice must match the offered request action")
+                raise ValueError("bounded review choice must match the offered request action")
         elif self.review_required and not self.resolution_attempts:
-            raise ValueError("required divergence review must record an attempt")
-        if not self.review_required and self.resolution_attempts:
-            raise ValueError("skipped divergence review cannot contain resolution attempts")
+            raise ValueError("required divergence review must record an accepted bounded choice")
+        if not self.review_required and (self.resolution_attempts or requests or tokens):
+            raise ValueError("skipped divergence review cannot contain runtime activity")
         return self
 
 
