@@ -9,7 +9,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-a11a71ed90f9",
+      "connection_id": "spine-access-bcc3f1e96e18",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -32,7 +32,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:52.493564Z"
+      "created_at": "2026-07-23T20:20:06.112830Z"
     },
     {
       "governing_status": "green",
@@ -41,7 +41,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-3a56c884a05a",
+      "connection_id": "spine-access-594e15633250",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -64,7 +64,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:53.268852Z"
+      "created_at": "2026-07-23T20:20:06.874622Z"
     },
     {
       "governing_status": "green",
@@ -73,7 +73,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-870f9047370f",
+      "connection_id": "spine-access-e75b09a16215",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -96,7 +96,71 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:54.290053Z"
+      "created_at": "2026-07-23T20:20:07.892625Z"
+    },
+    {
+      "governing_status": "green",
+      "review_policy": [
+        "amber",
+        "red"
+      ],
+      "review_required": false,
+      "connection_id": "spine-access-745e75377202",
+      "governing_criterion": "continuity",
+      "network_role": "spine-access-connection",
+      "runtime": "not-invoked",
+      "model": "not-invoked",
+      "proposal": null,
+      "critique": null,
+      "revision": null,
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
+      "attempts": [],
+      "usage": {
+        "requests": 0,
+        "tokens": 0
+      },
+      "derived_features": [],
+      "decision_request": null,
+      "selected_choice_id": null,
+      "mapped_action": null,
+      "responder_mode": null,
+      "choice_validation": null,
+      "affected_feature_identifiers": [],
+      "created_at": "2026-07-23T20:20:08.551880Z"
+    },
+    {
+      "governing_status": "green",
+      "review_policy": [
+        "amber",
+        "red"
+      ],
+      "review_required": false,
+      "connection_id": "spine-access-54e25e913c1d",
+      "governing_criterion": "continuity",
+      "network_role": "spine-access-connection",
+      "runtime": "not-invoked",
+      "model": "not-invoked",
+      "proposal": null,
+      "critique": null,
+      "revision": null,
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
+      "attempts": [],
+      "usage": {
+        "requests": 0,
+        "tokens": 0
+      },
+      "derived_features": [],
+      "decision_request": null,
+      "selected_choice_id": null,
+      "mapped_action": null,
+      "responder_mode": null,
+      "choice_validation": null,
+      "affected_feature_identifiers": [],
+      "created_at": "2026-07-23T20:20:09.228624Z"
     },
     {
       "governing_status": "green",
@@ -128,7 +192,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:55.018351Z"
+      "created_at": "2026-07-23T20:20:09.935857Z"
     },
     {
       "governing_status": "green",
@@ -160,7 +224,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:55.746489Z"
+      "created_at": "2026-07-23T20:20:10.596034Z"
     },
     {
       "governing_status": "green",
@@ -169,7 +233,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-455d6accda69",
+      "connection_id": "spine-access-d2549113f317",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -192,7 +256,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:56.280329Z"
+      "created_at": "2026-07-23T20:20:11.161842Z"
     },
     {
       "governing_status": "green",
@@ -224,7 +288,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:57.083571Z"
+      "created_at": "2026-07-23T20:20:11.959816Z"
     },
     {
       "governing_status": "green",
@@ -233,7 +297,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-9add135ab34f",
+      "connection_id": "spine-access-0b729452a25f",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -256,7 +320,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:57.573565Z"
+      "created_at": "2026-07-23T20:20:12.435044Z"
     },
     {
       "governing_status": "green",
@@ -265,7 +329,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-2a16736f477e",
+      "connection_id": "spine-access-97192549b3c9",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -288,7 +352,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:58.487847Z"
+      "created_at": "2026-07-23T20:20:13.209633Z"
     },
     {
       "governing_status": "green",
@@ -297,7 +361,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-a4869cdf6521",
+      "connection_id": "spine-access-dd3151f8122a",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -320,7 +384,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:59.077295Z"
+      "created_at": "2026-07-23T20:20:14.022316Z"
     },
     {
       "governing_status": "green",
@@ -329,7 +393,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-18c77fa8ab6f",
+      "connection_id": "spine-access-0d8e1cf44f41",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -352,7 +416,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:55:59.645410Z"
+      "created_at": "2026-07-23T20:20:14.563204Z"
     },
     {
       "governing_status": "green",
@@ -361,7 +425,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-d1775bc928b2",
+      "connection_id": "spine-access-1d1f52089d18",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -384,7 +448,39 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:00.438137Z"
+      "created_at": "2026-07-23T20:20:15.079553Z"
+    },
+    {
+      "governing_status": "green",
+      "review_policy": [
+        "amber",
+        "red"
+      ],
+      "review_required": false,
+      "connection_id": "spine-access-9693e40b51aa",
+      "governing_criterion": "continuity",
+      "network_role": "spine-access-connection",
+      "runtime": "not-invoked",
+      "model": "not-invoked",
+      "proposal": null,
+      "critique": null,
+      "revision": null,
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
+      "attempts": [],
+      "usage": {
+        "requests": 0,
+        "tokens": 0
+      },
+      "derived_features": [],
+      "decision_request": null,
+      "selected_choice_id": null,
+      "mapped_action": null,
+      "responder_mode": null,
+      "choice_validation": null,
+      "affected_feature_identifiers": [],
+      "created_at": "2026-07-23T20:20:15.807072Z"
     },
     {
       "governing_status": "green",
@@ -416,7 +512,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:01.037500Z"
+      "created_at": "2026-07-23T20:20:16.334140Z"
     },
     {
       "governing_status": "green",
@@ -425,7 +521,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-bb5d0ecfd772",
+      "connection_id": "spine-access-fbfe98f99587",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -448,7 +544,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:01.664771Z"
+      "created_at": "2026-07-23T20:20:16.931986Z"
     },
     {
       "governing_status": "green",
@@ -457,7 +553,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-a095e9dd7b74",
+      "connection_id": "spine-access-f65e8532c951",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -480,7 +576,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:02.292337Z"
+      "created_at": "2026-07-23T20:20:17.521753Z"
     },
     {
       "governing_status": "green",
@@ -489,7 +585,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-fe8bd1f5e2ec",
+      "connection_id": "spine-access-073eb3cf2a58",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -512,7 +608,39 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:03.123061Z"
+      "created_at": "2026-07-23T20:20:18.303867Z"
+    },
+    {
+      "governing_status": "green",
+      "review_policy": [
+        "amber",
+        "red"
+      ],
+      "review_required": false,
+      "connection_id": "spine-access-e994d98e630d",
+      "governing_criterion": "continuity",
+      "network_role": "spine-access-connection",
+      "runtime": "not-invoked",
+      "model": "not-invoked",
+      "proposal": null,
+      "critique": null,
+      "revision": null,
+      "decision": "accept",
+      "selected_role": "direct",
+      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
+      "attempts": [],
+      "usage": {
+        "requests": 0,
+        "tokens": 0
+      },
+      "derived_features": [],
+      "decision_request": null,
+      "selected_choice_id": null,
+      "mapped_action": null,
+      "responder_mode": null,
+      "choice_validation": null,
+      "affected_feature_identifiers": [],
+      "created_at": "2026-07-23T20:20:18.869497Z"
     },
     {
       "governing_status": "green",
@@ -544,7 +672,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:03.807440Z"
+      "created_at": "2026-07-23T20:20:19.508370Z"
     },
     {
       "governing_status": "green",
@@ -553,7 +681,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-ccc7ab3dfb02",
+      "connection_id": "spine-access-6ee6c644a54e",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -576,7 +704,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:04.449386Z"
+      "created_at": "2026-07-23T20:20:20.119900Z"
     },
     {
       "governing_status": "green",
@@ -585,7 +713,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-e847822d5e99",
+      "connection_id": "spine-access-940f6264a44b",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -608,7 +736,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:05.149777Z"
+      "created_at": "2026-07-23T20:20:20.837207Z"
     },
     {
       "governing_status": "green",
@@ -617,7 +745,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-fe7c5bd0e7c5",
+      "connection_id": "spine-access-00e0c5bf661a",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -640,7 +768,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:05.766598Z"
+      "created_at": "2026-07-23T20:20:21.373495Z"
     },
     {
       "governing_status": "green",
@@ -649,7 +777,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-4cc715c99ebe",
+      "connection_id": "spine-access-718a31d83e4e",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -672,7 +800,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:06.295501Z"
+      "created_at": "2026-07-23T20:20:21.829573Z"
     },
     {
       "governing_status": "green",
@@ -681,7 +809,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-21ad61aba305",
+      "connection_id": "spine-access-faf5d23b8887",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -704,7 +832,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:06.900773Z"
+      "created_at": "2026-07-23T20:20:22.556445Z"
     },
     {
       "governing_status": "green",
@@ -713,7 +841,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-186dfac340f2",
+      "connection_id": "spine-access-c5904ed94907",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -736,7 +864,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:07.663821Z"
+      "created_at": "2026-07-23T20:20:23.078479Z"
     },
     {
       "governing_status": "green",
@@ -745,7 +873,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-d6318a5c637e",
+      "connection_id": "spine-access-0566a9310375",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -768,7 +896,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:08.433326Z"
+      "created_at": "2026-07-23T20:20:23.793071Z"
     },
     {
       "governing_status": "green",
@@ -777,7 +905,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-43d4cafdc77b",
+      "connection_id": "spine-access-c08bb2b8a32f",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -800,7 +928,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:09.295111Z"
+      "created_at": "2026-07-23T20:20:24.536629Z"
     },
     {
       "governing_status": "green",
@@ -809,7 +937,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-a9be691e563a",
+      "connection_id": "spine-access-b6b1ab9b49a6",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -832,7 +960,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:09.905533Z"
+      "created_at": "2026-07-23T20:20:25.080968Z"
     },
     {
       "governing_status": "green",
@@ -864,7 +992,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:10.545753Z"
+      "created_at": "2026-07-23T20:20:25.655344Z"
     },
     {
       "governing_status": "green",
@@ -873,7 +1001,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-9e05834f7a01",
+      "connection_id": "spine-access-22d4e6872302",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -896,7 +1024,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:11.075053Z"
+      "created_at": "2026-07-23T20:20:26.112920Z"
     },
     {
       "governing_status": "green",
@@ -905,7 +1033,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-8be606c0714a",
+      "connection_id": "spine-access-27b3df185e3f",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -928,7 +1056,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:11.806932Z"
+      "created_at": "2026-07-23T20:20:26.846405Z"
     },
     {
       "governing_status": "green",
@@ -937,7 +1065,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-6df376b8d86a",
+      "connection_id": "spine-access-3809ddb8a2e7",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -960,7 +1088,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:12.375911Z"
+      "created_at": "2026-07-23T20:20:27.497280Z"
     },
     {
       "governing_status": "green",
@@ -969,7 +1097,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-9ec6a040d4d6",
+      "connection_id": "spine-access-dc59c8eb2bd3",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -992,39 +1120,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:13.038635Z"
-    },
-    {
-      "governing_status": "green",
-      "review_policy": [
-        "amber",
-        "red"
-      ],
-      "review_required": false,
-      "connection_id": "spine-access-a9eea9a177f3",
-      "governing_criterion": "continuity",
-      "network_role": "spine-access-connection",
-      "runtime": "not-invoked",
-      "model": "not-invoked",
-      "proposal": null,
-      "critique": null,
-      "revision": null,
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
-      "attempts": [],
-      "usage": {
-        "requests": 0,
-        "tokens": 0
-      },
-      "derived_features": [],
-      "decision_request": null,
-      "selected_choice_id": null,
-      "mapped_action": null,
-      "responder_mode": null,
-      "choice_validation": null,
-      "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:13.638791Z"
+      "created_at": "2026-07-23T20:20:28.012577Z"
     },
     {
       "governing_status": "green",
@@ -1056,7 +1152,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:14.213703Z"
+      "created_at": "2026-07-23T20:20:28.551946Z"
     },
     {
       "governing_status": "green",
@@ -1088,7 +1184,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:14.792554Z"
+      "created_at": "2026-07-23T20:20:29.108753Z"
     },
     {
       "governing_status": "green",
@@ -1097,7 +1193,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-0d2aabea1b56",
+      "connection_id": "spine-access-f0ea572a06cd",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1120,7 +1216,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:15.494322Z"
+      "created_at": "2026-07-23T20:20:29.733343Z"
     },
     {
       "governing_status": "green",
@@ -1129,7 +1225,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-56f70b014855",
+      "connection_id": "spine-access-0724304ced1b",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1152,7 +1248,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:16.016883Z"
+      "created_at": "2026-07-23T20:20:30.290156Z"
     },
     {
       "governing_status": "green",
@@ -1161,7 +1257,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-1b122441d916",
+      "connection_id": "spine-access-33b24a83ebc3",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1184,7 +1280,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:16.589688Z"
+      "created_at": "2026-07-23T20:20:30.926312Z"
     },
     {
       "governing_status": "green",
@@ -1193,7 +1289,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-96ed6fca28ac",
+      "connection_id": "spine-access-0ddace310e44",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1216,7 +1312,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:17.120411Z"
+      "created_at": "2026-07-23T20:20:31.379124Z"
     },
     {
       "governing_status": "green",
@@ -1225,7 +1321,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-d731f4864e69",
+      "connection_id": "spine-access-f86a34e748ae",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1248,7 +1344,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:17.604710Z"
+      "created_at": "2026-07-23T20:20:31.830935Z"
     },
     {
       "governing_status": "green",
@@ -1257,7 +1353,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-4d187dd84134",
+      "connection_id": "spine-access-2d6e0dfcee87",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1280,103 +1376,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:18.295278Z"
-    },
-    {
-      "governing_status": "green",
-      "review_policy": [
-        "amber",
-        "red"
-      ],
-      "review_required": false,
-      "connection_id": "spine-access-7de49239bc19",
-      "governing_criterion": "continuity",
-      "network_role": "spine-access-connection",
-      "runtime": "not-invoked",
-      "model": "not-invoked",
-      "proposal": null,
-      "critique": null,
-      "revision": null,
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
-      "attempts": [],
-      "usage": {
-        "requests": 0,
-        "tokens": 0
-      },
-      "derived_features": [],
-      "decision_request": null,
-      "selected_choice_id": null,
-      "mapped_action": null,
-      "responder_mode": null,
-      "choice_validation": null,
-      "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:18.699466Z"
-    },
-    {
-      "governing_status": "green",
-      "review_policy": [
-        "amber",
-        "red"
-      ],
-      "review_required": false,
-      "connection_id": "spine-access-57737d11292c",
-      "governing_criterion": "continuity",
-      "network_role": "spine-access-connection",
-      "runtime": "not-invoked",
-      "model": "not-invoked",
-      "proposal": null,
-      "critique": null,
-      "revision": null,
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
-      "attempts": [],
-      "usage": {
-        "requests": 0,
-        "tokens": 0
-      },
-      "derived_features": [],
-      "decision_request": null,
-      "selected_choice_id": null,
-      "mapped_action": null,
-      "responder_mode": null,
-      "choice_validation": null,
-      "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:19.182450Z"
-    },
-    {
-      "governing_status": "green",
-      "review_policy": [
-        "amber",
-        "red"
-      ],
-      "review_required": false,
-      "connection_id": "spine-access-33aceba44308",
-      "governing_criterion": "continuity",
-      "network_role": "spine-access-connection",
-      "runtime": "not-invoked",
-      "model": "not-invoked",
-      "proposal": null,
-      "critique": null,
-      "revision": null,
-      "decision": "accept",
-      "selected_role": "direct",
-      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
-      "attempts": [],
-      "usage": {
-        "requests": 0,
-        "tokens": 0
-      },
-      "derived_features": [],
-      "decision_request": null,
-      "selected_choice_id": null,
-      "mapped_action": null,
-      "responder_mode": null,
-      "choice_validation": null,
-      "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:19.593071Z"
+      "created_at": "2026-07-23T20:20:32.296561Z"
     },
     {
       "governing_status": "green",
@@ -1408,7 +1408,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:19.896145Z"
+      "created_at": "2026-07-23T20:20:32.610346Z"
     },
     {
       "governing_status": "green",
@@ -1440,7 +1440,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:20.220853Z"
+      "created_at": "2026-07-23T20:20:32.947538Z"
     },
     {
       "governing_status": "green",
@@ -1472,7 +1472,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:20.559460Z"
+      "created_at": "2026-07-23T20:20:33.296863Z"
     },
     {
       "governing_status": "green",
@@ -1504,7 +1504,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:21.036834Z"
+      "created_at": "2026-07-23T20:20:33.787778Z"
     },
     {
       "governing_status": "green",
@@ -1513,7 +1513,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-819e0390f699",
+      "connection_id": "spine-access-17fa4af04ec3",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1536,7 +1536,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:21.504572Z"
+      "created_at": "2026-07-23T20:20:34.268474Z"
     },
     {
       "governing_status": "green",
@@ -1545,7 +1545,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-2076491d03f7",
+      "connection_id": "spine-access-342baf3f4454",
       "governing_criterion": "continuity",
       "network_role": "spine-access-connection",
       "runtime": "not-invoked",
@@ -1568,7 +1568,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:21.998246Z"
+      "created_at": "2026-07-23T20:20:34.776051Z"
     },
     {
       "governing_status": "green",
@@ -1600,7 +1600,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:56:22.538355Z"
+      "created_at": "2026-07-23T20:20:35.329574Z"
     },
     {
       "governing_status": "red",
@@ -1628,7 +1628,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-a1ec719e50e7eed8",
-        "dependency_fingerprint": "f5eaf70db038fc683f4fe3e3711edc1ffe754a852aaca13b723150094cbdc2f5",
+        "dependency_fingerprint": "96e61679bcae21e440048f0ed2ddb9b1fef46c4a3df92ba6d953a696395b18d0",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "network-gap",
         "affected_identifiers": [
@@ -1700,7 +1700,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-2e5c6500f2c6",
+      "connection_id": "branch-meeting-ba123450d145",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1718,7 +1718,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-91a173111a3b",
+          "feature_id": "cross-spine-connector-0cfc1e46cd88",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1728,7 +1728,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502194Z"
+      "created_at": "2026-07-23T20:22:04.567182Z"
     },
     {
       "governing_status": "green",
@@ -1737,7 +1737,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-da444792594e",
+      "connection_id": "branch-meeting-977675d18a8e",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1755,7 +1755,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-b5e9bcb9e0c1",
+          "feature_id": "cross-spine-connector-9858a4b5bca5",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1765,7 +1765,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502280Z"
+      "created_at": "2026-07-23T20:22:04.567277Z"
     },
     {
       "governing_status": "green",
@@ -1774,7 +1774,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-525f2f750162",
+      "connection_id": "branch-meeting-8e56e97daee9",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1792,7 +1792,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-a8549247bb4c",
+          "feature_id": "cross-spine-connector-49cde5f9fdeb",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1802,7 +1802,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502356Z"
+      "created_at": "2026-07-23T20:22:04.567345Z"
     },
     {
       "governing_status": "green",
@@ -1811,7 +1811,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-3ca074e476bb",
+      "connection_id": "branch-meeting-82e96260cece",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1829,7 +1829,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-6589b92876b3",
+          "feature_id": "cross-spine-connector-cba704f7020e",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1839,7 +1839,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502436Z"
+      "created_at": "2026-07-23T20:22:04.567425Z"
     },
     {
       "governing_status": "green",
@@ -1848,7 +1848,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-ca2267508640",
+      "connection_id": "branch-meeting-a61d0b15a7dd",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1866,7 +1866,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-5cf025ef764e",
+          "feature_id": "cross-spine-connector-f6a038cf7c25",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1876,7 +1876,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502508Z"
+      "created_at": "2026-07-23T20:22:04.567494Z"
     },
     {
       "governing_status": "green",
@@ -1885,7 +1885,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-30b74c45dce4",
+      "connection_id": "branch-meeting-cc4330ed631d",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1903,7 +1903,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-19e5b64bbc56",
+          "feature_id": "cross-spine-connector-7d859b22640b",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1913,7 +1913,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502575Z"
+      "created_at": "2026-07-23T20:22:04.567560Z"
     },
     {
       "governing_status": "green",
@@ -1922,7 +1922,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-2d8d80b49508",
+      "connection_id": "branch-meeting-00574437d5e2",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -1940,7 +1940,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-dbdc631c38b9",
+          "feature_id": "cross-spine-connector-869b5b9f453d",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -1950,7 +1950,81 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502640Z"
+      "created_at": "2026-07-23T20:22:04.567629Z"
+    },
+    {
+      "governing_status": "green",
+      "review_policy": [
+        "amber",
+        "red"
+      ],
+      "review_required": false,
+      "connection_id": "branch-meeting-fc934e9249e1",
+      "governing_criterion": "distance",
+      "network_role": "branch-meeting-connection",
+      "runtime": "not-invoked",
+      "model": "not-invoked",
+      "proposal": null,
+      "critique": null,
+      "revision": null,
+      "decision": "accept",
+      "selected_role": "cross-spine-connector",
+      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
+      "attempts": [],
+      "usage": {
+        "requests": 0,
+        "tokens": 0
+      },
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-9e72498306d9",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "decision_request": null,
+      "selected_choice_id": null,
+      "mapped_action": null,
+      "responder_mode": null,
+      "choice_validation": null,
+      "affected_feature_identifiers": [],
+      "created_at": "2026-07-23T20:22:04.567694Z"
+    },
+    {
+      "governing_status": "green",
+      "review_policy": [
+        "amber",
+        "red"
+      ],
+      "review_required": false,
+      "connection_id": "branch-meeting-206eea9dcf53",
+      "governing_criterion": "distance",
+      "network_role": "branch-meeting-connection",
+      "runtime": "not-invoked",
+      "model": "not-invoked",
+      "proposal": null,
+      "critique": null,
+      "revision": null,
+      "decision": "accept",
+      "selected_role": "cross-spine-connector",
+      "outcome_reason": "Deterministic Green decision applied; agent review was skipped by policy.",
+      "attempts": [],
+      "usage": {
+        "requests": 0,
+        "tokens": 0
+      },
+      "derived_features": [
+        {
+          "feature_id": "cross-spine-connector-7f8a2ad99762",
+          "network_role": "cross-spine-connector"
+        }
+      ],
+      "decision_request": null,
+      "selected_choice_id": null,
+      "mapped_action": null,
+      "responder_mode": null,
+      "choice_validation": null,
+      "affected_feature_identifiers": [],
+      "created_at": "2026-07-23T20:22:04.567762Z"
     },
     {
       "governing_status": "green",
@@ -1987,7 +2061,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502711Z"
+      "created_at": "2026-07-23T20:22:04.567831Z"
     },
     {
       "governing_status": "green",
@@ -1996,7 +2070,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-e32417ba875f",
+      "connection_id": "branch-meeting-60c5fe8696d4",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2014,7 +2088,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-dc56c8a19dea",
+          "feature_id": "cross-spine-connector-174f151c9405",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2024,7 +2098,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502780Z"
+      "created_at": "2026-07-23T20:22:04.567896Z"
     },
     {
       "governing_status": "green",
@@ -2033,7 +2107,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-0d7e4dee6ad6",
+      "connection_id": "branch-meeting-d3b53e046415",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2051,7 +2125,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-7420894a9e3d",
+          "feature_id": "cross-spine-connector-f2a443b91397",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2061,7 +2135,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502844Z"
+      "created_at": "2026-07-23T20:22:04.567965Z"
     },
     {
       "governing_status": "green",
@@ -2070,7 +2144,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-b8b753f774a1",
+      "connection_id": "branch-meeting-53067bbed577",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2088,7 +2162,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-f9d5c907a45a",
+          "feature_id": "cross-spine-connector-1c874ab9e13f",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2098,7 +2172,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502903Z"
+      "created_at": "2026-07-23T20:22:04.568034Z"
     },
     {
       "governing_status": "green",
@@ -2107,7 +2181,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-3a1f367c599f",
+      "connection_id": "branch-meeting-fb727c23618f",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2125,7 +2199,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-87565df0df2d",
+          "feature_id": "cross-spine-connector-852072a3eadb",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2135,7 +2209,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.502974Z"
+      "created_at": "2026-07-23T20:22:04.568118Z"
     },
     {
       "governing_status": "green",
@@ -2144,7 +2218,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-f1d13ccebf91",
+      "connection_id": "branch-meeting-1d3b951ad852",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2162,7 +2236,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-8bc673d8bc37",
+          "feature_id": "cross-spine-connector-209f438ed60d",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2172,7 +2246,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.503039Z"
+      "created_at": "2026-07-23T20:22:04.568180Z"
     },
     {
       "governing_status": "green",
@@ -2181,7 +2255,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-0c976c485468",
+      "connection_id": "branch-meeting-643ccab1f197",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2199,7 +2273,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-99167e40ec9a",
+          "feature_id": "cross-spine-connector-311592acf0cd",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2209,7 +2283,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.503120Z"
+      "created_at": "2026-07-23T20:22:04.568264Z"
     },
     {
       "governing_status": "green",
@@ -2218,7 +2292,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-b1cbb9617dd2",
+      "connection_id": "branch-meeting-83696c095118",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2236,7 +2310,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-ef45d599c9b0",
+          "feature_id": "cross-spine-connector-60e511b3b978",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2246,7 +2320,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.503385Z"
+      "created_at": "2026-07-23T20:22:04.568572Z"
     },
     {
       "governing_status": "green",
@@ -2255,7 +2329,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "branch-meeting-898c68326f58",
+      "connection_id": "branch-meeting-cc852991453e",
       "governing_criterion": "distance",
       "network_role": "branch-meeting-connection",
       "runtime": "not-invoked",
@@ -2273,7 +2347,7 @@
       },
       "derived_features": [
         {
-          "feature_id": "cross-spine-connector-79290e3d5b55",
+          "feature_id": "cross-spine-connector-34f86973697c",
           "network_role": "cross-spine-connector"
         }
       ],
@@ -2283,7 +2357,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.503454Z"
+      "created_at": "2026-07-23T20:22:04.568644Z"
     },
     {
       "governing_status": "grey",
@@ -2315,7 +2389,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.597151Z"
+      "created_at": "2026-07-23T20:22:04.673404Z"
     },
     {
       "governing_status": "green",
@@ -2347,7 +2421,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.730129Z"
+      "created_at": "2026-07-23T20:22:04.861443Z"
     },
     {
       "governing_status": "grey",
@@ -2379,7 +2453,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.730210Z"
+      "created_at": "2026-07-23T20:22:04.861535Z"
     },
     {
       "governing_status": "green",
@@ -2388,7 +2462,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-c943e125c7f2",
+      "connection_id": "spine-access-d648c311d118",
       "governing_criterion": "continuity",
       "network_role": "school-access-connection",
       "runtime": "not-invoked",
@@ -2411,7 +2485,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:25.930916Z"
+      "created_at": "2026-07-23T20:22:05.013061Z"
     },
     {
       "governing_status": "green",
@@ -2443,7 +2517,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.077640Z"
+      "created_at": "2026-07-23T20:22:05.177079Z"
     },
     {
       "governing_status": "grey",
@@ -2475,7 +2549,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.077717Z"
+      "created_at": "2026-07-23T20:22:05.177159Z"
     },
     {
       "governing_status": "green",
@@ -2507,7 +2581,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.238352Z"
+      "created_at": "2026-07-23T20:22:05.355755Z"
     },
     {
       "governing_status": "grey",
@@ -2539,7 +2613,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.238428Z"
+      "created_at": "2026-07-23T20:22:05.355832Z"
     },
     {
       "governing_status": "grey",
@@ -2571,7 +2645,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.238481Z"
+      "created_at": "2026-07-23T20:22:05.355884Z"
     },
     {
       "governing_status": "grey",
@@ -2603,7 +2677,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.238527Z"
+      "created_at": "2026-07-23T20:22:05.355930Z"
     },
     {
       "governing_status": "green",
@@ -2635,7 +2709,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.381476Z"
+      "created_at": "2026-07-23T20:22:05.516255Z"
     },
     {
       "governing_status": "grey",
@@ -2667,7 +2741,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.381552Z"
+      "created_at": "2026-07-23T20:22:05.516332Z"
     },
     {
       "governing_status": "grey",
@@ -2699,7 +2773,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.381604Z"
+      "created_at": "2026-07-23T20:22:05.516382Z"
     },
     {
       "governing_status": "grey",
@@ -2731,7 +2805,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.381652Z"
+      "created_at": "2026-07-23T20:22:05.516428Z"
     },
     {
       "governing_status": "grey",
@@ -2763,7 +2837,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.381696Z"
+      "created_at": "2026-07-23T20:22:05.516471Z"
     },
     {
       "governing_status": "green",
@@ -2772,7 +2846,7 @@
         "red"
       ],
       "review_required": false,
-      "connection_id": "spine-access-a342920f11a5",
+      "connection_id": "spine-access-07f01b5db2da",
       "governing_criterion": "continuity",
       "network_role": "school-access-connection",
       "runtime": "not-invoked",
@@ -2795,7 +2869,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.570046Z"
+      "created_at": "2026-07-23T20:22:05.666739Z"
     },
     {
       "governing_status": "grey",
@@ -2827,7 +2901,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:26.570124Z"
+      "created_at": "2026-07-23T20:22:05.666813Z"
     },
     {
       "governing_status": "green",
@@ -2859,7 +2933,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:29.147604Z"
+      "created_at": "2026-07-23T20:22:08.511097Z"
     },
     {
       "governing_status": "grey",
@@ -2891,7 +2965,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.051318Z"
+      "created_at": "2026-07-23T20:22:22.497535Z"
     },
     {
       "governing_status": "red",
@@ -2919,7 +2993,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7765b355bbb01df4",
-        "dependency_fingerprint": "dab90938f6a2d184c97fb86f275e5efc055fff93bacae2d5e4d29fd63242dd55",
+        "dependency_fingerprint": "5735cf0caf1cdfefbb5d6023fbca00a9c0d1199b60b2bc8127a7f9dcfcc45829",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3014,7 +3088,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f15225b0fffbf462",
-        "dependency_fingerprint": "5d7b292f5cbc6027221cf086f8ea2f236e14ebf3e44216742dd8ee8db1450bcf",
+        "dependency_fingerprint": "ae040bcaf6e4c5c7d1089768c95f140a33786d7f1bf20fa256a7997f21990944",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3109,7 +3183,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-552e9c42bb93e022",
-        "dependency_fingerprint": "d9ac989000dd8047e2fda250983c194d5ba8c178b893d13932da09513be95be6",
+        "dependency_fingerprint": "7d1a6e628d80ce0ce3c1ee693e8bc4ee1d790e073494d7111e20573082692321",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3204,7 +3278,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-707daaa39c4a3c28",
-        "dependency_fingerprint": "a4209ba40f941f7e4045cd04611c22b12bbefc755ae4cb1c3ec7613841150b54",
+        "dependency_fingerprint": "fe5118182d8816363671d9b3a474a2d68fb8cfb6658e79e64c17be3871ef172c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3301,7 +3375,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f4233a59b5d27cae",
-        "dependency_fingerprint": "b0b17ac2039f58aecef77140a2a0dd42f7a784f15501a0fa991940c2eef10001",
+        "dependency_fingerprint": "f50a8ff6644cd446c400f1297b8989357f56764fa101dbc14fb9ccd284894919",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3396,7 +3470,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-fffcb604e6db5361",
-        "dependency_fingerprint": "ff4178405dfb6719083d7c356d9e87011e143c2f2d210990258bcc5384dd2bcc",
+        "dependency_fingerprint": "0a848756ad6e7dc9734a712e3961d219aeb8d090b1627f0e385959e8c8bb4c97",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3493,7 +3567,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8f195089d1b76fc7",
-        "dependency_fingerprint": "a85ff289f8c9283958cf5ddd1209c9c18edb53942fa9fc1e5b67d143aa3c0910",
+        "dependency_fingerprint": "b7aad96582283e00de7ed50ac0831b4d99c7546e2523a4ea306ae28879a0801c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3590,7 +3664,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7851ec9b51c34e87",
-        "dependency_fingerprint": "6cda80d32c67c2db7786ec7c81b252d3538731e61e47389a691c6f4133bb4e53",
+        "dependency_fingerprint": "55f07420a464ab5962cf28437c4ecd6b15393bb68017b436e3ec9d767b11cf38",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3685,7 +3759,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-b468ee09cc8f9f1e",
-        "dependency_fingerprint": "7f2677b7aed3855b71afeca44ef6d963911c6e181dd946a1e26ee888702e5f99",
+        "dependency_fingerprint": "3035224fef60e25d7d0fc3b5ea19089d3e99a2cbde674a1cfaf2c548d0c731c2",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3782,7 +3856,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8fbd1372b7b79e5b",
-        "dependency_fingerprint": "9f351adbfcadaae5d1800d2c7925eb48c8656671211f6f8a6418cbb2091332ed",
+        "dependency_fingerprint": "fea45a637b6463c5634dbb7b1bf7e12c8981b7ed59b89f423c00fa35e852b889",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3877,7 +3951,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e233435219460d00",
-        "dependency_fingerprint": "a2744cb10c780f2bf3931edaf372842c5b8057589231bc3cd7a0eec89687fa0c",
+        "dependency_fingerprint": "35730adfb41a47a415220eed6626a524911419e9159d153a42bcbf67aaaa9912",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -3976,7 +4050,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.052823Z"
+      "created_at": "2026-07-23T20:22:22.499129Z"
     },
     {
       "governing_status": "red",
@@ -4004,7 +4078,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7fff4313759b4763",
-        "dependency_fingerprint": "3ae2cecc41b236bb359f1bc684a05655674af8186701ec5de383f4ef9c997379",
+        "dependency_fingerprint": "2c83f6222b866f635de853e78e6779c49d762d47a647a1d09602b4b8343fe1ae",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4101,7 +4175,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-4e788e6fb4c2d0b4",
-        "dependency_fingerprint": "7756d1834ffb0242a923641faadebd96ef175ffe10d9feb355033dbe5f6d140e",
+        "dependency_fingerprint": "d9b1abc18e4888659bba0e94393140f02528c467be3e1e9897055d480dcbc74c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4200,7 +4274,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.053109Z"
+      "created_at": "2026-07-23T20:22:22.499419Z"
     },
     {
       "governing_status": "red",
@@ -4228,7 +4302,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-22d386fcff8b68dd",
-        "dependency_fingerprint": "d1a9890e889f1bed42752c2cca4bbcb88c670a5064a9ef64f34bd39a7a700bb7",
+        "dependency_fingerprint": "5cb998e516305cb86130944e342ae98bd6f42e4db2649c50e6c983045c93e76b",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4323,7 +4397,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8aff469e48f618f8",
-        "dependency_fingerprint": "23244b1b1cce632b4fcc2bd91fae40bbb9b8123f21faa31ce1dc3f3b547bedbd",
+        "dependency_fingerprint": "cb8d7e0fbc5bb0a1748a6190f699ee7defbe5a8855467efb11a290324f87774e",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4418,7 +4492,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-178b7bdd77238148",
-        "dependency_fingerprint": "19b1134fb32c6cac6387759d7ad4e2810137991ff29540cd14830fe63a673a5c",
+        "dependency_fingerprint": "7e61edc672affbeb81236229fc8136b3fbcf8334d8dfa920bfd193dc4ebadfe0",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4515,7 +4589,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e6025110de383d3e",
-        "dependency_fingerprint": "1b38330f0d44bfbdb8be83e3f30a611e006a0f6244f83ee18ffda575fd1745dd",
+        "dependency_fingerprint": "8677360802ac5e0c24eadeb0c51a8935fb2b6ffb21690a16ab70f6356781729f",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4612,7 +4686,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-605d2230b070f304",
-        "dependency_fingerprint": "a61de5fa34064381f1d67bf90517571e201fe7abba4a98cd3b30aa1fe80aa2c7",
+        "dependency_fingerprint": "09b8345dbe4caacbe032e78901695fa3acdbd21c7ee5b572f2af459cd7dbac48",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4707,7 +4781,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-3ea8894b1d4d0590",
-        "dependency_fingerprint": "0196d08aa3c72485beb7ebc26ac9cd9381c8a1f1f5623697674e13e543fb9b8b",
+        "dependency_fingerprint": "2e2e3ae62efd53333f95b12e86c2195f6df2f879ccd565816881fc908c446703",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4804,7 +4878,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-a1748ad5a28a2304",
-        "dependency_fingerprint": "47f47a55cf5806f0f0a5358ba75efbc2391afc6e8dc2fcb2f30d6eb5fd8d8d2e",
+        "dependency_fingerprint": "634b68ddb65c21e14717ea040b07f42c70ad75b3c53b4886d3eaacebf8dba0ed",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -4903,7 +4977,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.054028Z"
+      "created_at": "2026-07-23T20:22:22.500299Z"
     },
     {
       "governing_status": "red",
@@ -4931,7 +5005,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-ac0438db81549fa2",
-        "dependency_fingerprint": "0b9c8da12cc0eb9c85a4cfcd4e54c130d3463e2f961d279db24afdf7e51f33ed",
+        "dependency_fingerprint": "bff6c70429fbfc4a6639b2b1ecd13563f7555ddbd0cab9162a1302db6bd4dbe2",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5028,7 +5102,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-6d415ebabfecd148",
-        "dependency_fingerprint": "e4c76eb703d70b53c643fff252da9688773ee1da1832a8062832de163da51397",
+        "dependency_fingerprint": "7d95fa1c8298be05bb1b6ea12ce7010643828119d1eea6f70f363e5ef1bcf34f",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5125,7 +5199,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-fefb7ebb1fb50091",
-        "dependency_fingerprint": "6cfdf917d936f1918c75bf28f9b3c3390d68e44674ea8802cd38f0ec67570f28",
+        "dependency_fingerprint": "7c3f782d28c0be5b7ab86c09fb4a65d5c64473f283eb987bfcc68fa49a29e4ae",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5222,7 +5296,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-fd311d8c62881496",
-        "dependency_fingerprint": "84c8a431056b5360ed02e1bd3d1edff2749084ba46fa7a70a59f782c23119f2a",
+        "dependency_fingerprint": "07402bfd0deeb6f10e525c647aba448041125b5162152f11e835a17028a23f0f",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5319,7 +5393,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-7c6beea131dee146",
-        "dependency_fingerprint": "21d5f9f5ab74c65201e19f50213f4682536a50a8e21d2f8ae9c580d3312bdf5b",
+        "dependency_fingerprint": "fcd2df7080da3701691930e1f0c45381780bffbe9f318ef05d664be2040203e1",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5414,7 +5488,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-959dbca48e057c7e",
-        "dependency_fingerprint": "24b50565df4667a7ae43aa769c8dfdea1480010432f798a15142ee439142eefc",
+        "dependency_fingerprint": "268fba2d4f59c360eeec39878b9b8fa4068af5192b98a485b549fec358298a7c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5509,7 +5583,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-b21690040fd24850",
-        "dependency_fingerprint": "2f6246f72e8e014e668eb82ecf3adbba5a7ee7ce6c512e7bbc538598bb7c0217",
+        "dependency_fingerprint": "a3bfef3e790445f61ec8dbeb20c516ef8d5ed994ca8e579f078c293744a83cf4",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5608,7 +5682,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.054974Z"
+      "created_at": "2026-07-23T20:22:22.501310Z"
     },
     {
       "governing_status": "red",
@@ -5636,7 +5710,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-40bd6169b8dd7e5e",
-        "dependency_fingerprint": "c930b0f5aff4ecf9233ea7b9c0b393a9cbbb431826b293f6835919cb3d0c50df",
+        "dependency_fingerprint": "ee9bf13be3650604784022c9ab83456e2a6eb4b061331b15175401f2af0d6f02",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5733,7 +5807,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-85778c31133c2ae3",
-        "dependency_fingerprint": "4b1f0de8489b9227489ab56990193a13d7f9050a310ee4156410c420edf81447",
+        "dependency_fingerprint": "02ad05476f01808bb981127319028716e3409ed77c2fa6c69dd4cf515cf4d11c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5828,7 +5902,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f1132d327d355fa9",
-        "dependency_fingerprint": "58b6a0d511cf5080abe453afee1d249813c1b18a0a7c479138a912e82a00cabd",
+        "dependency_fingerprint": "4653eea523155c7fcb805faf894b31339cabd1f1f5a46aee419578872217aad5",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -5925,7 +5999,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-3092785f5ca548c2",
-        "dependency_fingerprint": "781fffcdfbc09d18b4a5a9aa7dbf3c11c1e7d7022c22a5b6f6ca157ed1a3ac17",
+        "dependency_fingerprint": "dc5759590f3fc0f9f0b01e01cc6039b0ea87977af53683973f0582e053dc5c5b",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6022,7 +6096,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e6f2a30569fd8567",
-        "dependency_fingerprint": "7f9171d615c347baf109be22818632cbea8ae04f24d2011709536663d5063a39",
+        "dependency_fingerprint": "5e7de1d68f8232adb88c84db060da343e08138d8191e51334bc4292888871d0d",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6123,7 +6197,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.055694Z"
+      "created_at": "2026-07-23T20:22:22.502025Z"
     },
     {
       "governing_status": "red",
@@ -6151,7 +6225,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-68eb40e93b94d7c0",
-        "dependency_fingerprint": "145d285eb01c0c6cbdbaf3e09b933503209a3235b7e27fa7ad47aa41f5fdb857",
+        "dependency_fingerprint": "e6e419d87adc7f939e1110cfe3f09688775deb8f33f23a1bbf63390032da204c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6246,7 +6320,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8bf93fd9b8a02e87",
-        "dependency_fingerprint": "d84eb2334fd9dc269c9b0d09d430c416740db31f8c9e3ea247da596d301cb866",
+        "dependency_fingerprint": "26dae0bf4faaff886cef9dc8e1f0c0e65328103631f011b06a4618b5b49dd5a0",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6343,7 +6417,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-bfbb332c4566b207",
-        "dependency_fingerprint": "71edd4eb42f740ef86b603af9aade02c0fd27df1eea7b2008d11325265e95dc5",
+        "dependency_fingerprint": "c3ceb2b7271132ced920f853838f94defdf6c84cb5dfaebf6b75628d155bf25a",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6440,7 +6514,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-53a369587045568d",
-        "dependency_fingerprint": "68e4a7b9d3a62da502b37c452a1b9b430becd25ed105b0d07f389fce42922a40",
+        "dependency_fingerprint": "c3eab91e799d2eeac7f71f1e7da4c5359dcab58f68728e4eb431f354f29bb007",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6535,7 +6609,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-e8ca3990de9ff64b",
-        "dependency_fingerprint": "8c152ac2de77792df208d5ab03ced76a56f45709be7f91aa94385dc2c6f98254",
+        "dependency_fingerprint": "d1fd9ce5dac986289fccf4afcd1770ec9b69f487ee4ac3cfcf3635f526d287ba",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6636,7 +6710,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.056460Z"
+      "created_at": "2026-07-23T20:22:22.502761Z"
     },
     {
       "governing_status": "red",
@@ -6664,7 +6738,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-9b74d322c35da627",
-        "dependency_fingerprint": "13fe3cefde84a40accd8c10acc3eece43614d2c657f629a4b215b6bd6a6b1a73",
+        "dependency_fingerprint": "f775e2d9b819048fe46407cf541ad39611c96b7f7b164e7a9c11f8fc2ffd8b81",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6761,7 +6835,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-2de53833b49e5e3c",
-        "dependency_fingerprint": "914aaf721906c3e2fa8f3ca1c6f925816b3ada9855edc6878f24ecdf164a431f",
+        "dependency_fingerprint": "08e9da8137da95d1708ba6accf26c1a9b569d1703f1572c62d35a0d4f0030409",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6856,7 +6930,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-d0c36ea1b0f500b9",
-        "dependency_fingerprint": "80194cc1caf1bbbc9d1d99be181e19a58e140cd37bef431efaf69ef2de12b3c0",
+        "dependency_fingerprint": "8bdae2042b525413699aa5fcd11bc6feb09d87ebac35d64b506ca8ec0bdf4e35",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -6953,7 +7027,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-5a2d13f04914e34c",
-        "dependency_fingerprint": "be754183e0efc951e249fc8231c6bea3e13e81b18566e5387be346da78644f71",
+        "dependency_fingerprint": "def7959ab6dc3d105d6da2d163517758cadf569981ef4b97fa94ab35a98c6422",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7050,7 +7124,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-85a4df768286fdf9",
-        "dependency_fingerprint": "073f1091621101ddea7ebc766cbdae716d7c25da69f60450414dfd152fedb537",
+        "dependency_fingerprint": "11f6d1e10149b421fe0b16a75e5baf25e7d64654ef1633ee1ccb531da96fdf24",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7147,7 +7221,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-cbca4662ec9ca940",
-        "dependency_fingerprint": "fc9e4d89cc254fdf011a202e0ddd683cfcb2431301207ff1db0abb1a5d847d74",
+        "dependency_fingerprint": "ae1a0024fdd9d5eeb75cd9d583e47e4fd4282886df900db666e86315fcb18c98",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7248,7 +7322,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.057374Z"
+      "created_at": "2026-07-23T20:22:22.503710Z"
     },
     {
       "governing_status": "red",
@@ -7276,7 +7350,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-08356bd054ae370c",
-        "dependency_fingerprint": "0568422d2040bdf61db0a8e67f45548197633d1c38fe2981bff35290395034a7",
+        "dependency_fingerprint": "0c4110ef03082e0afbd01ec86b481c2be2473b5d8a139568e424b60957450485",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7373,7 +7447,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-3168ab22be0de263",
-        "dependency_fingerprint": "1967a02d0b96dbdd005ee97e46356802731f960216d95d36b6de3044e16c4327",
+        "dependency_fingerprint": "b70797cf7e3113c55adfabc47e9944c0345046aa8bb2ef145d354548ff232196",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7474,7 +7548,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.057719Z"
+      "created_at": "2026-07-23T20:22:22.504056Z"
     },
     {
       "governing_status": "red",
@@ -7502,7 +7576,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-df48c88c727f15da",
-        "dependency_fingerprint": "e6c2977ed7ae8e06ef02747c12b6368da24c85478f4fbc01984f3da88d911f2a",
+        "dependency_fingerprint": "13ecffdc764d40aeffc44827007c1c9ce89d0008c9d68a019cae5766362525fc",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7599,7 +7673,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-deaa1ccc3e95e058",
-        "dependency_fingerprint": "70b68b34dfc887274da63060f18d6e0b85c4cf40ad97e53e9e4d2baf1a81cc70",
+        "dependency_fingerprint": "b708b33aed3e00baec6f5008d08d127b3f559dd97d426b5aa976f7a40948396a",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7696,7 +7770,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8a8b70a74997c7e9",
-        "dependency_fingerprint": "209ed8700fd2a7fc3b5ac71291e910a3f60eadf8071668f69266eff963a4c442",
+        "dependency_fingerprint": "f416d64c16c672bf101789c49283e26467db6a4fe916a316cd197c8afa5c4c84",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7793,7 +7867,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-60e859343d90b580",
-        "dependency_fingerprint": "885ba14ae0a619d887e0f054222ffc047445a1b93e768ec778cf77444c0fbc9f",
+        "dependency_fingerprint": "06b829e3939d9ca596e28769dceb623936b3ba005bac5625511836f3f4b19895",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7890,7 +7964,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-79bd0f1d36821e9e",
-        "dependency_fingerprint": "69d47344075ddaf08c7951c653afeaab61a21aaffa804928f750c71a273b79c8",
+        "dependency_fingerprint": "3338a6be0d72b6d74735118007eb2a509f245d84b453e33ebbd0b78f3b11dd89",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -7991,7 +8065,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.058573Z"
+      "created_at": "2026-07-23T20:22:22.504863Z"
     },
     {
       "governing_status": "red",
@@ -8019,7 +8093,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-1ee4cfb5c41a052e",
-        "dependency_fingerprint": "497448f99b6ca6c3c8f6bc8a96b222c928c61acdfdd4665d50b5d2e59adba8cf",
+        "dependency_fingerprint": "ce3319178f84c28f79ca2871e8570ad389341ed583ec1c8ab312abc636f1ac1d",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8120,7 +8194,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.058782Z"
+      "created_at": "2026-07-23T20:22:22.505067Z"
     },
     {
       "governing_status": "grey",
@@ -8152,7 +8226,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.058836Z"
+      "created_at": "2026-07-23T20:22:22.505119Z"
     },
     {
       "governing_status": "grey",
@@ -8184,7 +8258,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.058894Z"
+      "created_at": "2026-07-23T20:22:22.505169Z"
     },
     {
       "governing_status": "red",
@@ -8212,7 +8286,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-f72bba88a6774c38",
-        "dependency_fingerprint": "5cdc6c1d4e949662201c03133b40fe02e0ec88995c1426fb09508b797c37aeca",
+        "dependency_fingerprint": "6ffa8049847b7e244bde4abcd73d7200c3cd5d95c196cf24fc90d4078704407e",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8309,7 +8383,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-24abd294e9a33b5d",
-        "dependency_fingerprint": "c3ee9247190ea0ac5d7a62f2b36bdce47f4d30925676c440a1389abcda035a0d",
+        "dependency_fingerprint": "d2266a903c79a82950a5770bc4a50a5e0c97df4a3ae37ec2f3696a2f76f6181d",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8408,7 +8482,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.059254Z"
+      "created_at": "2026-07-23T20:22:22.505530Z"
     },
     {
       "governing_status": "red",
@@ -8436,7 +8510,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-8a1c257e9ea45b1b",
-        "dependency_fingerprint": "bab01a71a046496ebd38a99d2a8fcb820efbec95e5654df68b8eda5f75b79e83",
+        "dependency_fingerprint": "b26690d1e4a4e20331db854115b875de781c13754c95c46d7f9b51ff5923649c",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8537,7 +8611,7 @@
       "responder_mode": null,
       "choice_validation": null,
       "affected_feature_identifiers": [],
-      "created_at": "2026-07-23T17:57:43.059495Z"
+      "created_at": "2026-07-23T20:22:22.505740Z"
     },
     {
       "governing_status": "red",
@@ -8565,7 +8639,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-52e3cf97c32b2d24",
-        "dependency_fingerprint": "919ff0265188888db791481227a770059122169946c030cd48b6ec95387514bc",
+        "dependency_fingerprint": "f46d259dc2ab0aec30c2da1f7fc80956ce43ee016d6e414fc875b17603b575d8",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8660,7 +8734,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-99cef3df188e078c",
-        "dependency_fingerprint": "b2aacf7e8a3b51a2822cb6c59949ff4b448e7c39a6ae21cdf873ff5fb518547e",
+        "dependency_fingerprint": "d3bb1c7c4e61a2f55f114c03babe07c9f63d8165c5e9ef250b37e2effb45e1b7",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8757,7 +8831,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-c652afe7a56c0c5c",
-        "dependency_fingerprint": "4fb8145ecb3c6675351c52213133ed64bde4af554849b2bd5b75a5ac337c3a0b",
+        "dependency_fingerprint": "f65a0d4af8e4b1badaff87d7f912631f1ddecae4b4b3d6eeedd3f3e75a4d1578",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8854,7 +8928,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-2f71c1dcad73419e",
-        "dependency_fingerprint": "1a7bab6fea04f896fa52da48700b2e9e444760f1e9d7c1c099945d6f7b2652be",
+        "dependency_fingerprint": "77ed5f76bb367e2eb35a25719cb3e7a0648db8c1544b04659277bd24ee11b219",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [
@@ -8949,7 +9023,7 @@
       "derived_features": [],
       "decision_request": {
         "request_id": "agent-decision-6477b3001f4f09c5",
-        "dependency_fingerprint": "d9b06591489145562d2b67d500d9d0d7ecdcdd6b6598dd5c41bd3519be198b83",
+        "dependency_fingerprint": "b19c866372020d330dcfb8cb98a77156307455724cd6a949a023127f2dc5f743",
         "decision_contract": "agent-decision-menu/v1",
         "compilation_scope": "urban-school-access-gap",
         "affected_identifiers": [

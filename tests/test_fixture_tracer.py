@@ -166,18 +166,15 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     html = result.artifacts["review_map"].read_text()
     assert DISCLAIMER in html
     assert 'id="feature-details"' in html
-    assert 'id="layer-a-road-spines"' in html
     assert 'id="layer-community-connections"' not in html
     assert 'id="layer-spine-access-connections"' in html
-    assert 'id="layer-ncn-routes"' in html
-    assert 'id="layer-ncn-routes" type="checkbox" checked' in html
     assert 'href="https://github.com/awjreynolds/banes-satn"' in html
-    assert 'id="layer-strategic-spines"' in html
+    assert 'id="layer-strategic-network" type="checkbox" checked' in html
     assert 'id="layer-spine-access-connections"' in html
-    assert "A-road Strategic Spine — major engineering required" in html
-    assert "Established NCN Strategic Spine" in html
+    assert "A roads, established National Cycle Network routes" in html
+    assert "declassified NCN routes and Greenway cycleways" in html
     assert "Spine Access Connection" in html
-    assert 'id="legend-strategic-spines"' in html
+    assert 'id="legend-strategic-network"' in html
     assert 'id="legend-spine-access-connections"' in html
     assert 'id="layer-schools"' in html
     assert 'id="layer-retail-centres"' in html

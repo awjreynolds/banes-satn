@@ -441,15 +441,15 @@ def test_governed_urban_spines_and_ncn_evidence_publish_distinctly(tmp_path: Pat
     assert 'id="layer-urban-classification-unknowns" type="checkbox" checked' not in review_html
     assert 'id="layer-low-traffic-area-portals" type="checkbox"' in review_html
     assert 'id="layer-low-traffic-area-portals" type="checkbox" checked' not in review_html
-    assert "not automatically a Circulation Boundary" in review_html
+    assert "declassified NCN routes and Greenway cycleways" in review_html
     assert "not an existing LTN" in review_html
     assert "no preferred residential cycling centreline" in review_html
     assert "School Street Candidate Assessments" in review_html
     assert "Green — Promising" in review_html
     assert "Grey — Not Evaluated" in review_html
     assert '"network_scope"], "urban"' not in review_js
-    assert 'id: "ncn-route-evidence"' in review_js
-    assert 'id: "ncn-link-evidence"' in review_js
+    assert 'id: "strategic-network"' in review_js
+    assert '"line-color": "#c0392b"' in review_js
     assert '"low-traffic-area-portal"].includes' in review_js
 
 

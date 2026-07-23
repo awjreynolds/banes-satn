@@ -77,16 +77,14 @@ def test_tracked_pages_site_is_complete_and_contains_no_atm_geometry() -> None:
         for feature in connections
     )
     html = (site / "index.html").read_text(encoding="utf-8")
-    assert 'id="layer-a-road-spines"' in html
-    assert 'id="layer-strategic-spines"' in html
+    assert 'id="layer-strategic-network"' in html
     assert 'id="layer-spine-access-connections"' in html
     assert 'id="layer-cross-spine-connectors"' in html
     assert 'id="layer-gaps-warnings"' in html
-    assert 'id="layer-ncn-routes"' in html
     assert 'id="layer-schools"' in html
     assert 'id="layer-retail-centres"' in html
     assert 'id="layer-healthcare"' in html
     assert 'id="layer-atm"' in html
     assert 'id="atm-upload"' in html
-    assert 'aria-describedby="legend-strategic-spines"' in html
+    assert 'aria-describedby="legend-strategic-network"' in html
     assert 'aria-describedby="legend-spine-access-connections"' in html

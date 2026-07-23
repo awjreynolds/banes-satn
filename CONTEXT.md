@@ -68,6 +68,10 @@ _Avoid_: pairwise network, nearest-neighbour network, spider's web
 A deliberately bounded, informative and inspectable layered picture showing the Backbone-and-Access Network, Gradient Sections, School Access Obligations and Candidate Low-Traffic Areas together. It explains a prioritised strategy for building outward from shared spines rather than claiming that every displayed corridor is already complete or designed. Street-level imagery inspection and detailed intervention derivation are future refinement work, not prerequisites for generating this picture.
 _Avoid_: final scheme map, cycle-route inventory, undifferentiated linework
 
+**Strategic Network Route Layer**:
+The topmost red route layer in the Strategic Network Visualization, combining governed A roads, established National Cycle Network routes, Declassified NCN Routes and Greenway Cycleways. It remains visually distinct from contextual, analytical and warning layers.
+_Avoid_: separate competing spine overlays, contextual route colour, hidden backbone
+
 **Backbone-Outward Assembly**:
 The iterative formation of a Backbone-and-Access Network from all Strategic Spines concurrently, extending through the nearest reachable unserved Access Obligations and joining differently rooted branches where they first meet. It ends with every Access Obligation served or exposed as a Network Gap.
 _Avoid_: one-spine-at-a-time build, global pairwise routing, order-dependent catchment
@@ -125,8 +129,16 @@ A rural lane where through motor traffic is physically or legally filtered while
 _Avoid_: Quiet Lane, traffic-free path
 
 **Strategic Spine**:
-A continuous rural backbone corridor defined by an A road or an established National Cycle Network route. An A-road spine is selected for strategic continuity and is presumed to require substantial engineering for high-quality provision alongside the road rather than carriageway cycling; neither an NCN quality gap nor an Elevation Challenge removes the corridor from the backbone.
+A continuous rural backbone corridor defined by an A road, an established National Cycle Network route, a Declassified NCN Route or a Greenway Cycleway. An A-road spine is selected for strategic continuity and is presumed to require substantial engineering for high-quality provision alongside the road rather than carriageway cycling; neither a route-quality gap nor an Elevation Challenge removes the corridor from the backbone.
 _Avoid_: rural B-road spine, cycling on the A-road carriageway, guaranteed NCN quality
+
+**Declassified NCN Route**:
+An official Walk Wheel Cycle Trust reclassified route that formerly formed part of the National Cycle Network and remains governed strategic cycle-route evidence. It is sourced from the separate official Reclassified Routes dataset and is not inferred from an RCN code.
+_Avoid_: current NCN route, Regional Cycle Network route, discarded historic linework
+
+**Greenway Cycleway**:
+A traffic-free Greenway section identified by the official cycle-route source and retained as a Strategic Spine. Where it is also part of the current NCN, its Greenway role is preserved without duplicating the corridor.
+_Avoid_: any path with “green” in its name, assumed current NCN, duplicate route
 
 **A-Road Spine Intervention Assumption**:
 The default evidence position that every A-road section admitted as a rural or urban spine requires major engineering to provide safe, generous, physically separated walking, wheeling and cycling space. Existing provision changes that position only when evidence demonstrates a continuous high-quality facility; the strategic network does not prescribe one detailed facility design.

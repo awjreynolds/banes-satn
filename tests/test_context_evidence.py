@@ -137,6 +137,46 @@ def test_geojson_array_tags_remain_a_road_and_ncn_evidence() -> None:
     assert list(context.loc[context["feature_type"] == "ncn-route", "name"]) == ["NCN 4 / 410"]
 
 
+def test_derives_declassified_ncn_and_greenway_cycle_route_evidence() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "local-cycleway",
+                "highway": "cycleway",
+                "geometry": LineString([(0, 0), (0.02, 0)]),
+            }
+        ],
+        crs=4326,
+    )
+    routes = gpd.GeoDataFrame(
+        [
+            {
+                "SegmentID": "declassified-24",
+                "RouteType": "RECLASSIFIED",
+                "RouteNo": "24",
+                "geometry": LineString([(0, 0), (0.01, 0)]),
+            },
+            {
+                "SegmentID": "greenway-1",
+                "Greenway": "Yes",
+                "name": "Local Greenway",
+                "geometry": LineString([(0.01, 0), (0.02, 0)]),
+            },
+        ],
+        crs=4326,
+    )
+
+    context = derive_context_layers(network, routes)
+    route_evidence = context.set_index("source_id")
+
+    assert route_evidence.loc["declassified-24", "feature_type"] == "declassified-ncn-route"
+    assert route_evidence.loc["declassified-24", "ncn_evidence_role"] == "declassified-route"
+    assert route_evidence.loc["declassified-24", "name"] == "Declassified NCN 24"
+    assert route_evidence.loc["greenway-1", "feature_type"] == "greenway-cycleway"
+    assert route_evidence.loc["greenway-1", "ncn_evidence_role"] == "greenway-cycleway"
+    assert route_evidence.loc["greenway-1", "name"] == "Local Greenway"
+
+
 def test_governed_urban_extent_splits_strategic_evidence_into_typed_parts() -> None:
     network = gpd.GeoDataFrame(
         [

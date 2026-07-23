@@ -17,7 +17,7 @@
     "urban-spine"
   ]);
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-spines", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "a-road-spines", "ncn-route-evidence", "ncn-link-evidence", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-outlines", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["strategic-network", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-outlines", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -694,7 +694,7 @@
         const isAreaEvidence = ["low-traffic-area", "low-traffic-area-portal"].includes(feature.properties.feature_type);
         const isTopographyProfile = feature.properties.feature_type === "topography-profile";
         const isGradientSection = feature.properties.feature_type === "gradient-section";
-        const isNamedNetworkEvidence = ["strategic-spine", "access-obligation", "a-road-spine", "ncn-route", "ncn-link", "urban-spine", "urban-classification-unknown", "crossing-warning", "school", "retail-centre", "healthcare", "atm-reference"].includes(feature.properties.feature_type);
+        const isNamedNetworkEvidence = ["strategic-spine", "access-obligation", "a-road-spine", "ncn-route", "ncn-link", "declassified-ncn-route", "greenway-cycleway", "urban-spine", "urban-classification-unknown", "crossing-warning", "school", "retail-centre", "healthcare", "atm-reference"].includes(feature.properties.feature_type);
         title.textContent = isNamedNetworkEvidence
           ? value(feature.properties.name, feature.properties.school_name || feature.properties.place_name || feature.properties.community_name || feature.properties.feature_type.replaceAll("-", " "))
           : isAreaEvidence
@@ -752,11 +752,9 @@
       input.addEventListener("change", () => renderCriteria(input.value));
     });
     const groups = {
-      "layer-strategic-spines": ["strategic-spines"],
+      "layer-strategic-network": ["strategic-network"],
       "layer-spine-access-connections": ["spine-access-connections", "access-obligations", "spine-access-topography-warnings"],
       "layer-cross-spine-connectors": ["cross-spine-connectors"],
-      "layer-a-road-spines": ["a-road-spines"],
-      "layer-ncn-routes": ["ncn-route-evidence", "ncn-link-evidence"],
       "layer-urban-spines": ["urban-spines"],
       "layer-urban-classification-unknowns": ["urban-classification-unknowns"],
       "layer-low-traffic-areas": ["low-traffic-areas", "low-traffic-area-outlines"],
@@ -917,7 +915,6 @@
     map.addLayer({ id: "low-traffic-area-outlines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "line-color": "#2f6474", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 13, 2], "line-opacity": .65 } });
     map.addLayer({ id: "low-traffic-area-portals", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area-portal"], layout: { visibility: "none" }, paint: { "circle-color": "#2874a6", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 2 } });
     map.addLayer({ id: "places", type: "circle", source: "places", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 13, 6], "circle-color": "#17202a", "circle-stroke-color": "white", "circle-stroke-width": 1.5 } });
-    map.addLayer({ id: "strategic-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "strategic-spine"], paint: { "line-color": ["match", ["get", "spine_kind"], "a-road", "#a04000", "ncn", "#2471a3", "#566573"], "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4, 13, 6.5], "line-opacity": .82 } });
     map.addLayer({ id: "spine-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "spine-access-connection"], paint: { "line-color": "#168f7b", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 13, 4], "line-dasharray": [1.5, 1.25], "line-opacity": .85 } });
     map.addLayer({ id: "school-access-connections", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "school-access-connection"], layout: { visibility: "none" }, paint: { "line-color": "#7d3c98", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 13, 4], "line-dasharray": [1.5, 1.25], "line-opacity": .85 } });
     map.addLayer({ id: "cross-spine-connectors", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "cross-spine-connector"], paint: { "line-color": "#7c4a93", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3, 13, 5], "line-opacity": .8 } });
@@ -930,9 +927,6 @@
     map.addLayer({ id: "gradient-sections", type: "line", source: "topography", filter: ["==", ["get", "feature_type"], "gradient-section"], layout: { visibility: "none" }, paint: { "line-color": ["match", ["get", "gradient_band"], "gentle", "#eff3ff", "noticeable", "#bdd7e7", "steep", "#6baed6", "very-steep", "#3182bd", "severe", "#08519c", "#7f8c8d"], "line-width": 9, "line-opacity": .92 } });
     map.addLayer({ id: "gradient-section-highlight", type: "line", source: "topography", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 13, "line-opacity": .95 } });
     map.addLayer({ id: "topography-unavailable", type: "line", source: "topography", filter: ["all", ["==", ["get", "feature_type"], "topography-profile"], ["==", ["get", "evidence_status"], "evidence-unavailable"]], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 8, "line-dasharray": [1, 1], "line-opacity": .9 } });
-    map.addLayer({ id: "a-road-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "a-road-spine"], layout: { visibility: "none" }, paint: { "line-color": "#a04000", "line-width": 7, "line-opacity": .8 } });
-    map.addLayer({ id: "ncn-route-evidence", type: "line", source: "network", filter: ["all", ["==", ["get", "feature_type"], "ncn-route"], ["!=", ["coalesce", ["get", "ncn_evidence_role"], "established-route"], "connector-link"]], paint: { "line-color": "#2471a3", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 13, 4.5], "line-opacity": .78 } });
-    map.addLayer({ id: "ncn-link-evidence", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "ncn-link"], paint: { "line-color": "#1f618d", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 13, 4], "line-dasharray": [2.5, 1.5], "line-opacity": .82 } });
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
     map.addLayer({ id: "urban-spines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-spine"], paint: { "line-color": "#513a63", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3, 13, 4.75], "line-opacity": .82 } });
     map.addLayer({ id: "urban-classification-unknowns", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "urban-classification-unknown"], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 5, "line-dasharray": [1, 1] } });
@@ -958,6 +952,26 @@
         "text-color": "#17202a",
         "text-halo-color": "#fdfefe",
         "text-halo-width": 2
+      }
+    });
+    map.addLayer({
+      id: "strategic-network",
+      type: "line",
+      source: "network",
+      filter: [
+        "in",
+        ["get", "feature_type"],
+        ["literal", [
+          "a-road-spine",
+          "ncn-route",
+          "declassified-ncn-route",
+          "greenway-cycleway"
+        ]]
+      ],
+      paint: {
+        "line-color": "#c0392b",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4, 13, 6],
+        "line-opacity": .92
       }
     });
     const bounds = new maplibregl.LngLatBounds();

@@ -132,8 +132,7 @@ nav { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .78rem; }
 #map-legend li { display: flex; align-items: center; gap: .4rem; }
 .map-key { display: inline-block; flex: 0 0 1.5rem; }
 .map-key.line { height: 0; border-top: 3px solid; }
-.map-key.a-road { border-color: #a04000; }
-.map-key.ncn { border-color: #2471a3; }
+.map-key.strategic-network { border-color: #c0392b; }
 .map-key.access { border-color: #16a085; border-top-style: dashed; }
 .map-key.cross-spine { border-color: #8e44ad; }
 .map-key.urban { border-color: #5b2c6f; }
