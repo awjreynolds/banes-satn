@@ -276,6 +276,39 @@ the action, consequence and constraints the compiler will enforce. An empty
 Agents cannot invent actions, mutate compiled state or override a Red mandatory
 criterion.
 
+To apply a choice, start a fresh compilation with a data-only decision ledger. Each
+response contains only the regenerated request identifier, its dependency fingerprint
+and one offered choice identifier; executable actions and free-form instructions are
+rejected. The compiler locates the same decision point, revalidates the fingerprint,
+membership and mandatory invariants, then applies its own typed action. Stale, unknown
+or cross-request responses return the current `decision-required` menu without changing
+compiled state. `terminate` returns a non-publishing `terminated` result and preserves
+the previous valid publication.
+
+```json
+{
+  "decision_contract": "agent-decision-menu/v1",
+  "responses": [
+    {
+      "request_id": "agent-decision-…",
+      "dependency_fingerprint": "…",
+      "choice_id": "1"
+    }
+  ]
+}
+```
+
+```shell
+uv run satn compile config/banes.yaml --decision-ledger decisions.json
+```
+
+Accepted choices participate in publication fingerprints and are repeated in the run
+manifest and Agent Decision Records. Choices affecting published spatial features are
+also linked through spatial properties and accessible review-map details; ATM comparison
+choices remain in typed divergence records because they never mutate authoritative
+geometry. Identical governed inputs and the same ledger reproduce the same identifiers
+and authoritative artifacts.
+
 Routine unresolved refinements remain typed findings and visible gaps. A
 `human-intervention-requests.json` record is emitted only when a material blocking
 ambiguity survives every bounded revision attempt. It records attempted revisions,

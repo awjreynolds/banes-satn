@@ -191,6 +191,10 @@
     addDefinition(list, "Distance criterion", value(properties.criterion_distance));
     addDefinition(list, "Rationale", value(properties.selection_reason));
     addDefinition(list, "Agent gate", value(properties.agent_outcome));
+    addDefinition(list, "Decision request", value(properties.agent_decision_request_id));
+    addDefinition(list, "Selected choice", value(properties.agent_decision_choice_id));
+    addDefinition(list, "Mapped action", value(properties.agent_decision_action));
+    addDefinition(list, "Responder mode", value(properties.agent_decision_responder_mode));
     addDefinition(list, "Topography comparison", value(properties.topography_comparison_status, "not evaluated"));
     addDefinition(list, "Topography triggered", value(properties.topography_alternative_trigger, false));
     addDefinition(list, "Topography original role", value(properties.topography_original_role));

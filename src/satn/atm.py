@@ -10,7 +10,9 @@ import geopandas as gpd
 import pandas as pd
 
 from satn.agents import (
+    AgentCompilationTerminated,
     AgentDecisionRequired,
+    AgentDecisionResolver,
     AgentRole,
     AgentRuntimeSource,
     DivergenceAssessment,
@@ -21,6 +23,7 @@ from satn.agents import (
 )
 from satn.models import (
     AgentConfig,
+    AgentDecisionAction,
     AgentDecisionChoice,
     AgentFinding,
     CouncilConfig,
@@ -83,7 +86,12 @@ def compare_atm(
     atm: gpd.GeoDataFrame,
     runtime: AgentRuntimeSource,
     config: CouncilConfig,
+    decision_resolver: AgentDecisionResolver | None = None,
 ) -> list[DivergenceRecord]:
+    resolver = decision_resolver or AgentDecisionResolver(
+        None,
+        compiled.compilation_input_fingerprint,
+    )
     connections = _authoritative_connections(compiled).to_crs(27700)
     reference = atm.to_crs(27700).copy().reset_index(drop=False)
     reference["_atm_id"] = [_feature_id(row, index) for index, row in reference.iterrows()]
@@ -113,6 +121,7 @@ def compare_atm(
                 min(float(overlap), 1.0),
                 config.compilation.agent,
                 compiled.compilation_input_fingerprint,
+                resolver,
             )
         )
 
@@ -129,6 +138,7 @@ def compare_atm(
                 0.0,
                 config.compilation.agent,
                 compiled.compilation_input_fingerprint,
+                resolver,
             )
         )
     return records
@@ -156,6 +166,7 @@ def _assess(
     overlap: float,
     agent_config: AgentConfig,
     governed_input_fingerprint: str,
+    decision_resolver: AgentDecisionResolver,
 ) -> DivergenceRecord:
     governing_status = TrafficLight.GREEN if status == "match" else TrafficLight.AMBER
     review = agent_config.review_decision(governing_status)
@@ -179,34 +190,65 @@ def _assess(
             message=f"The governed ATM geometry comparison is {status}.",
             evidence_ids=atm_ids,
         )
-        raise AgentDecisionRequired(
-            build_agent_decision_request(
-                compilation_scope="atm-comparison",
-                affected_identifiers=[connection_id, *atm_ids],
-                criterion="atm-geometry-comparison",
-                status=governing_status,
-                evidence_references=atm_ids,
-                findings=[finding],
-                choices=[
-                    AgentDecisionChoice(
-                        choice_id="1",
-                        label=f"Retain the {status} comparison",
-                        compiler_action=f"retain-atm-comparison:{status}",
-                        expected_consequence=(
-                            "Keep the governed comparison visible without changing compiled "
-                            "network geometry."
-                        ),
-                        mandatory_constraints=(
-                            "ATM geometry remains a non-truth comparison source.",
-                            "The choice cannot mutate authoritative compiled geometry.",
-                        ),
+        request = build_agent_decision_request(
+            compilation_scope="atm-comparison",
+            affected_identifiers=[connection_id, *atm_ids],
+            criterion="atm-geometry-comparison",
+            status=governing_status,
+            evidence_references=atm_ids,
+            findings=[finding],
+            choices=[
+                AgentDecisionChoice(
+                    choice_id="1",
+                    label=f"Retain the {status} comparison",
+                    compiler_action=AgentDecisionAction(
+                        kind="retain-atm-comparison",
+                        comparison_status=status,
                     ),
-                    termination_choice(),
-                ],
-                review_policy=review.review_policy,
-                governed_input_fingerprint=governed_input_fingerprint,
-            )
+                    expected_consequence=(
+                        "Keep the governed comparison visible without changing compiled "
+                        "network geometry."
+                    ),
+                    mandatory_constraints=(
+                        "ATM geometry remains a non-truth comparison source.",
+                        "The choice cannot mutate authoritative compiled geometry.",
+                    ),
+                ),
+                termination_choice(),
+            ],
+            review_policy=review.review_policy,
+            governed_input_fingerprint=(
+                decision_resolver.request_context_fingerprint()
+            ),
         )
+        response, choice = decision_resolver.offered_choice(request)
+        action = choice.compiler_action
+        if action.kind not in {"retain-atm-comparison", "terminate"} or (
+            action.kind == "retain-atm-comparison"
+            and action.comparison_status != status
+        ):
+            decision_resolver.validation = "invalid-action"
+            raise AgentDecisionRequired(request, decision_resolver)
+        record = DivergenceRecord(
+            connection_id=connection_id,
+            status=status,
+            **review.model_dump(),
+            atm_feature_ids=atm_ids,
+            overlap_ratio=overlap,
+            explanation=f"Caller selected choice {response.choice_id}: {choice.label}.",
+            resolution_attempts=[],
+            resolved=status == "match",
+            decision_request=request,
+            selected_choice_id=response.choice_id,
+            mapped_action=action,
+            responder_mode="caller",
+            choice_validation="accepted",
+            affected_feature_identifiers=request.affected_identifiers,
+        )
+        decision_resolver.accept(response, record)
+        if action.kind == "terminate":
+            raise AgentCompilationTerminated(decision_resolver)
+        return record
     active_runtime = materialize_agent_runtime(runtime)
     payload = DivergenceInput(
         connection_id=connection_id,

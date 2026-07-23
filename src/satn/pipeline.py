@@ -9,15 +9,21 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from satn.agents import AgentDecisionRequired
+from satn.agents import (
+    AgentCompilationTerminated,
+    AgentDecisionRequired,
+    AgentDecisionResolver,
+)
 from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
 from satn.constants import SCHEMA_VERSION
 from satn.models import (
+    AgentDecisionLedger,
     AgentDecisionRequest,
     AgentRecord,
     CompilationResult,
     CouncilConfig,
+    DivergenceRecord,
     TrafficLight,
 )
 from satn.publisher import (
@@ -30,11 +36,21 @@ from satn.sources import load_snapshot
 LOGGER = logging.getLogger(__name__)
 
 
-def compile(config: CouncilConfig | str | Path) -> CompilationResult:
+def compile(
+    config: CouncilConfig | str | Path,
+    *,
+    decision_ledger: AgentDecisionLedger | str | Path | None = None,
+) -> CompilationResult:
     """Compile into a complete publication or a non-publishing decision request."""
     started = time.perf_counter()
     council = config if isinstance(config, CouncilConfig) else CouncilConfig.from_yaml(config)
-    input_fingerprint = _compilation_input_fingerprint(council)
+    ledger = _load_decision_ledger(decision_ledger)
+    governed_input_fingerprint = _compilation_input_fingerprint(council)
+    input_fingerprint = _decision_ledger_input_fingerprint(
+        governed_input_fingerprint,
+        ledger,
+    )
+    decision_resolver = AgentDecisionResolver(ledger, governed_input_fingerprint)
     LOGGER.info(
         "Compilation started council=%s snapshot=%s schema=%s",
         council.council_id,
@@ -60,14 +76,20 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             council,
             source,
             runtime,
-            governed_input_fingerprint=input_fingerprint,
+            governed_input_fingerprint=governed_input_fingerprint,
+            decision_resolver=decision_resolver,
         )
     except AgentDecisionRequired as required:
         return _decision_required_result(
             council,
             input_fingerprint,
             required.request,
+            required.applied_records,
+            required.applied_divergence_records,
+            required.validation,
         )
+    except AgentCompilationTerminated as terminated:
+        return _terminated_result(council, input_fingerprint, terminated)
     compiled.compilation_input_fingerprint = input_fingerprint
     LOGGER.info(
         "Network compiled connections=%d gaps=%d status=%s",
@@ -80,14 +102,23 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             atm_reference = load_atm(council).to_crs(source["network"].crs)
         try:
             compiled.divergence_records = compare_atm(
-                compiled, atm_reference, runtime, council
+                compiled,
+                atm_reference,
+                runtime,
+                council,
+                decision_resolver,
             )
         except AgentDecisionRequired as required:
             return _decision_required_result(
                 council,
                 input_fingerprint,
                 required.request,
+                required.applied_records,
+                required.applied_divergence_records,
+                required.validation,
             )
+        except AgentCompilationTerminated as terminated:
+            return _terminated_result(council, input_fingerprint, terminated)
         if council.publication.audience == "local" or council.atm.redistribution_permitted:
             compiled.atm_reference = atm_reference
         unresolved = any(not record.resolved for record in compiled.divergence_records)
@@ -95,6 +126,19 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
             "comparison_available": TrafficLight.GREEN,
             "unresolved_divergences": (TrafficLight.AMBER if unresolved else TrafficLight.GREEN),
         }
+    unconsumed = {
+        response.request_id for response in ledger.responses
+    } - decision_resolver.consumed_request_ids
+    if unconsumed:
+        raise ValueError(
+            "decision ledger contains responses that do not belong to this compilation: "
+            + ", ".join(sorted(unconsumed))
+        )
+    compiled.decision_contract = ledger.decision_contract
+    compiled.accepted_decisions = [
+        response.model_dump(mode="json")
+        for response in decision_resolver.accepted_responses
+    ]
     run_fingerprint = json.dumps(
         {
             "council": council.council_id,
@@ -293,6 +337,7 @@ def compile(config: CouncilConfig | str | Path) -> CompilationResult:
         artifacts=artifacts,
         criteria=compiled.criteria,
         agent_records=compiled.agent_records,
+        divergence_records=compiled.divergence_records,
         metadata={
             "network_model": "backbone-outward",
             "compilation_input_fingerprint": input_fingerprint,
@@ -561,6 +606,9 @@ def _decision_required_result(
     council: CouncilConfig,
     input_fingerprint: str,
     request: AgentDecisionRequest,
+    agent_records: list[AgentRecord] | None = None,
+    divergence_records: list[DivergenceRecord] | None = None,
+    validation: str | None = None,
 ) -> CompilationResult:
     """Return a durable menu without publishing or retaining continuation state."""
     return CompilationResult(
@@ -571,10 +619,75 @@ def _decision_required_result(
         gaps=0,
         artifacts={},
         criteria={},
-        agent_records=[],
+        agent_records=agent_records or [],
+        divergence_records=divergence_records or [],
         decision_requests=[request],
-        metadata={"compilation_input_fingerprint": input_fingerprint},
+        metadata={
+            "compilation_input_fingerprint": input_fingerprint,
+            "decision_response_validation": validation,
+        },
     )
+
+
+def _terminated_result(
+    council: CouncilConfig,
+    input_fingerprint: str,
+    terminated: AgentCompilationTerminated,
+) -> CompilationResult:
+    accepted = [
+        *terminated.applied_records,
+        *terminated.applied_divergence_records,
+    ]
+    fingerprint = hashlib.sha256(
+        json.dumps(
+            [record.model_dump(mode="json") for record in accepted],
+            sort_keys=True,
+            default=str,
+        ).encode()
+    ).hexdigest()
+    return CompilationResult(
+        run_id=f"terminated-{fingerprint[:12]}",
+        status="terminated",
+        output_dir=council.publication.output_dir,
+        connections=0,
+        gaps=0,
+        artifacts={},
+        criteria={},
+        agent_records=terminated.applied_records,
+        divergence_records=terminated.applied_divergence_records,
+        metadata={
+            "compilation_input_fingerprint": input_fingerprint,
+            "decision_response_validation": "accepted",
+        },
+    )
+
+
+def _load_decision_ledger(
+    value: AgentDecisionLedger | str | Path | None,
+) -> AgentDecisionLedger:
+    if value is None:
+        return AgentDecisionLedger()
+    if isinstance(value, AgentDecisionLedger):
+        return value
+    return AgentDecisionLedger.model_validate_json(
+        Path(value).read_text(encoding="utf-8")
+    )
+
+
+def _decision_ledger_input_fingerprint(
+    governed_input_fingerprint: str,
+    ledger: AgentDecisionLedger,
+) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            {
+                "governed_input_fingerprint": governed_input_fingerprint,
+                "decision_ledger": ledger.model_dump(mode="json"),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
 
 
 def _compilation_input_fingerprint(council: CouncilConfig) -> str:
@@ -650,6 +763,9 @@ def _reuse_validated_publication(
             return None
         validate_publication(output, council)
         agents_payload = json.loads((output / "agent-records.json").read_text(encoding="utf-8"))
+        divergences_payload = json.loads(
+            (output / "divergence-records.json").read_text(encoding="utf-8")
+        )
         criteria = {
             section: {criterion: TrafficLight(status) for criterion, status in values.items()}
             for section, values in run["criteria"].items()
@@ -669,6 +785,10 @@ def _reuse_validated_publication(
             criteria=criteria,
             agent_records=[
                 AgentRecord.model_validate(record) for record in agents_payload["records"]
+            ],
+            divergence_records=[
+                DivergenceRecord.model_validate(record)
+                for record in divergences_payload["records"]
             ],
             metadata=run | {"publication_reused": True},
         )

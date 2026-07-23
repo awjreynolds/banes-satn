@@ -17,10 +17,14 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from satn.models import (
     AgentAttempt,
     AgentConfig,
+    AgentDecisionAction,
     AgentDecisionChoice,
+    AgentDecisionLedger,
     AgentDecisionRequest,
+    AgentDecisionResponse,
     AgentRecord,
     AgentReviewDecision,
+    DivergenceRecord,
     TrafficLight,
 )
 from satn.models import (
@@ -257,9 +261,100 @@ class GateOutcome:
 class AgentDecisionRequired(Exception):
     """End this invocation with one compiler-authored bounded decision menu."""
 
-    def __init__(self, request: AgentDecisionRequest):
+    def __init__(
+        self,
+        request: AgentDecisionRequest,
+        resolver: AgentDecisionResolver | None = None,
+    ):
         super().__init__(request.request_id)
         self.request = request
+        self.applied_records = list(resolver.applied_records) if resolver else []
+        self.applied_divergence_records = (
+            list(resolver.applied_divergence_records) if resolver else []
+        )
+        self.validation = resolver.validation if resolver else None
+
+
+class AgentCompilationTerminated(Exception):
+    """End this invocation after accepting the reserved terminate choice."""
+
+    def __init__(self, resolver: AgentDecisionResolver):
+        super().__init__("agent decision terminated compilation")
+        self.applied_records = list(resolver.applied_records)
+        self.applied_divergence_records = list(resolver.applied_divergence_records)
+
+
+class AgentDecisionResolver:
+    """Validate data-only ledger responses against freshly regenerated requests."""
+
+    def __init__(
+        self,
+        ledger: AgentDecisionLedger | None,
+        governed_input_fingerprint: str,
+    ):
+        self.ledger = ledger or AgentDecisionLedger()
+        self.governed_input_fingerprint = governed_input_fingerprint
+        self.applied_records: list[AgentRecord] = []
+        self.applied_divergence_records: list[DivergenceRecord] = []
+        self.accepted_responses: list[AgentDecisionResponse] = []
+        self.validation: str | None = None
+
+    @property
+    def consumed_request_ids(self) -> set[str]:
+        return {response.request_id for response in self.accepted_responses}
+
+    def request_context_fingerprint(self) -> str:
+        payload = {
+            "governed_input_fingerprint": self.governed_input_fingerprint,
+            "accepted_responses": [
+                response.model_dump(mode="json") for response in self.accepted_responses
+            ],
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def offered_choice(
+        self,
+        request: AgentDecisionRequest,
+    ) -> tuple[AgentDecisionResponse, AgentDecisionChoice]:
+        response = next(
+            (
+                candidate
+                for candidate in self.ledger.responses
+                if candidate.request_id == request.request_id
+            ),
+            None,
+        )
+        if response is None:
+            unconsumed = {
+                candidate.request_id for candidate in self.ledger.responses
+            } - self.consumed_request_ids
+            self.validation = "unknown-request" if unconsumed else "response-required"
+            raise AgentDecisionRequired(request, self)
+        if response.dependency_fingerprint != request.dependency_fingerprint:
+            self.validation = "stale-fingerprint"
+            raise AgentDecisionRequired(request, self)
+        choice = next(
+            (choice for choice in request.choices if choice.choice_id == response.choice_id),
+            None,
+        )
+        if choice is None:
+            self.validation = "unknown-choice"
+            raise AgentDecisionRequired(request, self)
+        return response, choice
+
+    def accept(
+        self,
+        response: AgentDecisionResponse,
+        record: AgentRecord | DivergenceRecord,
+    ) -> None:
+        self.validation = "accepted"
+        self.accepted_responses.append(response)
+        if isinstance(record, AgentRecord):
+            self.applied_records.append(record)
+        else:
+            self.applied_divergence_records.append(record)
 
 
 def build_agent_decision_request(
@@ -320,7 +415,7 @@ def termination_choice() -> AgentDecisionChoice:
     return AgentDecisionChoice(
         choice_id="terminate",
         label="Terminate this compilation",
-        compiler_action="terminate",
+        compiler_action=AgentDecisionAction(kind="terminate"),
         expected_consequence=(
             "Stop this run, preserve the previous valid publication, and require a fresh "
             "compilation."
@@ -338,12 +433,17 @@ class CompilationGate:
         runtime: AgentRuntimeSource,
         config: AgentConfig,
         governed_input_fingerprint: str = "",
+        decision_resolver: AgentDecisionResolver | None = None,
     ):
         self.runtime_source = runtime
         self.config = config
-        self.governed_input_fingerprint = governed_input_fingerprint or hashlib.sha256(
+        fallback_fingerprint = governed_input_fingerprint or hashlib.sha256(
             config.model_dump_json().encode()
         ).hexdigest()
+        self.decision_resolver = decision_resolver or AgentDecisionResolver(
+            None,
+            fallback_fingerprint,
+        )
 
     def evaluate(
         self,
@@ -396,25 +496,86 @@ class CompilationGate:
                 governing_criterion=governing_criterion,
                 governing_status=governing_status,
             )
-            raise AgentDecisionRequired(
-                build_agent_decision_request(
-                    compilation_scope=scope,
-                    affected_identifiers=[
-                        connection_id,
-                        str(facts.get("from_place") or ""),
-                        str(facts.get("to_place") or ""),
-                    ],
-                    criterion=governing_criterion,
-                    status=governing_status,
-                    evidence_references=[
-                        str(value) for value in facts.get("evidence_ids", ())
-                    ],
-                    findings=findings,
-                    choices=_route_decision_choices(available_roles),
-                    review_policy=review.review_policy,
-                    governed_input_fingerprint=self.governed_input_fingerprint,
-                )
+            request = build_agent_decision_request(
+                compilation_scope=scope,
+                affected_identifiers=[
+                    connection_id,
+                    str(facts.get("from_place") or ""),
+                    str(facts.get("to_place") or ""),
+                ],
+                criterion=governing_criterion,
+                status=governing_status,
+                evidence_references=[
+                    str(value) for value in facts.get("evidence_ids", ())
+                ],
+                findings=findings,
+                choices=_route_decision_choices(
+                    available_roles,
+                    include_candidate_controls=scope == "spine-access",
+                ),
+                review_policy=review.review_policy,
+                governed_input_fingerprint=(
+                    self.decision_resolver.request_context_fingerprint()
+                ),
             )
+            response, choice = self.decision_resolver.offered_choice(request)
+            action = choice.compiler_action
+            selected_role = action.network_role
+            if action.kind == "terminate":
+                record = _caller_choice_record(
+                    connection_id,
+                    governing_criterion,
+                    review,
+                    request,
+                    response,
+                    choice,
+                    initial_role,
+                    "gap",
+                )
+                self.decision_resolver.accept(response, record)
+                raise AgentCompilationTerminated(self.decision_resolver)
+            if action.kind in {"reject-candidate", "retain-network-gap"}:
+                decision = (
+                    "reject" if action.kind == "reject-candidate" else "gap"
+                )
+                record = _caller_choice_record(
+                    connection_id,
+                    governing_criterion,
+                    review,
+                    request,
+                    response,
+                    choice,
+                    initial_role,
+                    decision,
+                )
+                self.decision_resolver.accept(response, record)
+                return GateOutcome(record, initial_role)
+            if action.kind != "select-network-role" or selected_role not in available_roles:
+                self.decision_resolver.validation = "invalid-action"
+                raise AgentDecisionRequired(request, self.decision_resolver)
+            selected_checks = facts.get("checks_by_role", {}).get(selected_role, {})
+            if selected_role not in {"gap", "school-access-gap"} and any(
+                status == "red" for status in selected_checks.values()
+            ):
+                self.decision_resolver.validation = "mandatory-red"
+                raise AgentDecisionRequired(request, self.decision_resolver)
+            decision = (
+                "gap"
+                if selected_role in {"gap", "school-access-gap"}
+                else deterministic_decision
+            )
+            record = _caller_choice_record(
+                connection_id,
+                governing_criterion,
+                review,
+                request,
+                response,
+                choice,
+                selected_role,
+                decision,
+            )
+            self.decision_resolver.accept(response, record)
+            return GateOutcome(record, selected_role)
 
         runtime = self._runtime()
         attempts: list[AgentAttempt] = []
@@ -656,7 +817,11 @@ def _deterministic_findings(
     return findings
 
 
-def _route_decision_choices(available_roles: list[str]) -> list[AgentDecisionChoice]:
+def _route_decision_choices(
+    available_roles: list[str],
+    *,
+    include_candidate_controls: bool = False,
+) -> list[AgentDecisionChoice]:
     constraints = (
         "The choice must remain one of the compiler-authored actions in this request.",
         "The compiler will revalidate all deterministic invariants before changing state.",
@@ -666,7 +831,10 @@ def _route_decision_choices(available_roles: list[str]) -> list[AgentDecisionCho
         AgentDecisionChoice(
             choice_id=str(index),
             label=f"Select {role.replace('-', ' ')}",
-            compiler_action=f"select-role:{role}",
+            compiler_action=AgentDecisionAction(
+                kind="select-network-role",
+                network_role=role,
+            ),
             expected_consequence=(
                 "Retain the visible Network Gap and do not add an invalid connection."
                 if role in {"gap", "school-access-gap"}
@@ -676,8 +844,70 @@ def _route_decision_choices(available_roles: list[str]) -> list[AgentDecisionCho
         )
         for index, role in enumerate(available_roles, start=1)
     ]
+    if include_candidate_controls and len(available_roles) == 1 and available_roles[0] not in {
+        "gap",
+        "school-access-gap",
+    }:
+        choices.extend(
+            [
+                AgentDecisionChoice(
+                    choice_id="2",
+                    label="Reject this candidate",
+                    compiler_action=AgentDecisionAction(kind="reject-candidate"),
+                    expected_consequence=(
+                        "Reject this candidate and evaluate the next compiler-ranked "
+                        "alternative, if one exists."
+                    ),
+                    mandatory_constraints=constraints,
+                ),
+                AgentDecisionChoice(
+                    choice_id="3",
+                    label="Retain a visible Network Gap",
+                    compiler_action=AgentDecisionAction(kind="retain-network-gap"),
+                    expected_consequence=(
+                        "Stop evaluating candidates for this obligation and retain a "
+                        "visible Network Gap."
+                    ),
+                    mandatory_constraints=constraints,
+                ),
+            ]
+        )
     choices.append(termination_choice())
     return choices
+
+
+def _caller_choice_record(
+    connection_id: str,
+    governing_criterion: str,
+    review: AgentReviewDecision,
+    request: AgentDecisionRequest,
+    response: AgentDecisionResponse,
+    choice: AgentDecisionChoice,
+    selected_role: str | None,
+    decision: Literal["accept", "reject", "gap"],
+) -> AgentRecord:
+    return AgentRecord(
+        connection_id=connection_id,
+        governing_criterion=governing_criterion,
+        network_role=selected_role,
+        **review.model_dump(),
+        runtime="caller",
+        model="decision-ledger",
+        decision=decision,
+        selected_role=selected_role,
+        outcome_reason=(
+            f"Caller selected choice {response.choice_id}: {choice.label}. "
+            "The compiler validated and applied its predefined action."
+        ),
+        usage={"requests": 0, "tokens": 0},
+        decision_request=request,
+        selected_choice_id=response.choice_id,
+        mapped_action=choice.compiler_action,
+        responder_mode="caller",
+        choice_validation="accepted",
+        affected_feature_identifiers=request.affected_identifiers,
+        created_at=None,
+    )
 
 
 def _record(

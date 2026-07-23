@@ -233,7 +233,7 @@ An immutable, versioned collection of governed evidence and rules supplied to an
 _Avoid_: prompt context, live web research
 
 **Agent Decision Record**:
-A schema-valid audit record for a compilation decision, stating its governing Criterion Status, effective Agent Review Policy, whether review was required, and either the typed agent proposal, critique and synthesis or the deterministic outcome. It never directly changes compiled state.
+A schema-valid audit record for a compilation decision, stating its governing Criterion Status, effective Agent Review Policy, whether review was required, and either the complete fingerprinted menu and accepted caller choice, the typed direct-runtime result, or the deterministic outcome. A caller-mediated record includes the mapped compiler action, responder mode, validation result and affected feature identifiers. It never directly changes compiled state.
 _Avoid_: free-form answer, silent edit, unrecorded deterministic skip
 
 **Agent Review Policy**:
@@ -247,6 +247,10 @@ _Avoid_: blocked message, open-ended prompt, live continuation, heartbeat
 **Agent Decision Choice**:
 One compiler-authored item in an Agent Decision Request, identified by a simple stable identifier and declaring its concise meaning, predefined compiler action, expected consequence and mandatory constraints. `terminate` has the reserved meaning of stopping the run, preserving the previous valid publication and requiring a fresh compilation.
 _Avoid_: free-form answer, agent-supplied parameter, validation waiver
+
+**Agent Decision Ledger**:
+A versioned, data-only set of responses supplied to a fresh compilation. Each response contains one request identifier, the request dependency fingerprint and one offered choice identifier. The compiler accepts a response only at the freshly regenerated matching request, consumes every supplied response before publication and rejects executable or free-form fields.
+_Avoid_: suspended continuation, callback channel, instruction list, mutable output patch
 
 **Challenge Finding**:
 A critic's evidence-backed challenge to a proposal, classified as blocking, revision-required or advisory and displayed through a traffic-light status.
