@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "profile_count": 1564,
+  "profile_count": 1601,
   "chunks": [
     {
       "path": "evidence/topography-profiles-000.geojson",
@@ -32,7 +32,11 @@
     },
     {
       "path": "evidence/topography-profiles-007.geojson",
-      "profile_count": 164
+      "profile_count": 200
+    },
+    {
+      "path": "evidence/topography-profiles-008.geojson",
+      "profile_count": 1
     }
   ],
   "disclaimer": "Experimental SATN POC \u2014 not an adopted B&NES plan."

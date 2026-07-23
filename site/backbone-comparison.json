@@ -5,28 +5,28 @@
   "previous_publication_available": true,
   "current_backbone": {
     "network_model": "backbone-outward",
-    "connection_count": 73,
+    "connection_count": 75,
     "spine_access_connection_count": 57,
-    "branch_meeting_connection_count": 16,
-    "cross_spine_connector_count": 16,
+    "branch_meeting_connection_count": 18,
+    "cross_spine_connector_count": 18,
     "served_obligation_count": 122,
     "network_gap_count": 88,
-    "linework_length_m": 114707.0,
-    "typed_role_count": 73,
-    "selection_rationale_count": 73
+    "linework_length_m": 111060.7,
+    "typed_role_count": 75,
+    "selection_rationale_count": 75
   },
   "topology": {
     "current": {
-      "strategic_spine_count": 92,
-      "network_unit_count": 44,
-      "spine_access_branch_count": 44,
+      "strategic_spine_count": 125,
+      "network_unit_count": 46,
+      "spine_access_branch_count": 46,
       "spine_access_connection_count": 57,
-      "branch_meeting_connection_count": 16,
-      "cross_spine_connector_count": 16,
-      "node_count": 86,
-      "edge_count": 73,
-      "component_count": 13,
-      "degree_one_node_count": 46
+      "branch_meeting_connection_count": 18,
+      "cross_spine_connector_count": 18,
+      "node_count": 87,
+      "edge_count": 75,
+      "component_count": 12,
+      "degree_one_node_count": 43
     },
     "previous": {
       "network_model": "legacy-pairwise",
@@ -46,8 +46,8 @@
     "linework_length_m": 319649.0
   },
   "visual_noise": {
-    "connection_count_delta": -90,
-    "linework_length_m_delta": -204942.0
+    "connection_count_delta": -88,
+    "linework_length_m_delta": -208588.3
   },
   "explainability": {
     "all_current_connections_have_typed_roles": true,

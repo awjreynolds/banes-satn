@@ -1,31 +1,31 @@
 {
   "schema_version": "2.0",
-  "run_id": "run-cfa888f6d6da",
+  "run_id": "run-2ca24fa4b945",
   "status": "reviewable",
   "network_model": "backbone-outward",
-  "connection_count": 73,
+  "connection_count": 75,
   "gap_count": 88,
   "human_intervention_request_count": 0,
   "superseded_hypotheses": 0,
   "layer_counts": {
-    "strategic_spines": 92,
+    "strategic_spines": 125,
     "access_obligations": 210,
     "school_access_obligations": 93,
     "gaps": 88,
     "spine_access_connections": 57,
-    "spine_access_branches": 44,
-    "branch_meeting_connections": 16,
-    "cross_spine_connectors": 16,
+    "spine_access_branches": 46,
+    "branch_meeting_connections": 18,
+    "cross_spine_connectors": 18,
     "a_road_spines": 2435,
-    "ncn_routes": 268,
+    "ncn_routes": 297,
     "urban_spines": 1383,
     "urban_classification_unknowns": 2075,
     "candidate_low_traffic_areas": 41,
     "low_traffic_area_portals": 532,
     "schools": 104,
     "school_street_assessments": 93,
-    "topography_profiles": 1564,
-    "gradient_sections": 41719,
+    "topography_profiles": 1601,
+    "gradient_sections": 45350,
     "elevation_corroboration": 0,
     "retail_centres": 55,
     "healthcare": 78
@@ -82,9 +82,9 @@
   },
   "compilation_diagnostics": {
     "assembly_strategy": "backbone-outward",
-    "candidate_evaluations": 5967,
-    "initial_frontiers": 92,
-    "final_frontiers": 142,
+    "candidate_evaluations": 7650,
+    "initial_frontiers": 125,
+    "final_frontiers": 175,
     "served_communities": 50,
     "unserved_communities": 1,
     "optimization_findings": [
@@ -92,9 +92,9 @@
         "finding_id": "serial-frontier-candidate-evaluation",
         "finding": "Backbone candidates were evaluated serially across a large finite frontier-obligation search space.",
         "evidence": {
-          "candidate_evaluations": 5967,
-          "initial_frontiers": 92,
-          "final_frontiers": 142
+          "candidate_evaluations": 7650,
+          "initial_frontiers": 125,
+          "final_frontiers": 175
         },
         "potential_optimization": "Batch or safely parallelise independent initial-frontier searches while preserving deterministic candidate ranking."
       },
@@ -104,7 +104,7 @@
         "finding": "Multiple spine candidates reused the same community-to-node association set.",
         "evidence": {
           "unique_candidate_sets": 59,
-          "candidate_set_reuses": 3822
+          "candidate_set_reuses": 4290
         },
         "applied_optimization": "Cache immutable point-to-node candidate sets for the duration of a run."
       },
@@ -124,7 +124,7 @@
     "reciprocal_routing_nodes": 18517,
     "reciprocal_routing_edges": 39369,
     "nearby_node_candidate_sets": 59,
-    "nearby_node_candidate_set_reuses": 3822,
+    "nearby_node_candidate_set_reuses": 4290,
     "unmaterializable_attachment_paths": 51,
     "community_coverage": {
       "identified_rural": 51,

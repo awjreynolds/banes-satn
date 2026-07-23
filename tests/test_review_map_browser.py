@@ -42,8 +42,7 @@ def test_mobile_map_has_a_visible_compact_legend(tmp_path: Path) -> None:
         assert all(
             label in legend_text
             for label in (
-                "A-road spine",
-                "NCN spine",
+                "Strategic network route",
                 "Access connection",
                 "Cross-spine connector",
                 "Urban through-road",
@@ -93,11 +92,14 @@ def test_gradient_inspection_path_popovers_and_linear_evidence(tmp_path: Path) -
         assert page.locator("#criteria-controls").count() == 0
         assert page.locator("#criteria-panel").count() == 0
 
-        information = page.get_by_role("button", name="About Strategic Spines")
+        information = page.get_by_role("button", name="About the strategic network")
         information.click()
-        popover = page.locator("#legend-strategic-spines")
+        popover = page.locator("#legend-strategic-network")
         assert popover.is_visible()
         assert information.get_attribute("aria-expanded") == "true"
+        assert page.evaluate("() => window.SATN_REVIEW_MAP.getStyle().layers.at(-1).id") == (
+            "strategic-network"
+        )
 
         page.locator("#feature-index summary").click()
         path_candidates = page.evaluate(

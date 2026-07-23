@@ -96,9 +96,26 @@ class OSMnxAdapter:
             governed_polygon,
             tags={"railway": "station", "amenity": "bus_station", "public_transport": "station"},
         ).reset_index()
+        cycle_route_frames: list[gpd.GeoDataFrame] = []
+        if config.source.ncn_feature_service_url:
+            cycle_route_frames.append(
+                _load_ncn_features(config.source.ncn_feature_service_url, boundary)
+            )
+        if config.source.reclassified_ncn_feature_service_url:
+            cycle_route_frames.append(
+                _load_reclassified_ncn_features(
+                    config.source.reclassified_ncn_feature_service_url,
+                    boundary,
+                )
+            )
+        populated_cycle_routes = [frame for frame in cycle_route_frames if not frame.empty]
         ncn_routes = (
-            _load_ncn_features(config.source.ncn_feature_service_url, boundary)
-            if config.source.ncn_feature_service_url
+            gpd.GeoDataFrame(
+                pd.concat(populated_cycle_routes, ignore_index=True, sort=False),
+                geometry="geometry",
+                crs=4326,
+            )
+            if populated_cycle_routes
             else None
         )
         facilities = _features_from_tag_groups(
@@ -254,6 +271,7 @@ def snapshot(
             "evidence_sources": {
                 "osm": config.source.osm_place_query,
                 "ncn": config.source.ncn_feature_service_url,
+                "reclassified_ncn": config.source.reclassified_ncn_feature_service_url,
                 "official_road_classification": _road_classification_manifest(config, temporary),
                 "observed_through_traffic": _observed_through_traffic_manifest(config, temporary),
                 "elevation": _elevation_evidence_manifest(config, temporary, retrieved_at),
@@ -733,6 +751,36 @@ def _load_ncn_features(
     service_url: str,
     boundary: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
+    return _load_arcgis_cycle_routes(
+        service_url,
+        boundary,
+        where="RouteType IN ('NCN','LINK') OR Greenway = 'Yes'",
+        source_label="NCN",
+    )
+
+
+def _load_reclassified_ncn_features(
+    service_url: str,
+    boundary: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    routes = _load_arcgis_cycle_routes(
+        service_url,
+        boundary,
+        where="1=1",
+        source_label="reclassified NCN",
+    )
+    if not routes.empty:
+        routes["RouteType"] = "RECLASSIFIED"
+    return routes
+
+
+def _load_arcgis_cycle_routes(
+    service_url: str,
+    boundary: gpd.GeoDataFrame,
+    *,
+    where: str,
+    source_label: str,
+) -> gpd.GeoDataFrame:
     min_x, min_y, max_x, max_y = boundary.to_crs(4326).total_bounds
     page_size = 2000
     offset = 0
@@ -742,7 +790,7 @@ def _load_ncn_features(
         parameters = urllib.parse.urlencode(
             {
                 "f": "geojson",
-                "where": "RouteType IN ('NCN','LINK')",
+                "where": where,
                 "geometry": f"{min_x},{min_y},{max_x},{max_y}",
                 "geometryType": "esriGeometryEnvelope",
                 "inSR": "4326",
@@ -756,20 +804,22 @@ def _load_ncn_features(
         )
         request = urllib.request.Request(
             f"{service_url.rstrip('/')}/0/query?{parameters}",
-            headers={"User-Agent": "banes-satn/0.1 NCN snapshot"},
+            headers={"User-Agent": "banes-satn/0.1 cycle-route snapshot"},
         )
         with urllib.request.urlopen(request, timeout=90) as response:
             payload = json.load(response)
         if "error" in payload:
-            raise ValueError(f"NCN feature service failed: {payload['error']}")
+            raise ValueError(f"{source_label} feature service failed: {payload['error']}")
         page = payload.get("features", [])
         if not isinstance(page, list):
-            raise ValueError("NCN feature service returned an invalid features collection")
+            raise ValueError(
+                f"{source_label} feature service returned an invalid features collection"
+            )
         fingerprint = hashlib.sha256(
             json.dumps(page, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
         if page and fingerprint in page_fingerprints:
-            raise ValueError("NCN feature service repeated a page while paginating")
+            raise ValueError(f"{source_label} feature service repeated a page while paginating")
         page_fingerprints.add(fingerprint)
         features.extend(page)
         properties = payload.get("properties")
@@ -779,7 +829,8 @@ def _load_ncn_features(
         exceeded = transfer_limit is True or str(transfer_limit).lower() == "true"
         if exceeded and not page:
             raise ValueError(
-                "NCN feature service reported a transfer limit without returning features"
+                f"{source_label} feature service reported a transfer limit without "
+                "returning features"
             )
         if exceeded or (transfer_limit is None and len(page) == page_size):
             offset += len(page)

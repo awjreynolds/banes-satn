@@ -15,7 +15,7 @@ from shapely import set_precision
 from shapely.geometry import LineString, Point
 from shapely.ops import polygonize, unary_union
 
-from satn.evidence import continuous_linework
+from satn.evidence import PUBLIC_CYCLE_ROUTE_TYPES, continuous_linework
 from satn.identifiers import coordinate_key as _coordinate
 from satn.models import OfficialRoadClassification, UrbanClassificationStatus
 from satn.tags import tag_values as _tag_values
@@ -308,7 +308,9 @@ def _primary_network_geometry(
             "feature_type", pd.Series("", index=context.index, dtype=object)
         )
         primary = context[
-            feature_type.isin({"a-road-spine", "ncn-route", "ncn-link", "strategic-spine"})
+            feature_type.isin(
+                {"a-road-spine", "strategic-spine", *PUBLIC_CYCLE_ROUTE_TYPES}
+            )
         ]
         geometries.extend(primary.to_crs(27700).geometry.tolist())
     if council_boundary is not None and not council_boundary.empty:

@@ -147,6 +147,7 @@ class SourceConfig(BaseModel):
     snapshot_id: str = "current"
     osm_place_query: str | None = None
     ncn_feature_service_url: str | None = None
+    reclassified_ncn_feature_service_url: str | None = None
     network_type: str = "bike"
     overpass_url: str = "https://overpass-api.de/api"
     osm_timeout_seconds: int = Field(default=180, ge=30, le=1800)

@@ -15,6 +15,12 @@ from satn.models import NetworkScope
 from satn.tags import tag_values as _tag_values
 
 SUBSTANTIAL_CIRCULATION_BOUNDARY_M = 250.0
+STRATEGIC_CYCLE_ROUTE_TYPES = {
+    "ncn-route",
+    "declassified-ncn-route",
+    "greenway-cycleway",
+}
+PUBLIC_CYCLE_ROUTE_TYPES = {*STRATEGIC_CYCLE_ROUTE_TYPES, "ncn-link"}
 
 CONTEXT_COLUMNS = [
     "evidence_id",
@@ -98,7 +104,7 @@ def govern_network_scope_for_urban_communities(
             .union_all()
         )
 
-    strategic_types = {"a-road-spine", "ncn-route", "ncn-link"}
+    strategic_types = {"a-road-spine", *PUBLIC_CYCLE_ROUTE_TYPES}
     strategic = context[context["feature_type"].isin(strategic_types)]
     valid_scopes = {scope.value for scope in NetworkScope}
     invalid_scopes = sorted(
@@ -189,14 +195,23 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
             continue
         network_tags = {value.lower() for value in _tag_values(feature.get("network"))}
         route_type = (_text(feature.get("RouteType")) or "").lower()
+        is_greenway = (_text(feature.get("Greenway")) or "").lower() == "yes"
         if route_type == "link":
             feature_type = "ncn-link"
             evidence_role = "connector-link"
             category = "National Cycle Network connector link"
+        elif is_greenway:
+            feature_type = "greenway-cycleway"
+            evidence_role = "greenway-cycleway"
+            category = "Greenway cycleway"
         elif "ncn" in network_tags or route_type == "ncn":
             feature_type = "ncn-route"
             evidence_role = "established-route"
             category = "National Cycle Network"
+        elif route_type == "reclassified":
+            feature_type = "declassified-ncn-route"
+            evidence_role = "declassified-route"
+            category = "Declassified National Cycle Network route"
         else:
             continue
         source_id = _source_id(feature, index)
@@ -206,6 +221,16 @@ def derive_ncn_routes(features: gpd.GeoDataFrame, target_crs: object) -> gpd.Geo
             if evidence_role == "connector-link" and ref
             else "National Cycle Network connector link"
             if evidence_role == "connector-link"
+            else f"Declassified NCN {ref}"
+            if evidence_role == "declassified-route" and ref
+            else "Declassified National Cycle Network route"
+            if evidence_role == "declassified-route"
+            else f"NCN {ref} Greenway"
+            if evidence_role == "greenway-cycleway" and route_type == "ncn" and ref
+            else f"Greenway {ref}"
+            if evidence_role == "greenway-cycleway" and ref
+            else "Greenway cycleway"
+            if evidence_role == "greenway-cycleway"
             else f"NCN {ref}"
             if ref
             else "National Cycle Network"
@@ -516,9 +541,9 @@ def _geometry_points(geometry: object) -> list[Point]:
 
 
 def mark_ncn_edges(network: gpd.GeoDataFrame, context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Annotate routable edges that overlap published NCN evidence."""
+    """Annotate routable edges that overlap strategic public cycle-route evidence."""
     result = network.copy()
-    ncn = context[context["feature_type"] == "ncn-route"]
+    ncn = context[context["feature_type"].isin(STRATEGIC_CYCLE_ROUTE_TYPES)]
     if ncn.empty:
         result["satn_ncn"] = False
         return result

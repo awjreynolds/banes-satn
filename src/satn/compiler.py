@@ -18,6 +18,8 @@ from shapely.ops import nearest_points, unary_union
 from satn.agents import AgentDecisionResolver, AgentRuntimeSource, CompilationGate
 from satn.backbone import GAP_COLUMNS, assemble_backbone_outward
 from satn.evidence import (
+    PUBLIC_CYCLE_ROUTE_TYPES,
+    STRATEGIC_CYCLE_ROUTE_TYPES,
     continuous_linework,
     empty_context,
     govern_network_scope_for_urban_communities,
@@ -480,7 +482,7 @@ def compile_network(
         branch_meeting_connections=branch_meeting_connections,
         cross_spine_connectors=cross_spine_connectors,
         a_road_spines=_context_frame(context, "a-road-spine"),
-        ncn_routes=context[context["feature_type"].isin(["ncn-route", "ncn-link"])].copy(),
+        ncn_routes=context[context["feature_type"].isin(PUBLIC_CYCLE_ROUTE_TYPES)].copy(),
         schools=_context_frame(context, "school"),
         school_street_assessments=school_street_assessments,
         topography_profiles=topography_profiles,
@@ -914,7 +916,7 @@ def _close_public_route_termini(
     ]
     feature_type = context.get("feature_type", pd.Series("", index=context.index, dtype=object))
     context_primary = context[
-        feature_type.isin({"a-road-spine", "ncn-route", "ncn-link"})
+        feature_type.isin({"a-road-spine", *PUBLIC_CYCLE_ROUTE_TYPES})
     ].to_crs(27700)
     primary_rows.extend(
         (
@@ -1257,7 +1259,7 @@ def _stable_role_id(prefix: str, *parts: object) -> str:
 
 
 def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Promote explicitly rural, governed A-road and established NCN evidence."""
+    """Promote rural A-road and governed strategic cycle-route evidence."""
     columns = [
         "spine_id",
         "network_role",
@@ -1272,7 +1274,9 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         "provenance",
         "geometry",
     ]
-    candidates = context[context["feature_type"].isin(["a-road-spine", "ncn-route"])].copy()
+    candidates = context[
+        context["feature_type"].isin({"a-road-spine", *STRATEGIC_CYCLE_ROUTE_TYPES})
+    ].copy()
     network_scope = candidates.get(
         "network_scope",
         pd.Series(NetworkScope.UNRESOLVED.value, index=candidates.index, dtype=object),
@@ -1282,6 +1286,8 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     for feature_type, spine_kind in (
         ("a-road-spine", "a-road"),
         ("ncn-route", "ncn"),
+        ("declassified-ncn-route", "declassified-ncn"),
+        ("greenway-cycleway", "greenway"),
     ):
         evidence_frame = candidates[candidates["feature_type"] == feature_type].copy()
         evidence_frame["_corridor_key"] = evidence_frame.apply(
@@ -1356,6 +1362,16 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                             "shared provision"
                             if is_a_road
                             else (
+                                "Former National Cycle Network route retained as governed "
+                                "strategic cycle-route evidence"
+                            )
+                            if spine_kind == "declassified-ncn"
+                            else (
+                                "Greenway cycleway retained as governed strategic cycle-route "
+                                "evidence"
+                            )
+                            if spine_kind == "greenway"
+                            else (
                                 "Established National Cycle Network route retained as governed "
                                 "evidence"
                             )
@@ -1363,7 +1379,7 @@ def _strategic_spines(context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                         "design_status": (
                             "strategic assumption; not a carriageway or final design"
                             if is_a_road
-                            else "established route evidence; not a final design"
+                            else "governed route evidence; not a final design"
                         ),
                         "provenance": json.dumps(
                             {

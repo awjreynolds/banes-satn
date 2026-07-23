@@ -8,6 +8,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import LineString, Point, Polygon
 
+from satn.evidence import derive_context_layers
 from satn.models import (
     CouncilConfig,
     ObservedThroughTrafficConfig,
@@ -17,6 +18,7 @@ from satn.sources import (
     OSMData,
     _features_from_tag_groups,
     _load_ncn_features,
+    _load_reclassified_ncn_features,
     derive_network_places,
     snapshot,
 )
@@ -222,7 +224,10 @@ def test_loads_current_ncn_features_from_public_service(monkeypatch: pytest.Monk
 
     queries = [urllib.parse.parse_qs(urllib.parse.urlparse(url).query) for url in seen]
     assert [query["resultOffset"] for query in queries] == [["0"], ["1"]]
-    assert all(query["where"] == ["RouteType IN ('NCN','LINK')"] for query in queries)
+    assert all(
+        query["where"] == ["RouteType IN ('NCN','LINK') OR Greenway = 'Yes'"]
+        for query in queries
+    )
     assert all(query["resultRecordCount"] == ["2000"] for query in queries)
     query = queries[0]
     assert query["geometryType"] == ["esriGeometryEnvelope"]
@@ -254,6 +259,59 @@ def test_ncn_pagination_rejects_a_transfer_limit_page_without_progress(
 
     with pytest.raises(ValueError, match="transfer limit without returning features"):
         _load_ncn_features("https://example.test/FeatureServer", source_frames().boundary)
+
+
+def test_loads_reclassified_ncn_features_as_declassified_route_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"FID": 7, "Desc_": "Former NCN route"},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[-2.5, 51.4], [-2.45, 51.41]],
+                },
+            }
+        ],
+    }
+
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(payload).encode()
+
+    seen: list[str] = []
+
+    def fake_urlopen(request: object, timeout: int) -> Response:
+        seen.append(request.full_url)  # type: ignore[attr-defined]
+        assert timeout == 90
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    result = _load_reclassified_ncn_features(
+        "https://example.test/Reclassified/FeatureServer",
+        source_frames().boundary,
+    )
+
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(seen[0]).query)
+    assert query["where"] == ["1=1"]
+    assert list(result["RouteType"]) == ["RECLASSIFIED"]
+    context = derive_context_layers(source_frames().network, result)
+    assert list(
+        context.loc[
+            context["feature_type"] == "declassified-ncn-route",
+            "feature_type",
+        ]
+    ) == ["declassified-ncn-route"]
 
 
 def test_grouped_osm_feature_queries_merge_and_deduplicate_stable_ids() -> None:
