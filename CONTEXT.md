@@ -424,6 +424,54 @@ _Avoid_: investment ranking, completeness claim, hidden density target
 A named alternative set of distance and trip thresholds evaluated against the same unsimplified Cycling Desire Line long list. It shows which lines change without rewriting the base assumptions.
 _Avoid_: silent threshold tuning, new evidence scenario, preferred answer
 
+**Walking and Wheeling Planning Pass**:
+A deterministic LCWIP analytical pass that builds walking-specific catchments, Core Walking Zone proposals, Key Walking Routes, Funnel Routes and route/area audits from governed evidence. It is independent of cycling and SATN geometry because those cannot establish footway, crossing, accessibility or lived-experience conditions.
+_Avoid_: cycle-network proxy, Candidate Low-Traffic Area proxy, automated site survey
+
+**Walking Trip Attractor**:
+A stable spatial destination or origin for walking and wheeling trips, classified as a local centre, interchange, school, service, development or employment location and linked to governed evidence and explicit uncertainty.
+_Avoid_: anonymous point, assumed trip generator, cycling destination proxy
+
+**Walking Catchment**:
+A configured spatial screening area around a Walking Trip Attractor with a recorded method, radius, evidence and uncertainty. Radial membership does not claim network distance or accessible-route continuity.
+_Avoid_: service area without method, walkability claim, hidden distance threshold
+
+**Core Walking Zone Proposal**:
+A reviewable polygon around a local centre whose selected attractors resolve to a governed Walking Catchment. Its boundary, selection rationale, evidence, uncertainty and accountable review remain explicit.
+_Avoid_: adopted boundary, low-traffic area, unreviewed buffer
+
+**Key Walking Route**:
+A walking-specific route connecting important attractors to or within a Core Walking Zone. Its geometry, selection logic and audits are governed independently of any cycling alignment.
+_Avoid_: strategic cycle line, final public-realm design, inferred pavement
+
+**Funnel Route**:
+A walking-specific feeder into a Core Walking Zone, interchange, school, service or development. It retains the trip-attractor relationship and uncertainty that caused it to be reviewed.
+_Avoid_: generic access branch, untraced shortcut, delivery priority
+
+**Walking Route/Area Audit**:
+A versioned Guidance-Profile-bound assessment of Core Walking Zones and walking routes across footway continuity, width, surface, crossings, gradient, severance, lighting/personal safety, seating/rest and wayfinding. Every condition records both provenance and evidence mode.
+_Avoid_: browser accessibility audit, cycle-route audit, universal quality score
+
+**Walking Audit Provenance**:
+The epistemic state of an audit condition: observed, inferred, modelled or unknown. It is separate from whether evidence was gathered through desktop work, site survey or privacy-safe lived experience.
+_Avoid_: inferred observation, model presented as fact, missing provenance
+
+**Walking Site Evidence Request**:
+A typed unresolved request created when a mandatory audit condition lacks the required site observation. Its presence structurally prevents a route or area from being marked Fully Audited.
+_Avoid_: silent assumption, passed audit, optional note
+
+**Walking Accessibility Need**:
+An explicit need relevant to walking and wheeling evidence, including wheelchair, mobility-aid, visual, hearing, cognitive/neurodivergent, resting and personal-safety needs. These needs are planning inputs, not web-interface checks.
+_Avoid_: generic accessibility flag, browser conformance, single-user proxy
+
+**Lived-Experience Finding**:
+A privacy-safe, typed thematic finding linked to governed stakeholder evidence, a walking subject and explicit accessibility needs. Public outputs require personal data to be removed and material findings require accessibility-representative review.
+_Avoid_: named respondent, raw testimony, automated engagement replacement
+
+**Walking Deficiency**:
+An observed deficient or explicitly unknown walking audit condition compiled as a stable intervention input with evidence, accessibility needs and any unresolved Evidence Request.
+_Avoid_: detailed scheme, priority score, unsupported defect
+
 **Wayfinding Pass**:
 The compilation phase that connects Network Places into a valid end-to-end network using topology, constraints and alignment evidence. Demand and accessibility evidence do not determine connections in this pass.
 _Avoid_: prioritisation, demand-led routing

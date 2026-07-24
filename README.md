@@ -155,6 +155,58 @@ Validate a received bundle, including all cross-artifact hashes and derivations,
 uv run lcwip demand validate path/to/demand-output/analysis-id
 ```
 
+## Plan walking and wheeling networks
+
+The Walking and Wheeling Planning Pass is independent of cycling and SATN
+geometry. It consumes a validated Evidence Snapshot, walking trip attractors,
+configured catchments, reviewable Core Walking Zone proposals and walking route
+specifications. A small deterministic routing boundary supplies walking-specific
+Key Route and Funnel Route geometry.
+
+```python
+from lcwip import build_walking_plan
+
+bundle = build_walking_plan(
+    walking_config,
+    attractors=walking_attractors,
+    catchments=walking_catchments,
+    zones=core_walking_zone_proposals,
+    route_specifications=walking_route_specifications,
+    audit_observations=walking_audit_observations,
+    lived_experience_findings=privacy_safe_findings,
+    routing_boundary=deterministic_walking_router,
+)
+```
+
+Walking audits cover footway continuity and width, surface, crossings, gradient,
+severance, lighting and personal safety, seating/rest opportunities and
+wayfinding. Condition provenance (`observed`, `inferred`, `modelled`, `unknown`)
+is separate from evidence mode (`desktop`, `site-survey`, `lived-experience`,
+`none`). Mandatory missing site evidence creates a typed Evidence Request and
+structurally prevents a route or area from being marked fully audited.
+
+Wheelchair, mobility-aid, visual, hearing, cognitive/neurodivergent, resting and
+personal-safety needs are explicit planning data. They are not satisfied by a
+browser-accessibility check. Controlled access-panel material enters public
+outputs only through governed redaction with personal data removed, and material
+lived-experience findings remain subject to the accountable officer and
+accessibility-representative gate.
+
+Each immutable bundle publishes:
+
+- `walking-network.geojson` and a self-contained `review-map.html`;
+- `walking-audits.json` and `walking-evidence-requests.json`;
+- `walking-deficiencies.json` for the intervention workflow;
+- `engagement-input.json` containing privacy-safe typed findings; and
+- `conformance-artifacts.json` linking the walking-network, audit, engagement
+  and intervention-input artifacts.
+
+Validate the bundle and all derived files with:
+
+```shell
+uv run lcwip walking validate path/to/walking-output/analysis-id
+```
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
