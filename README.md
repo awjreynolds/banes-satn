@@ -414,6 +414,37 @@ content-immutable. A later adoption annotation must identify the exact substanti
 release fingerprint and distinct verification evidence; it does not rewrite the
 underlying release.
 
+## Track delivery, outcomes and governed review
+
+`lcwip.monitoring` creates an immutable monitoring release without rewriting the
+publication manifest, evidence fingerprints or conformance result of the historical
+adopted release. Programme updates are separate tagged records for design, funding,
+construction, completion and outcome state. Every update carries a public source,
+observer or authority, observation and recording dates, confidence, verification
+state and exact scope fingerprint.
+
+The monitoring release exposes overdue and blocked milestones, unverified or
+contradicted reports, planned-versus-delivered scope deviations, late or missing
+indicator observations, and target status. Indicator definitions bind a baseline,
+target, method, unit and reporting cadence; observations bind their period, coverage
+and uncertainty. Activity and observed outcomes remain separate and the public
+dashboard makes no causal claim.
+
+Scheduled review, material development, network delivery, guidance change, evidence
+expiry and underperformance are typed Review Triggers. They create governed Review
+Tasks; they do not mutate plan state. A superseding release proposal must point to the
+exact predecessor release fingerprint, a new evidence snapshot, the re-evaluated
+Guidance Profile and the triggers that caused review. Guidance and evidence migration
+reports identify every affected analysis and programme entry. A progress-only cycle
+may have no trigger or proposal and publishes an empty review-task set.
+
+Build with `build_monitoring_release(config)` and validate the privacy-safe HTML tables
+and machine-readable status, review, migration and comparison artifacts with:
+
+```shell
+uv run lcwip monitoring validate path/to/monitoring-releases/cycle-id
+```
+
 ## Snapshot B&NES from OpenStreetMap
 
 The reference configuration contains only council data and thresholds; acquisition
