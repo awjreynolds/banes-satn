@@ -27,6 +27,7 @@ from satn.evidence import (
     empty_context,
     govern_network_scope_for_urban_communities,
 )
+from satn.heartbeat import StageHeartbeat
 from satn.models import (
     CouncilConfig,
     GovernedSpatialSourceConfig,
@@ -76,10 +77,25 @@ class OSMnxAdapter:
 
         ox.settings.overpass_url = config.source.overpass_url
         ox.settings.requests_timeout = config.source.osm_timeout_seconds
-        query = config.source.osm_place_query
-        if not query:
-            raise ValueError("OSM sources require source.osm_place_query")
-        boundary = ox.geocode_to_gdf(query).to_crs(4326)
+        queries = config.source.boundary_queries
+        query: str | list[str] = queries[0] if len(queries) == 1 else list(queries)
+        geocoded = ox.geocode_to_gdf(query).to_crs(4326)
+        boundary = gpd.GeoDataFrame(
+            {
+                "boundary_id": [
+                    f"osm-{row.get('osm_type', 'feature')}-{row.get('osm_id', index)}"
+                    for index, (_, row) in enumerate(geocoded.iterrows(), start=1)
+                ],
+                "name": [
+                    str(row.get("display_name") or queries[index]).split(",")[0]
+                    for index, (_, row) in enumerate(geocoded.iterrows())
+                ],
+                "source_query": list(queries),
+                "geometry": list(geocoded.geometry),
+            },
+            geometry="geometry",
+            crs=4326,
+        )
         governed_polygon = boundary.geometry.union_all()
         buffered = (
             gpd.GeoSeries([governed_polygon], crs=4326)
@@ -237,63 +253,82 @@ def snapshot(
         config.source.snapshot_id,
         replace,
     )
-    if destination.exists() and not replace:
-        manifest = json.loads((destination / "snapshot.json").read_text(encoding="utf-8"))
-        if manifest.get("schema_version") == SCHEMA_VERSION:
-            _validate_snapshot(destination)
-            LOGGER.info("Existing snapshot validated path=%s", destination)
-            return destination
-
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=f".{destination.name}-", dir=destination.parent))
-    try:
-        if config.source.kind == "fixture":
-            source_identifier, files = _write_fixture_snapshot(config, temporary)
-            attribution = "Synthetic test fixture"
-        else:
-            source_identifier, files = _write_osm_snapshot(
-                config, temporary, osm_adapter or OSMnxAdapter()
-            )
-            attribution = (
-                f"{OSM_ATTRIBUTION}; {NCN_ATTRIBUTION}"
-                if config.source.ncn_feature_service_url
-                else OSM_ATTRIBUTION
-            )
-        retrieved_at = datetime.now(UTC).isoformat()
-        manifest = {
-            "schema_version": SCHEMA_VERSION,
+    with StageHeartbeat(
+        LOGGER,
+        "snapshot-acquisition",
+        {
+            "area_id": config.area_id,
             "snapshot_id": config.source.snapshot_id,
-            "council_id": config.council_id,
             "source_kind": config.source.kind,
-            "source_identifier": source_identifier,
-            "retrieved_at": retrieved_at,
-            "attribution": attribution,
-            "evidence_sources": {
-                "osm": config.source.osm_place_query,
-                "ncn": config.source.ncn_feature_service_url,
-                "reclassified_ncn": config.source.reclassified_ncn_feature_service_url,
-                "official_road_classification": _road_classification_manifest(config, temporary),
-                "observed_through_traffic": _observed_through_traffic_manifest(config, temporary),
-                "elevation": _elevation_evidence_manifest(config, temporary, retrieved_at),
-            },
-            "files": files,
-            "file_sha256": {
-                filename: hashlib.sha256((temporary / filename).read_bytes()).hexdigest()
-                for filename in files
-            },
-            "disclaimer": DISCLAIMER,
-        }
-        (temporary / "snapshot.json").write_text(
-            json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
-        )
-        _validate_snapshot(temporary)
-        if destination.exists():
-            shutil.rmtree(destination)
-        temporary.replace(destination)
-        LOGGER.info("Snapshot validated and committed path=%s files=%d", destination, len(files))
-    finally:
-        if temporary.exists():
-            shutil.rmtree(temporary)
+        },
+    ) as heartbeat:
+        if destination.exists() and not replace:
+            manifest = json.loads((destination / "snapshot.json").read_text(encoding="utf-8"))
+            if manifest.get("schema_version") == SCHEMA_VERSION:
+                heartbeat.set_stage("existing-snapshot-validation")
+                _validate_snapshot(destination)
+                LOGGER.info("Existing snapshot validated path=%s", destination)
+                return destination
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary = Path(tempfile.mkdtemp(prefix=f".{destination.name}-", dir=destination.parent))
+        try:
+            if config.source.kind == "fixture":
+                source_identifier, files = _write_fixture_snapshot(config, temporary)
+                attribution = "Synthetic test fixture"
+            else:
+                source_identifier, files = _write_osm_snapshot(
+                    config, temporary, osm_adapter or OSMnxAdapter()
+                )
+                attribution = (
+                    f"{OSM_ATTRIBUTION}; {NCN_ATTRIBUTION}"
+                    if config.source.ncn_feature_service_url
+                    else OSM_ATTRIBUTION
+                )
+            heartbeat.set_stage("snapshot-validation")
+            retrieved_at = datetime.now(UTC).isoformat()
+            manifest = {
+                "schema_version": SCHEMA_VERSION,
+                "snapshot_id": config.source.snapshot_id,
+                "council_id": config.council_id,
+                "area_id": config.area_id,
+                "area_name": config.area_name,
+                "source_kind": config.source.kind,
+                "source_identifier": source_identifier,
+                "retrieved_at": retrieved_at,
+                "attribution": attribution,
+                "evidence_sources": {
+                    "osm": list(config.source.boundary_queries),
+                    "ncn": config.source.ncn_feature_service_url,
+                    "reclassified_ncn": config.source.reclassified_ncn_feature_service_url,
+                    "official_road_classification": _road_classification_manifest(
+                        config, temporary
+                    ),
+                    "observed_through_traffic": _observed_through_traffic_manifest(
+                        config, temporary
+                    ),
+                    "elevation": _elevation_evidence_manifest(config, temporary, retrieved_at),
+                },
+                "files": files,
+                "file_sha256": {
+                    filename: hashlib.sha256((temporary / filename).read_bytes()).hexdigest()
+                    for filename in files
+                },
+                "disclaimer": DISCLAIMER,
+            }
+            (temporary / "snapshot.json").write_text(
+                json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            _validate_snapshot(temporary)
+            if destination.exists():
+                shutil.rmtree(destination)
+            temporary.replace(destination)
+            LOGGER.info(
+                "Snapshot validated and committed path=%s files=%d", destination, len(files)
+            )
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
     return destination
 
 
@@ -399,7 +434,7 @@ def _write_osm_snapshot(
     if config.source.national_elevation is not None:
         _snapshot_national_elevation(config, temporary)
         frames[ELEVATION_EVIDENCE_FILENAME] = gpd.read_file(temporary / ELEVATION_EVIDENCE_FILENAME)
-    return str(config.source.osm_place_query), list(frames)
+    return json.dumps(config.source.boundary_queries, separators=(",", ":")), list(frames)
 
 
 def _snapshot_official_road_classification(

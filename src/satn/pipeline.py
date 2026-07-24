@@ -19,6 +19,7 @@ from satn.agents import (
 from satn.atm import compare_atm, load_atm
 from satn.compiler import compile_network
 from satn.constants import SCHEMA_VERSION
+from satn.heartbeat import StageHeartbeat
 from satn.models import (
     AgentDecisionLedger,
     AgentDecisionRequest,
@@ -44,8 +45,27 @@ def compile(
     decision_ledger: AgentDecisionLedger | str | Path | None = None,
 ) -> CompilationResult:
     """Compile into a complete publication or a non-publishing decision request."""
-    started = time.perf_counter()
     council = config if isinstance(config, CouncilConfig) else CouncilConfig.from_yaml(config)
+    with StageHeartbeat(
+        LOGGER,
+        "publication-reuse-check",
+        {
+            "area_id": council.area_id,
+            "snapshot_id": council.source.snapshot_id,
+        },
+    ) as heartbeat:
+        return _compile(council, decision_ledger=decision_ledger, heartbeat=heartbeat)
+
+
+def _compile(
+    config: CouncilConfig,
+    *,
+    decision_ledger: AgentDecisionLedger | str | Path | None = None,
+    heartbeat: StageHeartbeat | None = None,
+) -> CompilationResult:
+    """Compile a parsed area definition, reporting its current long-running stage."""
+    started = time.perf_counter()
+    council = config
     ledger = _load_decision_ledger(decision_ledger)
     governed_input_fingerprint = _compilation_input_fingerprint(council)
     input_fingerprint = _decision_ledger_input_fingerprint(
@@ -62,6 +82,8 @@ def compile(
     reused = _reuse_validated_publication(council, input_fingerprint)
     if reused is not None:
         return reused
+    if heartbeat is not None:
+        heartbeat.set_stage("snapshot-load")
     source = load_snapshot(council)
     LOGGER.info(
         "Snapshot loaded places=%d road_edges=%d context_features=%d",
@@ -77,7 +99,11 @@ def compile(
     )
     atm_reference = None
     if council.atm.enabled and council.atm.mode == "seeded":
+        if heartbeat is not None:
+            heartbeat.set_stage("atm-seeded-load-reprojection")
         atm_reference = load_atm(council).to_crs(source["network"].crs)
+    if heartbeat is not None:
+        heartbeat.set_stage("network-compilation")
     try:
         compiled = compile_network(
             council,
@@ -106,7 +132,11 @@ def compile(
     )
     if council.atm.enabled:
         if council.atm.mode == "blind":
+            if heartbeat is not None:
+                heartbeat.set_stage("atm-blind-load-reprojection")
             atm_reference = load_atm(council).to_crs(source["network"].crs)
+        if heartbeat is not None:
+            heartbeat.set_stage("atm-comparison")
         try:
             compiled.divergence_records = compare_atm(
                 compiled,
@@ -133,6 +163,8 @@ def compile(
             "comparison_available": TrafficLight.GREEN,
             "unresolved_divergences": (TrafficLight.AMBER if unresolved else TrafficLight.GREEN),
         }
+    if heartbeat is not None:
+        heartbeat.set_stage("post-compilation-artifact-preparation")
     unconsumed = {
         response.request_id for response in ledger.responses
     } - decision_resolver.consumed_request_ids
@@ -146,6 +178,8 @@ def compile(
         response.model_dump(mode="json")
         for response in decision_resolver.accepted_responses
     ]
+    if heartbeat is not None:
+        heartbeat.set_stage("publication-fingerprint")
     run_fingerprint = json.dumps(
         {
             "council": council.council_id,
@@ -329,6 +363,8 @@ def compile(
         sort_keys=True,
     )
     run_id = f"run-{hashlib.sha256(run_fingerprint.encode()).hexdigest()[:12]}"
+    if heartbeat is not None:
+        heartbeat.set_stage("publication")
     artifacts = publish(council, compiled, run_id)
     LOGGER.info(
         "Publication validated output=%s elapsed_seconds=%.1f",

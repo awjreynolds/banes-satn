@@ -24,7 +24,7 @@ main { display: grid; grid-template-columns: var(--rail-width) minmax(0, 1fr); h
 }
 .rail-header h1 { margin: 0 0 .4rem; font-size: 1.15rem; }
 .notice { margin: 0 0 .65rem; padding: .55rem; background: #fff4cc; border-left: 4px solid #f1c40f; font-size: .78rem; }
-fieldset, #gradient-path-controls, #feature-details {
+fieldset, #gradient-path-controls, #feature-details, #deployment-context {
   margin: .65rem 0;
   padding: .65rem;
   border: 1px solid var(--border);
@@ -34,6 +34,9 @@ fieldset, #gradient-path-controls, #feature-details {
 legend, h2 { font-size: .9rem; font-weight: 750; }
 .layer-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 1.7rem; align-items: center; min-height: 2rem; }
 .layer-row label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-load-status { display: block; margin-left: 1.45rem; color: var(--muted); font-size: .68rem; line-height: 1.2; white-space: normal; }
+#deployment-context h2 { margin: 0 0 .25rem; }
+#deployment-context p { margin: .35rem 0; font-size: .78rem; }
 .info-button {
   width: 1.45rem;
   height: 1.45rem;
@@ -136,6 +139,7 @@ nav { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .78rem; }
 .map-key.access { border-color: #16a085; border-top-style: dashed; }
 .map-key.cross-spine { border-color: #8e44ad; }
 .map-key.urban { border-color: #5b2c6f; }
+.map-key.authority { border-color: #243447; border-top-style: dashed; }
 .map-key.area { height: .75rem; border: 1px solid #2f6474; }
 .map-key.lta { background: rgb(127 184 201 / 24%); }
 .map-key.dot { flex-basis: .85rem; width: .85rem; height: .85rem; border-radius: 50%; }

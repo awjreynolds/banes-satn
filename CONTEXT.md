@@ -366,6 +366,22 @@ _Avoid_: skipped validation, empty artifact, hidden default
 Versioned council-specific data declaring the study boundary, source locations and Criteria Set values consumed by the council-neutral compiler without changing compilation logic.
 _Avoid_: council fork, hard-coded B&NES rule, deployment environment
 
+**Area Definition**:
+Versioned governed input naming one council, several councils or another coherent region whose combined study boundary, source locations and Criteria Set values are compiled without changing council-neutral logic. A Council Configuration is an Area Definition for a single council.
+_Avoid_: council fork, deployment folder, map extent
+
+**Area Deployment**:
+One independently reproducible set of immutable SATN artifacts and a standalone Inspectable Review Map generated from an Area Definition. It has its own stable identity, cache namespace and deployment path and never overwrites another Area Deployment.
+_Avoid_: shared output folder, council website, mutable latest map
+
+**Deployment Catalogue**:
+The lightweight index of available Area Deployments and their stable publication locations. It does not copy their governed evidence or make one Area Deployment depend on another.
+_Avoid_: combined network, monolithic site bundle, B&NES landing page
+
+**Progressive Evidence Layer**:
+A published contextual or analytical layer whose size, feature count and loading state are declared before its content-addressed spatial shards are fetched for the active view. Cache absence or shard failure remains visible and never changes the compiled network.
+_Avoid_: initial payload, opaque download, required browser cache
+
 **Compiled Connection**:
 The typed result of compiling one Community Connection, including its selected Alignment Option, rejected alternatives, evidence, findings, intervention coverage and provenance.
 _Avoid_: drawn route, agent response

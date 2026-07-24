@@ -1,35 +1,93 @@
-name: Publish review map
+name: Deploy generated SATN release
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "site/**"
-      - ".github/workflows/pages.yml"
+  release:
+    types: [released]
   workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+    inputs:
+      release_tag:
+        description: Published release tag containing satn-pages.zip
+        required: true
+        type: string
 
 jobs:
+  verify-release:
+    permissions:
+      contents: read
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the selected release is published
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          release="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,publishedAt,tagName)"
+          jq --exit-status --arg release_tag "$RELEASE_TAG" \
+            '.tagName == $release_tag and .isDraft == false and .isPrerelease == false and (.publishedAt | type == "string")' \
+            <<<"$release" >/dev/null
+          printf 'release_tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  validate-release:
+    needs: verify-release
+    permissions:
+      contents: read
+    outputs:
+      release_tag: ${{ needs.verify-release.outputs.release_tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tracked release catalogue and Area Definitions
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.verify-release.outputs.release_tag }}
+          persist-credentials: false
+      - name: Download generated Pages release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify-release.outputs.release_tag }}
+        run: >-
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+          --pattern satn-pages.zip --dir release
+      - name: Safely extract and validate the Pages release
+        env:
+          SATN_PAGES_MAX_BYTES: "900000000"
+        run: >-
+          python scripts/validate_pages_release.py release/satn-pages.zip pages
+          --catalogue deployments/catalogue.yaml
+          --maximum-bytes "$SATN_PAGES_MAX_BYTES"
+      - name: Upload validated Pages artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: validated-pages-${{ needs.verify-release.outputs.release_tag }}
+          path: pages
+          if-no-files-found: error
+          retention-days: 1
+
   deploy:
+    needs: validate-release
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Download validated Pages artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          path: site
+          name: validated-pages-${{ needs.validate-release.outputs.release_tag }}
+          path: pages
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: pages
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
-
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

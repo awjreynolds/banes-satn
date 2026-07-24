@@ -269,6 +269,15 @@ class _Candidate:
 
 
 @dataclass(frozen=True)
+class _CandidateBound:
+    """Unevaluated Community-to-frontier work ordered by a safe route-cost bound."""
+
+    rank: tuple[object, ...]
+    place_id: str
+    frontier: _Frontier
+
+
+@dataclass(frozen=True)
 class _MeetingCandidate:
     rank: tuple[object, ...]
     left: pd.Series
@@ -301,9 +310,11 @@ def assemble_backbone_outward(
     gap_rows: list[dict[str, object]] = []
     agent_records: list[AgentRecord] = []
     rejected_by_place: dict[str, list[AgentRecord]] = {}
-    candidate_heap: list[tuple[tuple[object, ...], int, _Candidate]] = []
+    candidate_heap: list[tuple[tuple[object, ...], int, _Candidate | _CandidateBound]] = []
     sequence = 0
     candidate_evaluations = 0
+    candidate_pairs_enqueued = 0
+    candidate_bounds_expanded = 0
     total_communities = len(unserved)
     assembly_started = time.perf_counter()
     LOGGER.info(
@@ -314,26 +325,46 @@ def assemble_backbone_outward(
         len(gateways),
     )
 
-    def add_frontier_candidates(frontier: _Frontier) -> None:
-        nonlocal candidate_evaluations, sequence
+    def add_frontier_bounds(frontier: _Frontier) -> None:
+        nonlocal candidate_pairs_enqueued, sequence
         for place_id in sorted(unserved):
+            bound = _CandidateBound(
+                rank=_candidate_bound_rank(unserved[place_id], frontier, graph),
+                place_id=place_id,
+                frontier=frontier,
+            )
+            heapq.heappush(candidate_heap, (bound.rank, sequence, bound))
+            sequence += 1
+            candidate_pairs_enqueued += 1
+
+    initial_frontier_count = len(frontiers)
+    for frontier in frontiers:
+        add_frontier_bounds(frontier)
+
+    while candidate_heap:
+        _, _, work = heapq.heappop(candidate_heap)
+        if isinstance(work, _CandidateBound):
+            if work.place_id not in unserved:
+                continue
+            candidate_bounds_expanded += 1
             candidate_evaluations += 1
-            candidate = _candidate(
-                unserved[place_id],
-                frontier,
+            selected = _candidate(
+                unserved[work.place_id],
+                work.frontier,
                 graph,
                 obligation_kind="community",
                 elevation_evidence=elevation_evidence,
                 topography_config=topography_config,
             )
-            if candidate is not None:
-                heapq.heappush(candidate_heap, (candidate.rank, sequence, candidate))
+            if selected is not None:
+                heapq.heappush(candidate_heap, (selected.rank, sequence, selected))
                 sequence += 1
-            if candidate_evaluations % 250 == 0:
+            if candidate_bounds_expanded % 250 == 0:
                 elapsed_seconds = time.perf_counter() - assembly_started
                 LOGGER.info(
-                    "Backbone candidate heartbeat evaluated=%d served=%d/%d queue=%d "
-                    "elapsed=%.1fs rate=%.1f/s",
+                    "Backbone candidate heartbeat expanded_bounds=%d searches=%d "
+                    "served=%d/%d queue=%d elapsed=%.1fs search_rate=%.1f/s",
+                    candidate_bounds_expanded,
                     candidate_evaluations,
                     total_communities - len(unserved),
                     total_communities,
@@ -341,13 +372,8 @@ def assemble_backbone_outward(
                     elapsed_seconds,
                     candidate_evaluations / max(elapsed_seconds, 0.001),
                 )
-
-    initial_frontier_count = len(frontiers)
-    for frontier in frontiers:
-        add_frontier_candidates(frontier)
-
-    while candidate_heap:
-        _, _, selected = heapq.heappop(candidate_heap)
+            continue
+        selected = work
         place_id = str(selected.place["place_id"])
         if place_id not in unserved:
             continue
@@ -399,7 +425,7 @@ def assemble_backbone_outward(
         served_frontier = _served_frontier(row, graph)
         frontiers.append(served_frontier)
         frontiers.sort(key=_frontier_key)
-        add_frontier_candidates(served_frontier)
+        add_frontier_bounds(served_frontier)
 
     for place_id in sorted(unserved):
         rejected = rejected_by_place.get(place_id, [])
@@ -632,6 +658,11 @@ def assemble_backbone_outward(
     compilation_diagnostics: dict[str, object] = {
         "assembly_strategy": "backbone-outward",
         "candidate_evaluations": candidate_evaluations,
+        "candidate_pairs_enqueued": candidate_pairs_enqueued,
+        "candidate_searches_avoided": candidate_pairs_enqueued - candidate_evaluations,
+        "candidate_bounds_expanded": candidate_bounds_expanded,
+        "candidate_lower_bound_factor": graph.lower_bound_cost_factor,
+        "candidate_lower_bound_disabled_reason": graph.lower_bound_disabled_reason,
         "initial_frontiers": initial_frontier_count,
         "final_frontiers": len(frontiers),
         "served_communities": total_communities - len(unserved),
@@ -781,6 +812,32 @@ def _frontier_key(frontier: _Frontier) -> tuple[object, ...]:
         0 if frontier.target_role == "strategic-spine" else 1,
         frontier.root_spine_id,
         frontier.target_id,
+    )
+
+
+def _candidate_bound_rank(
+    place: pd.Series,
+    frontier: _Frontier,
+    graph: RoadGraph,
+) -> tuple[object, ...]:
+    """Order unevaluated work before any exact candidate it could still outrank."""
+    lower_bound_km = graph.lower_bound_to_geometry_m(
+        place.geometry,
+        frontier.projected_geometry,
+    ) / 1000
+    # The exact candidate rank rounds to nine decimals.  Keep the bound one rounding
+    # unit below its computed value so floating-point noise can never delay a viable
+    # search behind an exact candidate.
+    rounded_bound_km = max(0.0, round(lower_bound_km - 1e-12, 9))
+    return (
+        rounded_bound_km,
+        str(place["place_id"]),
+        0 if frontier.target_role == "strategic-spine" else 1,
+        frontier.root_spine_id,
+        frontier.target_id,
+        "",
+        "",
+        "community",
     )
 
 

@@ -187,7 +187,7 @@ def test_public_api_runs_complete_fixture(tmp_path: Path) -> None:
     assert (result.artifacts["review_map"].parent / "agent-records.json").exists()
     assert '"place_name": "Eastfield"' in data
     assert '"place_name": "Westfield"' in data
-    assert "[Open the interactive network map](https://awjreynolds.github.io/banes-satn/)" in (
+    assert "[Open SATN Deployments](https://awjreynolds.github.io/banes-satn/)" in (
         PROJECT / "README.md"
     ).read_text(encoding="utf-8")
 

@@ -1,11 +1,15 @@
-# banes-satn
+# SATN compiler
 
-Council-portable tooling for compiling an evidence-led Strategic Active Travel
-Network (SATN), with Bath and North East Somerset as the reference implementation.
+Area-portable tooling for compiling an evidence-led Strategic Active Travel
+Network (SATN), with independently deployable definitions for Bath and North East
+Somerset and the wider West of England region.
 
-> Experimental SATN POC — not an adopted B&NES plan.
+> Experimental SATN POC — not an adopted plan.
 
-**[Open the interactive network map](https://awjreynolds.github.io/banes-satn/)** — inspect Strategic Spines, access connections, National Cycle Network evidence, Candidate Low-Traffic Areas, Schools and visible Network Gaps. The map links back here for source, methodology and issue tracking.
+**[Open SATN Deployments](https://awjreynolds.github.io/banes-satn/)** — choose
+the B&NES or West of England Area Deployment, then inspect Strategic Spines,
+access connections, National Cycle Network evidence, Candidate Low-Traffic
+Areas, Schools and visible Network Gaps.
 
 The compiler grows a rural Backbone-and-Access Network outward from governed A-road
 and established NCN Strategic Spines. Communities and Schools attach to that shared
@@ -21,10 +25,11 @@ Python 3.12 or newer and [uv](https://docs.astral.sh/uv/) are required.
 uv sync --all-groups
 ```
 
-## Run the checked-in fixture
+## Compile an Area Definition
 
-Both public commands are driven by the same council YAML configuration used by the
-Python API:
+Both public commands are driven by the same Area Definition YAML used by the Python
+API. An Area Definition can name one authority, several authorities or another
+coherent region:
 
 ```shell
 uv run satn snapshot examples/fixture/council.yaml
@@ -34,7 +39,20 @@ uv run satn compile examples/fixture/council.yaml
 The first command creates an attributable immutable snapshot. The second atomically
 replaces `examples/fixture/work/output/` with the current authoritative GeoPackage,
 GeoJSON, run and agent records, accessible MapLibre review map, shareable ZIP, and A3
-PDF.
+PDF. Governed definitions for the published deployments live under `deployments/`;
+their generated data stays under ignored `build/`.
+
+For example:
+
+```shell
+uv run satn snapshot deployments/weca/area.yaml
+uv run satn compile deployments/weca/area.yaml
+uv run python scripts/publish_site.py deployments/weca/area.yaml
+```
+
+The West of England definition compiles one continuous regional network across Bath
+and North East Somerset, Bristol, North Somerset and South Gloucestershire. Authority
+boundaries are retained as visible context; they never clip or fork the network.
 
 The stable library interface is:
 
@@ -625,7 +643,7 @@ linework:
 
 ```shell
 uv run python scripts/acquire_ea_elevation.py \
-  site/network.geojson \
+  build/compiled/AREA/review-map/network.geojson \
   data/local/ea-lidar-dtm-1m-council-samples.geojson \
   --cache-dir data/local/ea-dtm-cache \
   --spacing-m 10
@@ -828,9 +846,11 @@ uv run satn compile config/banes.yaml --full
 
 CLI commands emit timestamped standard-library logs to stderr. `INFO` is the default
 and reports acquisition groups, snapshot counts, periodic backbone and School progress,
-publication validation and elapsed time. Use `--log-level DEBUG` for selected frontier
-decisions and artifact diagnostics, or `WARNING`, `ERROR` or `CRITICAL` for quieter
-automation:
+publication validation and elapsed time. Long-running snapshot and compile stages also
+emit a structured `event=satn_heartbeat` liveness record every 30 seconds with the
+current stage, area context and elapsed time. Use `--log-level DEBUG` for selected
+frontier decisions and artifact diagnostics, or `WARNING`, `ERROR` or `CRITICAL` for
+quieter automation:
 
 ```shell
 uv run satn compile config/banes.yaml --log-level DEBUG
@@ -908,18 +928,29 @@ uv run playwright install chromium
 uv run pytest --browser -m browser tests/test_review_map_browser.py
 ```
 
-The current full B&NES result is published at
-[awjreynolds.github.io/banes-satn](https://awjreynolds.github.io/banes-satn/).
-The [A3 PDF network map](https://awjreynolds.github.io/banes-satn/network-map.pdf)
-is published beside it for download and printing. Until the next governed B&NES
-snapshot run is promoted, that tracked site remains the superseded schema-1 reference;
-it is comparison evidence, not ground truth for schema 2.0. The public map excludes
-the governed ATM geometry. After a validated public compile, refresh the tracked GitHub
-Pages bundle with:
+The Pages root is a lightweight
+[SATN Deployment Catalogue](https://awjreynolds.github.io/banes-satn/), not an alias
+for one authority. Each Area Deployment has a stable interactive map, printable A2/A3
+PDF and portable Review Map ZIP. The initial map loads only the strategic network and
+named constituent-authority boundaries. Optional contextual and gradient evidence is
+split into content-addressed spatial shards, loaded for the active view when selected,
+and cached by the browser on a best-effort basis.
+
+Build each validated Area Deployment independently, then assemble the ignored Pages
+release bundle:
 
 ```shell
-uv run python scripts/publish_site.py
+uv run python scripts/publish_site.py deployments/banes/area.yaml
+uv run python scripts/publish_site.py deployments/weca/area.yaml
+uv run python scripts/package_pages.py
 ```
+
+`build/satn-pages.zip` is attached to a GitHub release and deployed by the Pages
+workflow. Generated snapshots, compiled outputs, deployment directories, PDFs, ZIPs
+and Pages trees are reproducible process artifacts and are not committed to Git. The
+packager fails before publication if the configured Pages size budget would be
+exceeded. The interface is designed and recommended for desktop use; smaller devices
+receive the same data contract without being the primary supported experience.
 
 ## Check
 

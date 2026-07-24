@@ -12,5 +12,7 @@ data/local/*.geojson
 data/local/*.manifest.json
 data/local/ea-dtm-cache/
 dist/
+build/
+site/
 output/
 output-atm-local/
