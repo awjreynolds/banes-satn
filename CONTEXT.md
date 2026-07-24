@@ -504,6 +504,30 @@ _Avoid_: prioritised programme, funding commitment, procurement lot
 The bounded state strategic-option, concept, feasible or designed. This compiler produces strategic material; feasible or designed labels only record separately governed human evidence and never imply detailed design was performed here.
 _Avoid_: inferred feasibility, automatic stage advance, adoption state
 
+**Prioritisation Pass**:
+A deterministic post-intervention analytical pass that compares council-approved scenarios and produces sensitivity-tested short-, medium- and long-term phasing. It never treats SATN validity, traffic lights or assembly order as priority evidence.
+_Avoid_: Wayfinding Pass, opaque ranking, funding decision
+
+**Approved Prioritisation Criteria**:
+A versioned, fingerprinted set of measures, transforms, weights, missing-data rules and programme horizons bound to an accountable council directive. Effectiveness/benefit, policy/equality and deliverability/cost remain separately inspectable.
+_Avoid_: agent-selected weight, hidden transform, validity criterion
+
+**Analytical Programme Scenario**:
+A reproducible comparison of intervention concepts under one approved set of weights and rules. Every result decomposes to raw observations, evidence, transforms, weighted contributions, view results, dependencies, cost confidence, risks and unresolved requests.
+_Avoid_: recommendation, authorised programme, objective truth
+
+**Prioritisation Sensitivity Case**:
+A configured variation of approved weights or governed input observations that reports rank and phase changes against a named Analytical Programme Scenario.
+_Avoid_: silent retuning, selected policy, forecast presented as fact
+
+**Recommended Programme**:
+An Analytical Programme Scenario selected by a recorded human recommendation. It remains distinct from council authorisation and does not commit funding.
+_Avoid_: agent recommendation, authorised programme, funding award
+
+**Authorised Programme**:
+A previously Recommended Programme selected by a later accountable council decision. Authorisation records governance state; it is not a funding award or detailed business case.
+_Avoid_: analytical scenario, automatic adoption, realised benefit
+
 **Wayfinding Pass**:
 The compilation phase that connects Network Places into a valid end-to-end network using topology, constraints and alignment evidence. Demand and accessibility evidence do not determine connections in this pass.
 _Avoid_: prioritisation, demand-led routing
