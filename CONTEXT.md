@@ -528,6 +528,52 @@ _Avoid_: agent recommendation, authorised programme, funding award
 A previously Recommended Programme selected by a later accountable council decision. Authorisation records governance state; it is not a funding award or detailed business case.
 _Avoid_: analytical scenario, automatic adoption, realised benefit
 
+**LCWIP Governance Record**:
+An immutable release-bound account of the plan sponsor, SRO, project board, decision
+authorities, objectives, targets, timetable, directives, engagement, equality,
+policy alignment and human lifecycle gates. It proves accountable provenance but
+does not exercise democratic authority.
+_Avoid_: software approval, generated mandate, informal project metadata
+
+**Representation Source Record**:
+An immutable opaque source reference and content fingerprint for one received
+representation, with access and public-disposition rules, themes, position and
+explicit supersession or contradiction lineage. Personal source content is not a
+public artifact.
+_Avoid_: rewritten submission, respondent profile, uncited sentiment
+
+**Agent Representation Summary**:
+A reproducible classification or summary that cites every included publishable
+Representation Source Record and states confidence, coverage and methodology. A
+named human verifies the summary and separately disposes each source; the summary
+cannot decide the response.
+_Avoid_: consultation decision, source replacement, uncited consensus
+
+**Human Lifecycle Gate**:
+A named, dated decision by the authority role required for one lifecycle boundary,
+with rationale and evidence. Gates are cumulative: reaching an adoption state cannot
+bypass scope, evidence, prioritisation, consultation, representation or equality
+decisions.
+_Avoid_: boolean flag, agent approval, inferred sign-off
+
+**Equality Impact Finding**:
+A source-citing record of affected users, impact, owner, EqIA process, mitigations and
+resolution state. Unknown or unresolved adverse impacts block consultation and
+adoption rather than being interpreted as no impact.
+_Avoid_: equality score, assumed neutrality, hidden mitigation
+
+**Policy Alignment**:
+A governed link from an exact policy clause to an objective, network or intervention,
+including subject evidence and a named officer's judgement. Text similarity alone is
+not policy alignment.
+_Avoid_: keyword match, agent interpretation, uncited policy claim
+
+**Governance Release Fingerprint**:
+The canonical digest of the substantive governance, engagement, equality and policy
+content. An external adoption decision must identify this exact fingerprint, and any
+post-consultation amendment records its trigger and fingerprint chain.
+_Avoid_: mutable latest pointer, filename identity, adoption of unspecified content
+
 **Wayfinding Pass**:
 The compilation phase that connects Network Places into a valid end-to-end network using topology, constraints and alignment evidence. Demand and accessibility evidence do not determine connections in this pass.
 _Avoid_: prioritisation, demand-led routing
