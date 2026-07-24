@@ -1,0 +1,5 @@
+{
+  "assessments": [
+    {"requirement_id": "dft-2017.scope-governance", "status": "satisfied", "evidence": [{"artifact_id": "scope", "uri": "bundle://scope", "kind": "scope-and-governance"}]}
+  ]
+}

@@ -5,10 +5,20 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
+
+PublicationContractText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class TrafficLight(StrEnum):
@@ -540,9 +550,7 @@ class AgentRecord(AgentReviewAudit):
                 or self.revision is not None
             ):
                 raise ValueError("bounded choice review cannot contain free-form agent activity")
-            if self.responder_mode == "caller" and (
-                self.runtime != "caller" or requests or tokens
-            ):
+            if self.responder_mode == "caller" and (self.runtime != "caller" or requests or tokens):
                 raise ValueError("caller review cannot contain direct-runtime activity")
             if self.responder_mode == "direct-runtime" and (
                 not self.runtime
@@ -563,13 +571,10 @@ class AgentRecord(AgentReviewAudit):
             if (
                 selected is None
                 or selected.compiler_action != self.mapped_action
-                or self.affected_feature_identifiers
-                != self.decision_request.affected_identifiers
+                or self.affected_feature_identifiers != self.decision_request.affected_identifiers
             ):
                 raise ValueError("bounded review choice must match the offered request action")
-        elif self.review_required and (
-            self.runtime == "not-invoked" or not self.attempts
-        ):
+        elif self.review_required and (self.runtime == "not-invoked" or not self.attempts):
             raise ValueError("required review must record an accepted bounded choice")
         if not self.review_required and (
             self.runtime != "not-invoked" or requests or tokens or self.attempts
@@ -632,8 +637,7 @@ class DivergenceRecord(AgentReviewAudit):
             if (
                 selected is None
                 or selected.compiler_action != self.mapped_action
-                or self.affected_feature_identifiers
-                != self.decision_request.affected_identifiers
+                or self.affected_feature_identifiers != self.decision_request.affected_identifiers
             ):
                 raise ValueError("bounded review choice must match the offered request action")
         elif self.review_required and not self.resolution_attempts:
@@ -668,3 +672,53 @@ class CompilationResult(BaseModel):
     divergence_records: list[DivergenceRecord] = Field(default_factory=list)
     decision_requests: list[AgentDecisionRequest] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PublishedArtifactReference(BaseModel):
+    """Stable, geometry-free identity for one artifact from a SATN publication."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
+
+    run_id: PublicationContractText
+    artifact_key: PublicationContractText
+    uri: PublicationContractText
+    sha256: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+
+    @property
+    def public_identifier(self) -> str:
+        return f"{self.run_id}:{self.artifact_key}"
+
+
+class PublishedNetworkFeatureReference(BaseModel):
+    """Stable, geometry-free identity for one feature in a published SATN artifact."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
+
+    run_id: PublicationContractText
+    artifact_key: PublicationContractText
+    feature_id: PublicationContractText
+    feature_type: PublicationContractText
+    network_role: PublicationContractText | None = None
+    source_artifact_uri: PublicationContractText
+    source_artifact_sha256: Annotated[
+        str,
+        StringConstraints(
+            strip_whitespace=True,
+            min_length=64,
+            max_length=64,
+            pattern=r"^[0-9a-f]{64}$",
+        ),
+    ]
+
+    @field_validator("network_role", mode="before")
+    @classmethod
+    def validate_present_network_role(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("network_role must be a nonblank string when present")
+        return value
+
+    @property
+    def public_identifier(self) -> str:
+        return f"{self.run_id}:{self.artifact_key}:{self.feature_id}"

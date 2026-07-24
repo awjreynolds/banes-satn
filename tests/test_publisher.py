@@ -12,7 +12,21 @@ import pytest
 from pypdf import PdfReader
 from shapely.geometry import LineString
 
-from satn import compile
+from lcwip import (
+    ArtifactLink,
+    AuditFinding,
+    AuditFindingStatus,
+    Plan,
+    PlanHorizon,
+    StudyArea,
+)
+from satn import (
+    PublishedArtifactReference,
+    PublishedNetworkFeatureReference,
+    compile,
+    published_artifact_reference,
+    published_feature_reference,
+)
 from satn.constants import DISCLAIMER
 from satn.models import (
     CouncilConfig,
@@ -136,6 +150,177 @@ def prepared_governed_urban_config(tmp_path: Path) -> CouncilConfig:
 
 def checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_public_artifact_reference_uses_the_successful_run_identity_and_file_digest(
+    tmp_path: Path,
+) -> None:
+    result = compile(prepared_config(tmp_path))
+
+    reference = published_artifact_reference(result, "geojson")
+
+    assert isinstance(reference, PublishedArtifactReference)
+    assert reference.run_id == result.run_id
+    assert reference.artifact_key == "geojson"
+    assert reference.uri == result.artifacts["geojson"].resolve().as_uri()
+    assert reference.sha256 == checksum(result.artifacts["geojson"])
+    assert reference.public_identifier == f"{result.run_id}:geojson"
+
+
+def test_public_feature_reference_derives_one_geometry_free_feature_from_real_public_geojson(
+    tmp_path: Path,
+) -> None:
+    result = compile(prepared_config(tmp_path))
+    network = json.loads(result.artifacts["geojson"].read_text())
+    feature = next(item for item in network["features"] if item["properties"].get("network_role"))
+
+    reference = published_feature_reference(result, str(feature["id"]))
+
+    assert isinstance(reference, PublishedNetworkFeatureReference)
+    assert reference.run_id == result.run_id
+    assert reference.feature_id == feature["id"]
+    assert reference.feature_type == feature["properties"]["feature_type"]
+    assert reference.network_role == feature["properties"]["network_role"]
+    assert reference.source_artifact_uri == result.artifacts["geojson"].resolve().as_uri()
+    assert reference.source_artifact_sha256 == checksum(result.artifacts["geojson"])
+    assert "geometry" not in reference.model_dump()
+
+    plan = Plan(
+        plan_id="fixture-feature-plan",
+        name="Fixture feature plan",
+        study_area=StudyArea(
+            area_id="fixture-area",
+            name="Fixture area",
+            boundary=ArtifactLink(
+                artifact_id="fixture-area",
+                uri="bundle://fixture-area",
+                kind="study-area",
+            ),
+        ),
+        horizon=PlanHorizon(start_year=2026, end_year=2027),
+        satn_features=(reference,),
+        audit_findings=(
+            AuditFinding(
+                finding_id="fixture-feature-audit",
+                subject_id=reference.feature_id,
+                status=AuditFindingStatus.UNKNOWN,
+            ),
+        ),
+    )
+    assert plan.audit_findings[0].subject_id == reference.feature_id
+
+    with pytest.raises(ValueError, match="audit-referable identifiers"):
+        Plan(
+            plan_id="colliding-feature-plan",
+            name="Colliding feature plan",
+            study_area=StudyArea(
+                area_id=reference.feature_id,
+                name="Fixture area",
+                boundary=ArtifactLink(
+                    artifact_id="fixture-area",
+                    uri="bundle://fixture-area",
+                    kind="study-area",
+                ),
+            ),
+            horizon=PlanHorizon(start_year=2026, end_year=2027),
+            satn_features=(reference,),
+        )
+
+    with pytest.raises(ValueError, match="no feature"):
+        published_feature_reference(result, "missing-feature")
+
+    duplicate = tmp_path / "duplicate-network.geojson"
+    duplicate.write_text(json.dumps({**network, "features": [*network["features"], feature]}))
+    duplicate_result = result.model_copy(
+        update={"artifacts": {**result.artifacts, "geojson": duplicate}}
+    )
+    with pytest.raises(ValueError, match="exactly one"):
+        published_feature_reference(duplicate_result, str(feature["id"]))
+
+
+def test_public_feature_reference_allows_a_real_published_feature_without_a_network_role(
+    tmp_path: Path,
+) -> None:
+    result = compile(prepared_config(tmp_path))
+    network = json.loads(result.artifacts["geojson"].read_text())
+    feature = next(item for item in network["features"] if item["id"] == "a-road-fixture")
+
+    reference = published_feature_reference(result, "a-road-fixture")
+
+    assert reference.feature_id == "a-road-fixture"
+    assert reference.feature_type == feature["properties"]["feature_type"]
+    assert reference.network_role is None
+    assert reference.source_artifact_sha256 == checksum(result.artifacts["geojson"])
+    assert "geometry" not in reference.model_dump()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "requested_id", "message"),
+    (
+        ("type", "Bogus", "fixture", "type 'Feature'"),
+        ("type", None, "fixture", "type 'Feature'"),
+        ("id", None, "None", "feature identity"),
+        ("id", ["feature"], "['feature']", "feature identity"),
+        ("feature_type", ["connection"], "fixture", "feature_type"),
+        ("feature_type", True, "fixture", "feature_type"),
+        ("network_role", None, "fixture", "network_role"),
+        ("network_role", " \t ", "fixture", "network_role"),
+        ("network_role", True, "fixture", "network_role"),
+        ("network_role", {"role": "spine"}, "fixture", "network_role"),
+    ),
+)
+def test_public_feature_reference_rejects_malformed_geojson_identity_values(
+    tmp_path: Path, field: str, value: object, requested_id: str, message: str
+) -> None:
+    result = compile(prepared_config(tmp_path))
+    network = json.loads(result.artifacts["geojson"].read_text())
+    feature = next(item for item in network["features"] if item["properties"].get("network_role"))
+    feature = {**feature, "id": "fixture", "properties": dict(feature["properties"])}
+    if field == "id":
+        feature["id"] = value
+    elif field == "type":
+        feature["type"] = value
+    else:
+        feature["properties"][field] = value
+    malformed = tmp_path / "malformed-network.geojson"
+    malformed.write_text(json.dumps({"type": "FeatureCollection", "features": [feature]}))
+    malformed_result = result.model_copy(
+        update={"artifacts": {**result.artifacts, "geojson": malformed}}
+    )
+
+    with pytest.raises(ValueError, match=message):
+        published_feature_reference(malformed_result, requested_id)
+
+
+@pytest.mark.parametrize(
+    ("case", "geometry"),
+    (
+        ("missing", None),
+        ("null", None),
+        ("empty object", {}),
+        ("empty coordinates", {"type": "LineString", "coordinates": []}),
+        ("non-array coordinates", {"type": "LineString", "coordinates": "not-an-array"}),
+    ),
+)
+def test_public_feature_reference_rejects_missing_empty_and_malformed_selected_geometry(
+    tmp_path: Path, case: str, geometry: object
+) -> None:
+    result = compile(prepared_config(tmp_path))
+    network = json.loads(result.artifacts["geojson"].read_text())
+    feature = next(item for item in network["features"] if item["properties"].get("network_role"))
+    feature = {**feature, "id": "fixture", "properties": dict(feature["properties"])}
+    if case == "missing":
+        feature.pop("geometry")
+    else:
+        feature["geometry"] = geometry
+    malformed = tmp_path / "malformed-geometry-network.geojson"
+    malformed.write_text(json.dumps({"type": "FeatureCollection", "features": [feature]}))
+    malformed_result = result.model_copy(
+        update={"artifacts": {**result.artifacts, "geojson": malformed}}
+    )
+
+    with pytest.raises(ValueError, match="geometry"):
+        published_feature_reference(malformed_result, "fixture")
 
 
 def test_bundle_identifiers_zip_and_pdf_are_consistent(tmp_path: Path) -> None:
@@ -461,9 +646,7 @@ def test_public_compile_reviews_configured_grey_urban_school_gap(tmp_path: Path)
     school = context["feature_type"] == "school"
     context.loc[school, "access_point_status"] = "unresolved"
     context.loc[school, "access_point_source_id"] = None
-    context.loc[school, "access_point_rationale"] = (
-        "No governed School Access Point is available."
-    )
+    context.loc[school, "access_point_rationale"] = "No governed School Access Point is available."
     context.to_file(context_path, driver="GeoJSON")
     snapshot(config, replace=True)
     config.compilation.agent.review_statuses = (TrafficLight.GREY,)

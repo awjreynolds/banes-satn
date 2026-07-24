@@ -1,0 +1,12 @@
+{
+  "assessments": [
+    {"requirement_id": "dft-2017.scope-governance", "status": "satisfied", "evidence": [{"artifact_id": "scope", "uri": "bundle://scope", "kind": "scope-and-governance"}]},
+    {"requirement_id": "dft-2017.information-and-barriers", "status": "satisfied", "evidence": [{"artifact_id": "baseline", "uri": "bundle://baseline", "kind": "baseline-evidence"}, {"artifact_id": "barriers", "uri": "bundle://barriers", "kind": "barriers-register"}]},
+    {"requirement_id": "dft-2017.cycling-network-planning", "status": "satisfied", "evidence": [{"artifact_id": "cycling", "uri": "bundle://cycling", "kind": "cycling-network-plan"}]},
+    {"requirement_id": "dft-2017.walking-network-planning", "status": "satisfied", "evidence": [{"artifact_id": "walking", "uri": "bundle://walking", "kind": "walking-network-plan"}]},
+    {"requirement_id": "dft-2017.prioritisation", "status": "satisfied", "evidence": [{"artifact_id": "programme", "uri": "bundle://programme", "kind": "prioritised-programme"}]},
+    {"requirement_id": "dft-2017.policy-integration", "status": "satisfied", "evidence": [{"artifact_id": "policy", "uri": "bundle://policy", "kind": "policy-integration"}]},
+    {"requirement_id": "dft-2017.engagement", "status": "not-applicable", "rationale": "No engagement release is claimed."},
+    {"requirement_id": "local.objective-alignment", "status": "not-applicable", "rationale": "No local selection made."}
+  ]
+}

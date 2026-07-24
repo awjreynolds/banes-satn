@@ -1,0 +1,19 @@
+{
+  "release": {
+    "release_id": "banes-2026-01",
+    "profile_id": "dft-lcwip-2017",
+    "profile_fingerprint": "84c21b1d9762f82c0f57bd92652de157872b5d5ed8b5c13f3466f13784189e8e",
+    "lifecycle_state": "superseded",
+    "claims": ["superseded"],
+    "transition_history": [
+      {
+        "from_state": "exploratory",
+        "to_state": "superseded",
+        "gate": {
+          "authority_name": "Plan board",
+          "rationale": "The profile was replaced."
+        }
+      }
+    ]
+  }
+}

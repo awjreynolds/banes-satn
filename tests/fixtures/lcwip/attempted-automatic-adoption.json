@@ -1,0 +1,25 @@
+{
+  "release": {
+    "release_id": "generated-adoption",
+    "profile_id": "dft-lcwip-2017",
+    "profile_fingerprint": "6900d582d6c8c1badcd79c9ea61566ba440288cd507568ce019c7cbbc6167a6f",
+    "lifecycle_state": "adopted",
+    "claims": ["adopted"],
+    "external_decision": {
+      "decision_id": "generated-1",
+      "authority_name": "Generated authority",
+      "uri": "bundle://generated",
+      "verification": {
+        "decision_id": "generated-1",
+        "verifier_name": "Named governance officer",
+        "verified_on": "2026-07-24",
+        "method": "automatic",
+        "evidence": {
+          "artifact_id": "generated-1-verification",
+          "uri": "bundle://governance/generated-1-verification",
+          "kind": "verification-record"
+        }
+      }
+    }
+  }
+}

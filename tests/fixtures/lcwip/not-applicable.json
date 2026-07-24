@@ -1,0 +1,10 @@
+{
+  "assessments": [
+    {"requirement_id": "dft-2017.scope-governance", "status": "not-applicable", "rationale": "Bounded fixture."},
+    {"requirement_id": "dft-2017.information-and-barriers", "status": "not-applicable", "rationale": "Bounded fixture."},
+    {"requirement_id": "dft-2017.cycling-network-planning", "status": "not-applicable", "rationale": "Bounded fixture."},
+    {"requirement_id": "dft-2017.walking-network-planning", "status": "not-applicable", "rationale": "Bounded fixture."},
+    {"requirement_id": "dft-2017.prioritisation", "status": "not-applicable", "rationale": "Bounded fixture."},
+    {"requirement_id": "dft-2017.policy-integration", "status": "not-applicable", "rationale": "Bounded fixture."}
+  ]
+}

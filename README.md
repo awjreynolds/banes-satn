@@ -39,10 +39,27 @@ PDF.
 The stable library interface is:
 
 ```python
-from satn import compile
+from satn import (
+    PublishedArtifactReference,
+    PublishedNetworkFeatureReference,
+    compile,
+    published_artifact_reference,
+    published_feature_reference,
+)
 
 result = compile("examples/fixture/council.yaml")
+artifact_reference: PublishedArtifactReference = published_artifact_reference(
+    result, "geojson"
+)
+feature_reference: PublishedNetworkFeatureReference = published_feature_reference(
+    result, "a-published-feature-id"
+)
 ```
+
+`PublishedArtifactReference` and `published_artifact_reference` are stable public
+publication-contract interfaces for referring to SATN artifacts without copying geometry.
+`PublishedNetworkFeatureReference` and `published_feature_reference` identify one feature in a
+published GeoJSON artifact, including its source-artifact SHA-256, without copying geometry.
 
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
