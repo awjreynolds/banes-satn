@@ -472,6 +472,38 @@ _Avoid_: named respondent, raw testimony, automated engagement replacement
 An observed deficient or explicitly unknown walking audit condition compiled as a stable intervention input with evidence, accessibility needs and any unresolved Evidence Request.
 _Avoid_: detailed scheme, priority score, unsupported defect
 
+**Accepted Deficiency Reference**:
+A mode-neutral programme boundary that cites one accepted cycling, walking/wheeling, SATN or other governed deficiency by source artifact, fingerprint and record ID while preserving its evidence, affected subject, users and accountable human acceptance.
+_Avoid_: copied audit model, unsupported problem statement, anonymous gap
+
+**Intervention Catalogue**:
+A versioned, fingerprinted set of permitted strategic treatment families for route sections, junctions, crossings, area measures, supporting infrastructure, wayfinding and maintenance. Each entry defines supported geometry, modes, users, strategic scope and explicitly excluded detailed work.
+_Avoid_: free-text treatment invention, product specification, unversioned menu
+
+**Desired Design Outcome**:
+An evidence-linked statement of the condition an accepted deficiency should reach, with a success measure, assumptions and explicit unknowns. It is distinct from both the deficiency and the intervention selected to pursue it.
+_Avoid_: catalogue item, benefit score, guaranteed result
+
+**Intervention Concept**:
+A catalogue-bound strategic option or concept linking accepted deficiencies to Desired Design Outcomes at an approximate location, with users served, evidence, assumptions, alternatives, dependencies, exclusions, residual deficiencies and delivery status.
+_Avoid_: infrastructure scheme, detailed design, construction approval
+
+**Outline Cost Range**:
+A human-verified, evidence-backed monetary interval with currency, price base, disclosed rounding, basis, confidence, included and excluded scope, quantity assumptions and unknowns. A single invented figure is not an Outline Cost Range.
+_Avoid_: precise estimate, unsupported allowance, procurement bill
+
+**Constraint Assessment**:
+A typed known-clear, known-constraint, unknown or not-applicable judgement for land/highway rights, environment/heritage, utilities, traffic, dependencies, maintenance or survey/design needs. Material known judgements require human verification; unknowns remain Evidence Requests.
+_Avoid_: silent constraint clearance, assumed utilities, feasibility claim
+
+**Intervention Package**:
+A machine-readable group of Intervention Concepts and Desired Design Outcomes for later strategic appraisal, including package dependencies, mutually exclusive alternatives, assumptions and residual deficiencies.
+_Avoid_: prioritised programme, funding commitment, procurement lot
+
+**Intervention Delivery Status**:
+The bounded state strategic-option, concept, feasible or designed. This compiler produces strategic material; feasible or designed labels only record separately governed human evidence and never imply detailed design was performed here.
+_Avoid_: inferred feasibility, automatic stage advance, adoption state
+
 **Wayfinding Pass**:
 The compilation phase that connects Network Places into a valid end-to-end network using topology, constraints and alignment evidence. Demand and accessibility evidence do not determine connections in this pass.
 _Avoid_: prioritisation, demand-led routing
