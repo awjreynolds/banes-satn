@@ -16,6 +16,7 @@ from lcwip.evidence import (
 )
 from lcwip.interventions import validate_intervention_bundle
 from lcwip.models import GuidanceProfile
+from lcwip.prioritisation import validate_prioritisation_bundle
 from lcwip.walking import validate_walking_bundle
 
 app = typer.Typer(no_args_is_help=True, help="Validate LCWIP public contracts.")
@@ -30,11 +31,16 @@ interventions_app = typer.Typer(
     no_args_is_help=True,
     help="Validate strategic intervention-package bundles.",
 )
+prioritisation_app = typer.Typer(
+    no_args_is_help=True,
+    help="Validate transparent prioritisation bundles.",
+)
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(demand_app, name="demand")
 app.add_typer(walking_app, name="walking")
 app.add_typer(interventions_app, name="interventions")
+app.add_typer(prioritisation_app, name="prioritisation")
 
 
 @profile_app.command("validate")
@@ -98,6 +104,15 @@ def validate_interventions(
 ) -> None:
     """Validate an infrastructure intervention-package bundle."""
     manifest = validate_intervention_bundle(path)
+    typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
+
+
+@prioritisation_app.command("validate")
+def validate_prioritisation(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+) -> None:
+    """Validate analytical, recommended and authorised programme outputs."""
+    manifest = validate_prioritisation_bundle(path)
     typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
 
 

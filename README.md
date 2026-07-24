@@ -254,6 +254,45 @@ status. Validate it with:
 uv run lcwip interventions validate path/to/intervention-output/analysis-id
 ```
 
+## Compare and phase programme scenarios
+
+The Prioritisation Pass consumes a validated intervention bundle and
+council-approved, fingerprinted criteria. Each measure belongs to one separately
+inspectable view—effectiveness/benefit, policy/equality or
+deliverability/cost—and records its source observation, evidence, transform,
+weight, missing-data rule and contribution. SATN traffic lights, validity states
+and assembly order are rejected as priority measures.
+
+```python
+from lcwip import build_prioritisation
+
+bundle = build_prioritisation(
+    criteria=approved_criteria,
+    intervention_bundle=intervention_bundle,
+    output_dir=output_dir,
+    analysis_id="banes-prioritisation",
+    observations=governed_measure_observations,
+    scenarios=approved_scenarios,
+    sensitivity_cases=approved_sensitivity_cases,
+)
+```
+
+Missing evidence produces an Evidence Request and leaves the intervention
+unranked and unphased; it never becomes zero or an average. Scheduling retains
+cost confidence, risks and unresolved requests, respects hard dependencies and
+mutually exclusive options, and uses explicit short/medium/long horizon cost
+envelopes. Sensitivity outputs show rank and phase instability under plausible
+weight and input changes, including conflicting policy scenarios.
+
+Analytical scenarios are not programmes. A Recommended Programme requires a
+recorded human recommendation, and an Authorised Programme requires a later
+human authorisation of that same scenario. Agents cannot choose policy weights,
+programme scenarios or funding commitments. Validate outputs with:
+
+```shell
+uv run lcwip prioritisation validate path/to/prioritisation-output/analysis-id
+```
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
