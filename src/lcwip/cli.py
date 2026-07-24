@@ -14,6 +14,7 @@ from lcwip.evidence import (
     snapshot_evidence_registry,
     validate_evidence_snapshot,
 )
+from lcwip.interventions import validate_intervention_bundle
 from lcwip.models import GuidanceProfile
 from lcwip.walking import validate_walking_bundle
 
@@ -25,10 +26,15 @@ walking_app = typer.Typer(
     no_args_is_help=True,
     help="Validate walking and wheeling planning bundles.",
 )
+interventions_app = typer.Typer(
+    no_args_is_help=True,
+    help="Validate strategic intervention-package bundles.",
+)
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(demand_app, name="demand")
 app.add_typer(walking_app, name="walking")
+app.add_typer(interventions_app, name="interventions")
 
 
 @profile_app.command("validate")
@@ -83,6 +89,15 @@ def validate_walking(
 ) -> None:
     """Validate a walking/wheeling network-planning and audit bundle."""
     manifest = validate_walking_bundle(path)
+    typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
+
+
+@interventions_app.command("validate")
+def validate_interventions(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+) -> None:
+    """Validate an infrastructure intervention-package bundle."""
+    manifest = validate_intervention_bundle(path)
     typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
 
 

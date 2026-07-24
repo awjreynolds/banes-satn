@@ -207,6 +207,53 @@ Validate the bundle and all derived files with:
 uv run lcwip walking validate path/to/walking-output/analysis-id
 ```
 
+## Compile infrastructure intervention packages
+
+The Infrastructure Intervention Pass converts accepted cycling and
+walking/wheeling deficiencies into a shared strategic programme contract without
+copying or conflating the audit models that produced them. Every normalized
+deficiency reference retains its source workflow, source artifact and
+fingerprint, source record, governed evidence, affected modes/users and
+accountable human acceptance.
+
+```python
+from lcwip import build_intervention_packages
+
+bundle = build_intervention_packages(
+    intervention_config,
+    deficiencies=accepted_deficiency_references,
+    outcomes=desired_design_outcomes,
+    concepts=catalogue_bound_concepts,
+    costs=governed_outline_cost_ranges,
+    constraints=constraint_assessments,
+    packages=strategic_packages,
+)
+```
+
+The versioned Intervention Catalogue permits route-section, junction, crossing,
+area, supporting-infrastructure, wayfinding and maintenance concepts. A concept
+must use an exact catalogue entry/version and supported geometry, modes and
+users. It records approximate location, assumptions, alternatives, dependencies,
+mutually exclusive options, residual deficiencies and an explicit
+`detailed_design_in_scope = false` boundary.
+
+Outline costs are ranges, not invented point estimates. They expose currency,
+price base, rounding increment, basis, confidence, included/excluded scope,
+quantity assumptions, unknowns, governed expert evidence and human verification.
+Missing cost or unknown land/highway-rights, environment/heritage, utilities,
+traffic, dependency, maintenance or survey/design evidence remains a typed
+Evidence Request. Feasible or designed status requires separately governed
+human stage evidence and resolved constraints.
+
+The immutable bundle publishes concept GeoJSON, package and traceability tables,
+cost/constraint evidence, Evidence Requests, conformance links and a review
+surface that separates network aspiration, intervention concept and delivery
+status. Validate it with:
+
+```shell
+uv run lcwip interventions validate path/to/intervention-output/analysis-id
+```
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
