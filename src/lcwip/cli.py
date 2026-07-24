@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 from jsonschema import Draft202012Validator, FormatChecker
 
+from lcwip.demand import validate_demand_bundle
 from lcwip.evidence import (
     EvidenceRegistryConfig,
     snapshot_evidence_registry,
@@ -18,8 +19,10 @@ from lcwip.models import GuidanceProfile
 app = typer.Typer(no_args_is_help=True, help="Validate LCWIP public contracts.")
 profile_app = typer.Typer(no_args_is_help=True, help="Validate Guidance Profiles.")
 evidence_app = typer.Typer(no_args_is_help=True, help="Manage governed evidence snapshots.")
+demand_app = typer.Typer(no_args_is_help=True, help="Validate cycling demand bundles.")
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
+app.add_typer(demand_app, name="demand")
 
 
 @profile_app.command("validate")
@@ -57,6 +60,15 @@ def validate_evidence(
     """Validate an evidence snapshot and its coverage reports."""
     manifest = validate_evidence_snapshot(path)
     typer.echo(f"valid {manifest.snapshot_id} {manifest.snapshot_fingerprint}")
+
+
+@demand_app.command("validate")
+def validate_demand(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+) -> None:
+    """Validate a demand, desire-line and route-selection review bundle."""
+    manifest = validate_demand_bundle(path)
+    typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
 
 
 if __name__ == "__main__":

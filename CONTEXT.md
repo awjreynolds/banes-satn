@@ -372,6 +372,58 @@ _Avoid_: cache clear, overwrite run
 A structured request for evidence absent from an Evidence Packet, to be acquired and governed outside the compilation run.
 _Avoid_: live browsing, unsupported assumption
 
+**Demand Planning Pass**:
+A deterministic LCWIP analytical pass that derives Origin–Destination Flows and Cycling Desire Lines, requests finite Demand Route Alternatives, assesses them under the active Guidance Profile and reconciles the result with SATN and other governed network hypotheses. It runs after the Baseline Evidence Gate and outside the SATN Wayfinding Pass; demand divergence is reported and never silently mutates SATN.
+_Avoid_: Wayfinding Pass, delivery prioritisation, hidden network rewrite
+
+**Origin–Destination Point**:
+A stable, spatially inspectable origin or destination admitted from governed evidence, with an explicit study-area and equality-relevance state. A low-demand or cross-boundary point remains visible rather than disappearing from the analysis.
+_Avoid_: anonymous centroid, inferred destination, filtered-out community
+
+**Origin–Destination Flow**:
+A directed quantity of trips between two Origin–Destination Points for one named Demand Scenario, retaining its unit and governed evidence identifiers. Aggregation preserves the complete input flow lineage.
+_Avoid_: straight-line route, universal demand score, observed forecast
+
+**Demand Scenario**:
+A named observed, modelled or derived view of trips whose assumptions and source evidence remain explicit. Results from different scenarios are not merged as though they described the same state.
+_Avoid_: hidden forecast, current-and-future blend, unversioned assumption
+
+**Cycling Desire Line**:
+A straight analytical relationship derived from one or more Origin–Destination Flows at a configured local or strategic Demand Scale. The unsimplified long list, every filter outcome and the transformation version are retained whether or not the line proceeds to routing.
+_Avoid_: preferred route, SATN connection, discarded low score
+
+**Demand Scale**:
+A council-configured local or strategic distance and trip-filter context used to interpret a Cycling Desire Line. No distance rule from another authority is assumed to apply to B&NES.
+_Avoid_: hard-coded 5–20 km rule, universal strategic threshold
+
+**Demand Route Alternative**:
+One of a finite set of geometry-bearing route candidates returned through the governed deterministic routing boundary for a retained Cycling Desire Line. It cites SATN Public Features or governed local/external network identifiers and is distinct from an Alignment Option selected inside SATN Wayfinding.
+_Avoid_: invented agent route, final design, hidden replacement route
+
+**Route Selection Assessment**:
+A versioned, Guidance-Profile-bound comparison of finite Demand Route Alternatives across directness, gradient, safety, comfort, attractiveness and cohesion. It retains every candidate, explicit unknown, rejection reason, evidence item and bounded human, agent or deterministic decision.
+_Avoid_: composite quality score, feasibility decision, unrecorded preference
+
+**Current-Condition Assessment**:
+The evidenced state of a Demand Route Alternative as it exists now. It never inherits a score from a proposed intervention or design outcome.
+_Avoid_: improved route assumption, potential score, current feasibility
+
+**Potential-Design-Outcome Assessment**:
+The separately evidenced state a Demand Route Alternative might achieve after a stated conceptual intervention. It is not evidence of current conditions, detailed design, feasibility or delivery.
+_Avoid_: current route quality, guaranteed improvement, scheme approval
+
+**SATN Demand Reconciliation**:
+The explicit relationship between a Demand Route Alternative and SATN Strategic Spines, Spine Access Branches, Cross-Spine Connectors or Network Gaps, or a governed local/external network. Divergence remains an inspectable finding and does not alter the SATN publication.
+_Avoid_: automatic SATN correction, demand override, topology mutation
+
+**Network Density Record**:
+A scenario- and Demand-Scale-specific account of retained desire lines, preferred routes, route length, covered Origin–Destination Points and visible coverage gaps. It is analytical coverage evidence, not a priority or benefit score.
+_Avoid_: investment ranking, completeness claim, hidden density target
+
+**Demand Sensitivity Case**:
+A named alternative set of distance and trip thresholds evaluated against the same unsimplified Cycling Desire Line long list. It shows which lines change without rewriting the base assumptions.
+_Avoid_: silent threshold tuning, new evidence scenario, preferred answer
+
 **Wayfinding Pass**:
 The compilation phase that connects Network Places into a valid end-to-end network using topology, constraints and alignment evidence. Demand and accessibility evidence do not determine connections in this pass.
 _Avoid_: prioritisation, demand-led routing

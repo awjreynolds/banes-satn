@@ -105,6 +105,56 @@ evidence requires complete input lineage and a transformation version. Agents ma
 classify or request evidence through these contracts but cannot mutate snapshot items
 or mark unavailable evidence present.
 
+## Plan cycling demand and route selection
+
+The LCWIP Demand Planning Pass runs outside the SATN Wayfinding Pass. It consumes a
+validated Evidence Snapshot, governed OD points/flows and only immutable public SATN
+artifact/feature references. SATN remains one network hypothesis: demand-led agreement,
+Network Gaps and local/external divergence are reported without changing the compiled
+SATN network.
+
+```python
+from lcwip import build_demand_analysis
+
+bundle = build_demand_analysis(
+    demand_config,
+    points=od_points,
+    scenarios=demand_scenarios,
+    flows=governed_flows,
+    satn=satn_public_hypothesis,
+    routing_boundary=deterministic_router,
+)
+```
+
+`deterministic_router` implements the small `DemandRoutingBoundary` protocol. Each
+request names one retained Cycling Desire Line and a configured finite alternative
+limit; the adapter may use the existing deterministic SATN routing engine but can
+return only typed route candidates. The Demand Planning Pass rejects detached routes,
+unoffered SATN features, excess alternatives, stale decision menus and evidence IDs
+that do not resolve in the Evidence Registry.
+
+Distance bands, trip thresholds, local/strategic scales, equality protection,
+endpoint tolerance and sensitivity cases are configuration. The immutable result
+retains the unsimplified flow and desire-line long list, complete aggregation lineage,
+every filter outcome, current-condition and potential-design-outcome assessments,
+rejected alternatives, explicit unknowns and bounded human/agent decisions. Network
+density reports count covered and uncovered OD points; they are not delivery priority.
+
+Each bundle publishes:
+
+- `demand-network.geojson` for OD points, long-list desire lines, alternatives and gaps;
+- `route-selection.json` with route audits and SATN reconciliation;
+- `sensitivity.json` with threshold sensitivity;
+- `review-map.html` with an accessible spatial and tabular review surface; and
+- `conformance-artifacts.json` with `baseline-evidence` and
+  `cycling-network-plan` links for the active Guidance Profile.
+
+Validate a received bundle, including all cross-artifact hashes and derivations, with:
+
+```shell
+uv run lcwip demand validate path/to/demand-output/analysis-id
+```
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
