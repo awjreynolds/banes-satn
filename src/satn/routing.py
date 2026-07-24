@@ -5,6 +5,7 @@ from __future__ import annotations
 import heapq
 import json
 import logging
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import pairwise
@@ -100,6 +101,8 @@ class RoadGraph:
         self._nearby_node_cache: dict[tuple[str, float], tuple[tuple[str, float], ...]] = {}
         self._nearby_node_cache_hits = 0
         self._unmaterializable_attachment_paths = 0
+        self._lower_bound_cost_factor = 0.0
+        self._lower_bound_disabled_reason: str | None = "no-routable-edges"
         for index, row in sorted(edges.iterrows(), key=_edge_row_sort_key):
             geometry = row.geometry
             if not isinstance(geometry, LineString) or len(geometry.coords) < 2:
@@ -114,10 +117,14 @@ class RoadGraph:
             else:
                 projected = gpd.GeoSeries([geometry], crs=edges.crs).to_crs(27700)
                 length_m = float(projected.length.iloc[0])
+            projected_length_m = float(
+                gpd.GeoSeries([geometry], crs=edges.crs).to_crs(27700).length.iloc[0]
+            )
             attrs = {
                 "edge_id": str(row.get("osmid", row.get("source_id", index))),
                 "geometry": geometry,
                 "length_m": length_m,
+                "projected_length_m": projected_length_m,
                 "highway": _tag_values(row.get("highway")),
                 "ref": _tag_values(row.get("ref")),
                 "oneway": _truthy(row.get("oneway")),
@@ -128,6 +135,7 @@ class RoadGraph:
             if not _present(row.get("u")) and not attrs["oneway"]:
                 reverse = attrs | {"geometry": LineString(list(geometry.coords)[::-1])}
                 self._add_best_edge(v, u, reverse)
+        self._set_lower_bound_cost_factor()
         # Access connections must work in both directions. Searching only edges
         # with an explicit reciprocal prevents a one-way result from triggering
         # a combinatorial retry across every possible start/end pairing.
@@ -169,7 +177,59 @@ class RoadGraph:
         if existing is None or float(attrs["length_m"]) < float(existing["length_m"]):
             self.graph.add_edge(u, v, **attrs)
 
-    def compilation_diagnostics(self) -> dict[str, int]:
+    @property
+    def lower_bound_cost_factor(self) -> float:
+        """A safe multiplier from projected straight-line distance to route cost."""
+        return self._lower_bound_cost_factor
+
+    @property
+    def lower_bound_disabled_reason(self) -> str | None:
+        """Explain why metric lower bounds fall back to zero."""
+        return self._lower_bound_disabled_reason
+
+    def lower_bound_to_geometry_m(self, point: Point, projected_geometry: object) -> float:
+        """Return a conservative route-cost bound, or zero when graph geometry is unsafe."""
+        if self._lower_bound_cost_factor <= 0 or projected_geometry is None:
+            return 0.0
+        projected_point = gpd.GeoSeries([point], crs=self.crs).to_crs(27700).iloc[0]
+        return self._lower_bound_cost_factor * float(projected_point.distance(projected_geometry))
+
+    def _set_lower_bound_cost_factor(self) -> None:
+        """Derive a metric lower bound only from canonically connected graph edges.
+
+        A graph edge is allowed to be cheaper than its rendered geometry, but then the
+        smallest cost/geometry ratio is the only safe global multiplier.  If an edge's
+        endpoint does not agree with the canonical node coordinate, the graph can make a
+        geometric jump and no Euclidean-derived bound is sound.
+        """
+        if self.graph.number_of_edges() == 0:
+            return
+        ratios: list[float] = []
+        for u, v, attrs in self.graph.edges(data=True):
+            geometry = attrs["geometry"]
+            if (
+                not isinstance(geometry, LineString)
+                or len(geometry.coords) < 2
+                or self.node_points.get(u) != Point(geometry.coords[0])
+                or self.node_points.get(v) != Point(geometry.coords[-1])
+            ):
+                self._lower_bound_disabled_reason = "non-canonical-edge-endpoints"
+                return
+            cost_m = float(attrs["length_m"])
+            geometry_m = float(attrs["projected_length_m"])
+            if not math.isfinite(cost_m) or cost_m <= 0:
+                self._lower_bound_disabled_reason = "non-positive-or-non-finite-edge-cost"
+                return
+            if not math.isfinite(geometry_m) or geometry_m <= 0:
+                self._lower_bound_disabled_reason = "non-positive-or-non-finite-projected-geometry"
+                return
+            ratios.append(cost_m / geometry_m)
+        # Point-to-edge association is charged in physical metres, so a factor above one
+        # would not remain valid for every attachment route.
+        self._lower_bound_cost_factor = min(1.0, min(ratios))
+        self._lower_bound_disabled_reason = None
+
+    def compilation_diagnostics(self) -> dict[str, object]:
         """Return deterministic graph-search dimensions for run diagnostics."""
         return {
             "road_graph_nodes": self.graph.number_of_nodes(),
@@ -179,6 +239,8 @@ class RoadGraph:
             "nearby_node_candidate_sets": len(self._nearby_node_cache),
             "nearby_node_candidate_set_reuses": self._nearby_node_cache_hits,
             "unmaterializable_attachment_paths": self._unmaterializable_attachment_paths,
+            "lower_bound_cost_factor": self._lower_bound_cost_factor,
+            "lower_bound_disabled_reason": self._lower_bound_disabled_reason,
         }
 
     def nearest_node(self, point: Point) -> tuple[str, float]:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import sys
 import urllib.parse
 from pathlib import Path
+from types import SimpleNamespace
 
 import geopandas as gpd
 import pytest
@@ -16,6 +18,7 @@ from satn.models import (
 )
 from satn.sources import (
     OSMData,
+    OSMnxAdapter,
     _features_from_tag_groups,
     _load_ncn_features,
     _load_reclassified_ncn_features,
@@ -94,6 +97,87 @@ def source_frames() -> OSMData:
         network,
         circulation_boundaries=circulation_boundaries,
     )
+
+
+def test_area_definition_accepts_multiple_boundary_queries_and_unions_acquisition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = base_config()
+    config.source.osm_place_query = None
+    config.source.osm_place_queries = ["First Council", "Second Council"]
+    config.source.ncn_feature_service_url = None
+    config.source.reclassified_ncn_feature_service_url = None
+    first = Polygon([(-2.6, 51.3), (-2.5, 51.3), (-2.5, 51.4), (-2.6, 51.4)])
+    second = Polygon([(-2.5, 51.3), (-2.4, 51.3), (-2.4, 51.4), (-2.5, 51.4)])
+    seen: list[object] = []
+
+    class FakeOSMnx:
+        settings = SimpleNamespace(overpass_url="", requests_timeout=0)
+
+        @staticmethod
+        def geocode_to_gdf(query: object) -> gpd.GeoDataFrame:
+            seen.append(query)
+            return gpd.GeoDataFrame(
+                [
+                    {
+                        "osm_type": "relation",
+                        "osm_id": 1,
+                        "display_name": "First Council, England",
+                        "geometry": first,
+                    },
+                    {
+                        "osm_type": "relation",
+                        "osm_id": 2,
+                        "display_name": "Second Council, England",
+                        "geometry": second,
+                    },
+                ],
+                crs=4326,
+            )
+
+        @staticmethod
+        def features_from_polygon(
+            _polygon: object, *, tags: dict[str, object]
+        ) -> gpd.GeoDataFrame:
+            return gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=4326)
+
+        @staticmethod
+        def graph_from_polygon(
+            _polygon: object,
+            *,
+            network_type: str,
+            simplify: bool,
+            retain_all: bool,
+        ) -> object:
+            return object()
+
+        @staticmethod
+        def graph_to_gdfs(_graph: object) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+            nodes = gpd.GeoDataFrame(
+                [{"osmid": 1, "geometry": Point(-2.5, 51.35)}], crs=4326
+            )
+            edges = gpd.GeoDataFrame(
+                [
+                    {
+                        "u": 1,
+                        "v": 2,
+                        "key": 0,
+                        "osmid": 10,
+                        "geometry": LineString([(-2.55, 51.35), (-2.45, 51.35)]),
+                    }
+                ],
+                crs=4326,
+            )
+            return nodes, edges
+
+    monkeypatch.setitem(sys.modules, "osmnx", FakeOSMnx)
+
+    acquired = OSMnxAdapter().acquire(config)
+
+    assert seen == [["First Council", "Second Council"]]
+    assert list(acquired.boundary["name"]) == ["First Council", "Second Council"]
+    assert list(acquired.boundary["source_query"]) == ["First Council", "Second Council"]
+    assert acquired.boundary.geometry.union_all().equals(first.union(second))
 
 
 def test_derives_places_and_excludes_hamlets() -> None:

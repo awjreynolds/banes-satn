@@ -156,6 +156,7 @@ class SourceConfig(BaseModel):
     snapshot_dir: Path
     snapshot_id: str = "current"
     osm_place_query: str | None = None
+    osm_place_queries: list[str] = Field(default_factory=list)
     ncn_feature_service_url: str | None = None
     reclassified_ncn_feature_service_url: str | None = None
     network_type: str = "bike"
@@ -178,6 +179,22 @@ class SourceConfig(BaseModel):
     official_road_classification: OfficialRoadClassificationConfig | None = None
     observed_through_traffic: ObservedThroughTrafficConfig | None = None
     national_elevation: NationalElevationConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_boundary_queries(self) -> SourceConfig:
+        if self.osm_place_query and self.osm_place_queries:
+            raise ValueError("configure either osm_place_query or osm_place_queries, not both")
+        if any(not query.strip() for query in self.osm_place_queries):
+            raise ValueError("osm_place_queries cannot contain blank queries")
+        if self.kind == "osm" and not self.boundary_queries:
+            raise ValueError("OSM sources require at least one boundary query")
+        return self
+
+    @property
+    def boundary_queries(self) -> tuple[str, ...]:
+        if self.osm_place_queries:
+            return tuple(self.osm_place_queries)
+        return (self.osm_place_query,) if self.osm_place_query else ()
 
 
 class AgentReviewAudit(BaseModel):
@@ -311,10 +328,27 @@ class CouncilConfig(BaseModel):
     config_path: Path
     council_id: str
     council_name: str
+    deployment_id: str | None = None
     source: SourceConfig
     compilation: CompilationConfig = Field(default_factory=CompilationConfig)
     atm: ATMConfig = Field(default_factory=ATMConfig)
     publication: PublicationConfig
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_area_identity(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        migrated = dict(value)
+        if "area_id" in migrated:
+            if "council_id" in migrated:
+                raise ValueError("configure either area_id or council_id, not both")
+            migrated["council_id"] = migrated.pop("area_id")
+        if "area_name" in migrated:
+            if "council_name" in migrated:
+                raise ValueError("configure either area_name or council_name, not both")
+            migrated["council_name"] = migrated.pop("area_name")
+        return migrated
 
     @model_validator(mode="after")
     def resolve_paths(self) -> CouncilConfig:
@@ -355,10 +389,36 @@ class CouncilConfig(BaseModel):
         raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         return cls(config_path=config_path, **raw)
 
+    @property
+    def area_id(self) -> str:
+        return self.council_id
+
+    @property
+    def area_name(self) -> str:
+        return self.council_name
+
+    @property
+    def deployment_slug(self) -> str:
+        return self.deployment_id or self.council_id
+
+
+AreaDefinition = CouncilConfig
+
 
 class PublishedFeatureReference(BaseModel):
     feature_id: str
     network_role: str
+
+
+class WithheldDerivedFeatureReference(PublishedFeatureReference):
+    """A generated feature that passed its local decision but was not published.
+
+    This is deliberately separate from ``derived_features``: that field is the
+    authoritative published-feature registry used by publication validation.
+    """
+
+    reason: str
+    finding_id: str
 
 
 class AgentFinding(BaseModel):
@@ -522,6 +582,9 @@ class AgentRecord(AgentReviewAudit):
     attempts: list[AgentAttempt] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)
     derived_features: list[PublishedFeatureReference] = Field(default_factory=list)
+    withheld_derived_features: list[WithheldDerivedFeatureReference] = Field(
+        default_factory=list
+    )
     decision_request: AgentDecisionRequest | None = None
     selected_choice_id: str | None = None
     mapped_action: AgentDecisionAction | None = None

@@ -8,6 +8,9 @@ def test_gradient_inspection_interface_contract() -> None:
     script = (ASSETS / "review-map.js").read_text(encoding="utf-8")
     for identifier in (
         "layer-rail",
+        "deployment-context",
+        "deployment-status",
+        "layer-authority-boundaries",
         "gradient-path-start",
         "gradient-path-append",
         "gradient-path-remove",
@@ -26,6 +29,19 @@ def test_gradient_inspection_interface_contract() -> None:
     assert "form a cycle or branch" in script
     assert "does not share its junction" in script
     assert "inspection-path-direction" in script
+    assert "ensureEvidenceGroupLoaded" in script
+    assert "topography_manifest_url" in script
+    assert "profile_evidence_index_url" in script
+    assert 'navigator.serviceWorker.register("service-worker.js")' in script
+    assert "gradient-overview" in script
+    assert "const loadingTopographyShards = new Map()" in script
+    assert 'map.on("moveend"' in script
+    assert "profileEvidenceIndexPromise" in script
+    assert "loadingProfileChunks.has(chunk.path)" in script
+    assert "isProgressiveDeployment" in script
+    assert 'status.setAttribute("aria-live", "polite")' in script
+    assert "Desktop is recommended" in html
+    assert "This legacy review map bundles its available evidence" in script
     assert "MapToolkit" not in script
     assert '"cross-spine-connector"' not in script.split(
         "const gradientPathTypes", maxsplit=1

@@ -1,6 +1,15 @@
 (async () => {
   "use strict";
   const data = window.SATN_DATA;
+  const isProgressiveDeployment = Boolean(
+    data.area_id && data.network_url && data.layer_manifest_url && data.topography_manifest_url
+  );
+  // Start installation before the first core request. The page is initially
+  // uncontrolled, so cache the network explicitly once the worker is active.
+  const offlineRegistrationPromise = isProgressiveDeployment &&
+    "serviceWorker" in navigator && location.protocol !== "file:"
+    ? navigator.serviceWorker.register("service-worker.js")
+    : null;
   if (!data.network && data.network_url) {
     const response = await fetch(data.network_url);
     if (!response.ok) throw new Error(`Network evidence failed to load (${response.status}).`);
@@ -8,7 +17,7 @@
   }
   const network = data.network;
   const places = data.places;
-  const state = { pinned: null, active: null, inspectionPath: [] };
+  const state = { pinned: null, active: null, inspectionPath: [], inspectionVersion: 0 };
   const gradientPathTypes = new Set([
     "strategic-spine",
     "spine-access-connection",
@@ -17,7 +26,7 @@
     "urban-spine"
   ]);
   const warningLayers = ["gaps", "crossing-warnings"];
-  const evidenceLayers = ["strategic-network", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-sections", "topography-unavailable", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-outlines", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
+  const evidenceLayers = ["authority-boundaries", "strategic-network", "access-obligations", "school-access-obligations", "school-access-gaps", "school-street-assessments", "gradient-overview", "gradient-sections", "topography-unavailable", "urban-spines", "urban-classification-unknowns", "low-traffic-areas", "low-traffic-area-outlines", "low-traffic-area-portals", "schools", "retail-centres", "healthcare", "atm-reference"];
 
   const map = new maplibregl.Map({
     container: "map",
@@ -49,19 +58,330 @@
   window.SATN_REVIEW_MAP = map;
   map.addControl(new maplibregl.NavigationControl());
   let terrainTimeout = null;
-  let topographyLoaded = !data.topography_url;
+  let legacyTopographyLoaded = false;
+  let layerManifest = null;
+  let layerManifestPromise = null;
+  let topographyManifest = null;
+  let topographyManifestPromise = null;
+  let profileEvidenceIndex = null;
+  let profileEvidenceIndexPromise = null;
+  const loadedEvidenceShards = new Set();
+  const loadingEvidenceShards = new Map();
+  const loadedTopographyShards = new Set();
+  const loadingTopographyShards = new Map();
+  const loadedProfileChunks = new Set();
+  const loadingProfileChunks = new Map();
+  const topographyFeaturesByShard = new Map();
+  const deferredControls = {
+    urban: ["layer-urban-spines", "layer-urban-classification-unknowns"],
+    "low-traffic": ["layer-low-traffic-areas", "layer-low-traffic-area-portals"],
+    schools: ["layer-schools", "layer-school-streets"],
+    amenities: ["layer-retail-centres", "layer-healthcare"]
+  };
+  const schoolCoreLayers = [
+    "school-access-obligations",
+    "school-access-connections",
+    "school-access-topography-warnings",
+    "school-access-gaps"
+  ];
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return "0 KB";
+    const units = ["B", "KB", "MB", "GB"];
+    let value = Number(bytes);
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit += 1;
+    }
+    return `${value.toFixed(unit > 1 ? 1 : 0)} ${units[unit]}`;
+  }
+
+  function topographyStableId(feature) {
+    const properties = feature.properties || {};
+    return properties.feature_type === "gradient-section"
+      ? properties.section_id
+      : properties.profile_id || feature.id;
+  }
+
+  function topographyCollection(features) {
+    return {
+      type: "FeatureCollection",
+      features: features.map((feature) => ({
+        ...feature,
+        properties: {
+          ...feature.properties,
+          rendered_feature_id: topographyStableId(feature)
+        }
+      }))
+    };
+  }
+
+  function layerStatus(controlId, message) {
+    const control = document.getElementById(controlId);
+    if (!control) return;
+    let status = control.closest("label")?.querySelector(".layer-load-status");
+    if (!status) {
+      status = document.createElement("small");
+      status.className = "layer-load-status";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      status.setAttribute("aria-atomic", "true");
+      control.closest("label")?.append(status);
+    }
+    status.textContent = message ? ` · ${message}` : "";
+  }
+
+  async function fetchJson(path, description) {
+    const response = await fetch(path);
+    if (!response.ok) throw new Error(`${description} failed to load (${response.status}).`);
+    return response.json();
+  }
+
+  async function cacheCoreForOffline() {
+    if (!offlineRegistrationPromise || !data.network_url) return;
+    const registration = await offlineRegistrationPromise;
+    const ready = await navigator.serviceWorker.ready;
+    const worker = ready.active || registration.active;
+    if (!worker) throw new Error("offline worker did not become active");
+    await new Promise((resolve, reject) => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (event) => {
+        if (event.data?.ok) resolve();
+        else reject(new Error(event.data?.error || "core cache request failed"));
+      };
+      worker.postMessage({ type: "cache-core", urls: [data.network_url] }, [channel.port2]);
+    });
+  }
+
+  async function ensureLayerManifest() {
+    if (!layerManifestPromise && data.layer_manifest_url) {
+      layerManifestPromise = fetchJson(data.layer_manifest_url, "Layer manifest")
+        .then((manifest) => {
+          layerManifest = manifest;
+          return manifest;
+        })
+        .catch((error) => {
+          layerManifestPromise = null;
+          throw error;
+        });
+    }
+    if (layerManifestPromise) {
+      await layerManifestPromise;
+    }
+    if (layerManifest) {
+      const deploymentStatus = document.querySelector("#deployment-status");
+      if (deploymentStatus?.textContent.includes("Layer sizes are unavailable")) {
+        deploymentStatus.textContent =
+          "Layer sizes loaded. Contextual evidence remains on demand.";
+      }
+      Object.entries(deferredControls).forEach(([group, controlIds]) => {
+        const metadata = layerManifest.groups[group];
+        if (!metadata) return;
+        controlIds.forEach((controlId) => layerStatus(
+          controlId,
+          `${metadata.feature_count} features · ${formatBytes(metadata.size_bytes)} · on demand`
+        ));
+      });
+    }
+    return layerManifest;
+  }
+
+  function mergeEvidenceCollection(collection) {
+    const knownIds = new Set(network.features.map((feature) => feature.id));
+    const features = (collection?.features || []).filter((feature) => !knownIds.has(feature.id));
+    if (!features.length) return;
+    network.features.push(...features);
+    map.getSource("network")?.setData(network);
+    renderCards();
+  }
+
+  async function ensureEvidenceGroupLoaded(group, controlId) {
+    const manifest = await ensureLayerManifest();
+    const metadata = manifest?.groups?.[group];
+    if (!metadata) throw new Error(`No ${group} evidence is listed for this deployment.`);
+    const candidates = metadata.shards.filter(shardIntersectsView);
+    if (!candidates.length) {
+      layerStatus(controlId, "no evidence in this view");
+      return;
+    }
+    const pendingBytes = candidates
+      .filter((entry) => !loadedEvidenceShards.has(entry.path))
+      .reduce((sum, entry) => sum + Number(entry.size_bytes), 0);
+    if (pendingBytes) {
+      deferredControls[group].forEach((id) => layerStatus(id, `loading ${formatBytes(pendingBytes)}…`));
+    }
+    await Promise.all(candidates.map((entry) => {
+      if (loadedEvidenceShards.has(entry.path)) return Promise.resolve(null);
+      if (loadingEvidenceShards.has(entry.path)) return loadingEvidenceShards.get(entry.path);
+      const request = fetchJson(entry.path, `${group} evidence shard`).then((collection) => {
+        // Merge before recording completion: a sibling failure must not make this
+        // successfully fetched shard invisible to a later retry.
+        mergeEvidenceCollection(collection);
+        loadedEvidenceShards.add(entry.path);
+        return collection;
+      }).finally(() => loadingEvidenceShards.delete(entry.path));
+      loadingEvidenceShards.set(entry.path, request);
+      return request;
+    }));
+    const loadedBytes = candidates
+      .filter((entry) => loadedEvidenceShards.has(entry.path))
+      .reduce((sum, entry) => sum + Number(entry.size_bytes), 0);
+    deferredControls[group].forEach((id) => layerStatus(
+      id,
+      `loaded ${candidates.length} viewport shard${candidates.length === 1 ? "" : "s"} · ${formatBytes(loadedBytes)}`
+    ));
+  }
+
+  function shardIntersectsView(entry) {
+    if (!entry.bbox) return true;
+    const bounds = map.getBounds();
+    return !(
+      entry.bbox[2] < bounds.getWest() ||
+      entry.bbox[0] > bounds.getEast() ||
+      entry.bbox[3] < bounds.getSouth() ||
+      entry.bbox[1] > bounds.getNorth()
+    );
+  }
+
+  function refreshTopographyForCurrentView() {
+    if (!topographyManifest) return;
+    const detailed = map.getZoom() >= Number(topographyManifest.detail_min_zoom || 10);
+    const candidates = (detailed ? topographyManifest.detail : topographyManifest.overview)
+      .filter((entry) => !detailed || shardIntersectsView(entry));
+    const visibleFeatures = candidates.flatMap((entry) =>
+      topographyFeaturesByShard.get(entry.path) || []
+    );
+    map.getSource("topography")?.setData(topographyCollection(visibleFeatures));
+    ["gradient-overview", "gradient-sections", "topography-unavailable"].forEach((layer) => {
+      if (!map.getLayer(layer)) return;
+      const visible = document.querySelector("#layer-gradient-sections")?.checked &&
+        (layer === "gradient-overview" ? !detailed :
+          layer === "topography-unavailable" ? true : detailed);
+      map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
+    });
+  }
 
   async function ensureTopographyLoaded() {
-    if (topographyLoaded || !data.topography_url) return;
-    const response = await fetch(data.topography_url);
-    if (!response.ok) throw new Error(`Topography evidence failed to load (${response.status}).`);
-    const collection = await response.json();
-    map.getSource("topography")?.setData(collection);
-    network.features.push(
-      ...collection.features.filter((feature) => feature.properties.feature_type === "gradient-section")
+    if (!data.topography_manifest_url) {
+      if (legacyTopographyLoaded || !data.topography_url) return;
+      layerStatus("layer-gradient-sections", "loading topography…");
+      const collection = await fetchJson(data.topography_url, "Topography evidence");
+      map.getSource("topography")?.setData(topographyCollection(collection.features));
+      network.features.push(...collection.features.filter((feature) =>
+        feature.properties.feature_type === "gradient-section" &&
+        !network.features.some((candidate) => candidate.id === feature.id)
+      ));
+      legacyTopographyLoaded = true;
+      layerStatus("layer-gradient-sections", "loaded");
+      renderCards();
+      return;
+    }
+    if (!topographyManifestPromise) {
+      topographyManifestPromise = fetchJson(
+        data.topography_manifest_url,
+        "Topography manifest"
+      ).then((manifest) => {
+        topographyManifest = manifest;
+        return manifest;
+      }).catch((error) => {
+        topographyManifestPromise = null;
+        throw error;
+      });
+    }
+    await topographyManifestPromise;
+    if (topographyManifest) {
+      const total = Number(topographyManifest.overview_size_bytes || 0) +
+        Number(topographyManifest.detail_size_bytes || 0);
+      layerStatus(
+        "layer-gradient-sections",
+        `${topographyManifest.detail_feature_count} details · ${formatBytes(total)} total`
+      );
+    }
+    const detailed = map.getZoom() >= Number(topographyManifest.detail_min_zoom || 10);
+    const candidates = (detailed ? topographyManifest.detail : topographyManifest.overview)
+      .filter((entry) => !detailed || shardIntersectsView(entry));
+    const pendingBytes = candidates
+      .filter((entry) => !loadedTopographyShards.has(entry.path))
+      .reduce((sum, entry) => sum + Number(entry.size_bytes), 0);
+    if (pendingBytes) layerStatus("layer-gradient-sections", `loading ${formatBytes(pendingBytes)}…`);
+    await Promise.all(candidates.map((entry) => {
+      if (loadedTopographyShards.has(entry.path)) return Promise.resolve();
+      if (loadingTopographyShards.has(entry.path)) return loadingTopographyShards.get(entry.path);
+      const request = fetchJson(entry.path, "Topography evidence shard").then((collection) => {
+        topographyFeaturesByShard.set(entry.path, collection.features);
+        mergeEvidenceCollection(collection);
+        refreshTopographyForCurrentView();
+        loadedTopographyShards.add(entry.path);
+      }).finally(() => loadingTopographyShards.delete(entry.path));
+      loadingTopographyShards.set(entry.path, request);
+      return request;
+    }));
+    const currentDetailed = map.getZoom() >= Number(topographyManifest.detail_min_zoom || 10);
+    const currentCandidates = (currentDetailed ? topographyManifest.detail : topographyManifest.overview)
+      .filter((entry) => !currentDetailed || shardIntersectsView(entry));
+    refreshTopographyForCurrentView();
+    layerStatus(
+      "layer-gradient-sections",
+      `loaded ${currentCandidates.length} ${currentDetailed ? "viewport detail" : "overview"} shard${currentCandidates.length === 1 ? "" : "s"}`
     );
-    topographyLoaded = true;
-    renderLinearEvidence();
+    void renderLinearEvidence();
+  }
+
+  async function ensureProfilesLoaded(profileIds) {
+    if (!data.profile_evidence_index_url || !profileIds.length) return;
+    if (!profileEvidenceIndexPromise) {
+      profileEvidenceIndexPromise = fetchJson(
+        data.profile_evidence_index_url,
+        "Topography profile index"
+      ).then((index) => {
+        profileEvidenceIndex = index;
+        return index;
+      }).catch((error) => {
+        profileEvidenceIndexPromise = null;
+        throw error;
+      });
+    }
+    await profileEvidenceIndexPromise;
+    const requested = new Set(profileIds.filter(Boolean));
+    const chunks = profileEvidenceIndex.chunks.filter((chunk) =>
+      chunk.profile_ids.some((profileId) => requested.has(profileId))
+    );
+    await Promise.all(chunks.map((chunk) => {
+      if (loadedProfileChunks.has(chunk.path)) return Promise.resolve(null);
+      if (loadingProfileChunks.has(chunk.path)) return loadingProfileChunks.get(chunk.path);
+      const request = fetchJson(chunk.path, "Topography profile evidence").then((collection) => {
+        collection.features.forEach((fullProfile) => {
+          const lightweight = network.features.find((feature) =>
+            feature.properties.feature_type === "topography-profile" &&
+            feature.properties.profile_id === fullProfile.properties.profile_id
+          );
+          if (lightweight) lightweight.properties = fullProfile.properties;
+        });
+        renderLinearEvidence();
+        loadedProfileChunks.add(chunk.path);
+        return collection;
+      }).finally(() => loadingProfileChunks.delete(chunk.path));
+      loadingProfileChunks.set(chunk.path, request);
+      return request;
+    }));
+  }
+
+  async function loadProfilesForInspectionPath() {
+    if (!data.profile_evidence_index_url) return;
+    const profileIds = state.inspectionPath.map((item) => item.feature.properties.topography_profile_id);
+    if (!profileIds.length) return;
+    const status = document.querySelector("#gradient-path-status");
+    const inspectionVersion = state.inspectionVersion;
+    try {
+      status.textContent = "Loading selected profile evidence…";
+      await ensureProfilesLoaded(profileIds);
+      if (inspectionVersion !== state.inspectionVersion) return;
+      status.textContent = `${state.inspectionPath.length} edge${state.inspectionPath.length === 1 ? "" : "s"} selected; profile evidence loaded.`;
+    } catch (error) {
+      if (inspectionVersion !== state.inspectionVersion) return;
+      status.textContent = `Selected profile evidence could not load. ${error.message}`;
+    }
   }
 
   function restoreTwoDimensionalMap(reason = "") {
@@ -163,6 +483,7 @@
 
   function setInspectionPath(features) {
     state.inspectionPath = features;
+    state.inspectionVersion += 1;
     const selectedIds = features.map((item) => item.feature.id);
     const source = map.getSource("inspection-path");
     if (source) {
@@ -191,6 +512,7 @@
       : "No path selected.";
     renderLinearEvidence();
     updateGradientCandidate();
+    void loadProfilesForInspectionPath();
   }
 
   function startPinnedPath() {
@@ -747,11 +1069,18 @@
     });
   }
 
+  function setSchoolCoreVisibility(visible) {
+    schoolCoreLayers.forEach((layer) => {
+      if (map.getLayer(layer)) map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
+    });
+  }
+
   function bindControls() {
     document.querySelectorAll('input[name="section"]').forEach((input) => {
       input.addEventListener("change", () => renderCriteria(input.value));
     });
     const groups = {
+      "layer-authority-boundaries": ["authority-boundaries"],
       "layer-strategic-network": ["strategic-network"],
       "layer-spine-access-connections": ["spine-access-connections", "access-obligations", "spine-access-topography-warnings"],
       "layer-cross-spine-connectors": ["cross-spine-connectors"],
@@ -762,7 +1091,7 @@
       "layer-places": ["places"],
       "layer-schools": ["schools", "school-access-obligations", "school-access-connections", "school-access-topography-warnings", "school-access-gaps"],
       "layer-school-streets": ["school-street-assessments"],
-      "layer-gradient-sections": ["gradient-sections", "topography-unavailable"],
+      "layer-gradient-sections": ["gradient-overview", "gradient-sections", "topography-unavailable"],
       "layer-retail-centres": ["retail-centres"],
       "layer-healthcare": ["healthcare"],
       "layer-gaps-warnings": warningLayers,
@@ -772,6 +1101,29 @@
       const control = document.getElementById(controlId);
       if (!control) return;
       control.addEventListener("change", async () => {
+        const deferredGroup = Object.entries(deferredControls).find(([, controlIds]) =>
+          controlIds.includes(controlId)
+        )?.[0];
+        if (deferredGroup && data.layer_manifest_url && control.checked) {
+          try {
+            await ensureEvidenceGroupLoaded(deferredGroup, controlId);
+          } catch (error) {
+            if (deferredGroup === "schools" && controlId === "layer-schools") {
+              setSchoolCoreVisibility(true);
+              map.setLayoutProperty("schools", "visibility", "none");
+              layerStatus(
+                controlId,
+                "contextual education evidence unavailable; core school access remains visible"
+              );
+              document.querySelector("#deployment-status").textContent =
+                `Contextual school evidence is unavailable. Core school obligations, connections and gaps remain visible. ${error.message}`;
+              return;
+            }
+            document.querySelector("#deployment-status").textContent =
+              `${deferredGroup} evidence is unavailable. ${error.message}`;
+            return;
+          }
+        }
         if (controlId === "layer-gradient-sections" && control.checked) {
           try {
             await ensureTopographyLoaded();
@@ -782,7 +1134,16 @@
           }
         }
         layers.forEach((layer) => {
-          if (map.getLayer(layer)) map.setLayoutProperty(layer, "visibility", control.checked ? "visible" : "none");
+          if (map.getLayer(layer)) {
+            const detailed = topographyManifest &&
+              map.getZoom() >= Number(topographyManifest.detail_min_zoom || 10);
+            const visible = control.checked && (!data.topography_manifest_url || (
+              layer === "gradient-overview" ? !detailed :
+                layer === "gradient-sections" ? detailed :
+                  layer === "topography-unavailable" ? true : true
+            ));
+            map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
+          }
         });
         const legend = document.getElementById(`legend-${controlId.replace("layer-", "")}`);
         if (legend) legend.hidden = !control.checked;
@@ -897,19 +1258,31 @@
     map.addSource("places", { type: "geojson", data: places });
     map.addSource("topography", {
       type: "geojson",
-      data: data.topography_url
+      promoteId: "rendered_feature_id",
+      data: data.topography_url || data.topography_manifest_url
         ? { type: "FeatureCollection", features: [] }
-        : {
-          type: "FeatureCollection",
-          features: network.features.filter((feature) =>
+        : topographyCollection(
+          network.features.filter((feature) =>
             ["gradient-section", "topography-profile"].includes(feature.properties.feature_type)
           )
-        }
+        )
     });
     map.addSource("inspection-path", {
       type: "geojson",
       lineMetrics: true,
       data: { type: "FeatureCollection", features: [] }
+    });
+    map.addLayer({
+      id: "authority-boundaries",
+      type: "line",
+      source: "network",
+      filter: ["==", ["get", "feature_type"], "authority-boundary"],
+      paint: {
+        "line-color": "#243447",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.5, 12, 3],
+        "line-dasharray": [4, 2],
+        "line-opacity": .9
+      }
     });
     map.addLayer({ id: "low-traffic-areas", type: "fill", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "fill-color": "#7fb8c9", "fill-opacity": .24 } });
     map.addLayer({ id: "low-traffic-area-outlines", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "low-traffic-area"], paint: { "line-color": "#2f6474", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 13, 2], "line-opacity": .65 } });
@@ -925,6 +1298,7 @@
     map.addLayer({ id: "school-access-gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-access-gap"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "access_point_status"], "unresolved", "#7f8c8d", "inferred", "#f39c12", "#c0392b"], "circle-radius": 11, "circle-stroke-color": "#641e16", "circle-stroke-width": 2 } });
     map.addLayer({ id: "school-street-assessments", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "school-street-assessment"], layout: { visibility: "none" }, paint: { "circle-color": ["match", ["get", "assessment_status"], "green", "#1e8449", "amber", "#f39c12", "red", "#c0392b", "#7f8c8d"], "circle-radius": 12, "circle-stroke-color": "white", "circle-stroke-width": 3 } });
     map.addLayer({ id: "gradient-sections", type: "line", source: "topography", filter: ["==", ["get", "feature_type"], "gradient-section"], layout: { visibility: "none" }, paint: { "line-color": ["match", ["get", "gradient_band"], "gentle", "#eff3ff", "noticeable", "#bdd7e7", "steep", "#6baed6", "very-steep", "#3182bd", "severe", "#08519c", "#7f8c8d"], "line-width": 9, "line-opacity": .92 } });
+    map.addLayer({ id: "gradient-overview", type: "line", source: "topography", filter: ["all", ["==", ["get", "feature_type"], "topography-profile"], ["!=", ["get", "evidence_status"], "evidence-unavailable"]], layout: { visibility: "none" }, paint: { "line-color": ["match", ["get", "gradient_band"], "gentle", "#d6eaf8", "noticeable", "#85c1e9", "steep", "#3498db", "very-steep", "#2874a6", "severe", "#1b4f72", "#7f8c8d"], "line-width": ["interpolate", ["linear"], ["zoom"], 7, 2, 10, 5], "line-opacity": .72 } });
     map.addLayer({ id: "gradient-section-highlight", type: "line", source: "topography", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 13, "line-opacity": .95 } });
     map.addLayer({ id: "topography-unavailable", type: "line", source: "topography", filter: ["all", ["==", ["get", "feature_type"], "topography-profile"], ["==", ["get", "evidence_status"], "evidence-unavailable"]], layout: { visibility: "none" }, paint: { "line-color": "#7f8c8d", "line-width": 8, "line-dasharray": [1, 1], "line-opacity": .9 } });
     map.addLayer({ id: "atm-reference", type: "line", source: "network", filter: ["==", ["get", "feature_type"], "atm-reference"], layout: { visibility: "none" }, paint: { "line-color": "#2980b9", "line-width": 3, "line-dasharray": [2, 2] } });
@@ -933,6 +1307,15 @@
     map.addLayer({ id: "schools", type: "circle", source: "network", filter: ["all", ["==", ["get", "feature_type"], "school"], ["!=", ["get", "school_obligation_eligible"], true]], layout: { visibility: "none" }, paint: { "circle-color": "#7d3c98", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "retail-centres", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "retail-centre"], layout: { visibility: "none" }, paint: { "circle-color": "#d35400", "circle-radius": 7, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
     map.addLayer({ id: "healthcare", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "healthcare"], layout: { visibility: "none" }, paint: { "circle-color": "#c0392b", "circle-radius": 6, "circle-stroke-color": "white", "circle-stroke-width": 1 } });
+    [
+      ["layer-urban-spines", "urban-spines"],
+      ["layer-low-traffic-areas", "low-traffic-areas"],
+      ["layer-low-traffic-areas", "low-traffic-area-outlines"]
+    ].forEach(([controlId, layerId]) => {
+      if (!document.getElementById(controlId)?.checked) {
+        map.setLayoutProperty(layerId, "visibility", "none");
+      }
+    });
     map.addLayer({ id: "gaps", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "gap"], paint: { "circle-color": "#c0392b", "circle-radius": 6 } });
     map.addLayer({ id: "crossing-warnings", type: "circle", source: "network", filter: ["==", ["get", "feature_type"], "crossing-warning"], paint: { "circle-color": "#f39c12", "circle-radius": 6, "circle-stroke-color": "#17202a", "circle-stroke-width": 1.5 } });
     map.addLayer({ id: "connections-highlight", type: "line", source: "network", filter: ["==", ["id"], ""], paint: { "line-color": "#f4d03f", "line-width": 8 } });
@@ -992,6 +1375,30 @@
       map.on("mouseleave", layer, clearTransient);
       map.on("click", layer, (event) => togglePin(event.features[0].id));
     });
+    map.on("moveend", () => {
+      if (document.querySelector("#layer-gradient-sections")?.checked) {
+        ensureTopographyLoaded().catch((error) => {
+          layerStatus("layer-gradient-sections", `could not load detail · ${error.message}`);
+        });
+      }
+      if (data.layer_manifest_url) {
+        Object.entries(deferredControls).forEach(([group, controlIds]) => {
+          if (!controlIds.some((id) => document.getElementById(id)?.checked)) return;
+          ensureEvidenceGroupLoaded(group, controlIds[0]).catch((error) => {
+            if (group === "schools" && document.getElementById("layer-schools")?.checked) {
+              setSchoolCoreVisibility(true);
+              map.setLayoutProperty("schools", "visibility", "none");
+              layerStatus(
+                "layer-schools",
+                "contextual education evidence unavailable; core school access remains visible"
+              );
+              return;
+            }
+            layerStatus(controlIds[0], `could not load · ${error.message}`);
+          });
+        });
+      }
+    });
     document.documentElement.dataset.mapReady = "true";
   });
 
@@ -999,6 +1406,34 @@
   bindControls();
   updateGradientCandidate();
   renderLinearEvidence();
+  ensureLayerManifest().catch((error) => {
+    document.querySelector("#deployment-status").textContent =
+      `Layer sizes are unavailable. Contextual evidence will be retried when selected. ${error.message}`;
+  });
+  if (offlineRegistrationPromise) {
+    offlineRegistrationPromise.then(() => {
+      document.querySelector("#deployment-status").textContent =
+        "Offline support registered; saving the published core for reload.";
+      return cacheCoreForOffline();
+    }).then(() => {
+      document.querySelector("#deployment-status").textContent =
+        "Published core is saved for offline reload. Contextual evidence remains on demand.";
+    }).catch((error) => {
+      document.querySelector("#deployment-status").textContent =
+        `Offline support could not save the published core. The deployment remains usable online. ${error.message}`;
+    });
+  } else if (isProgressiveDeployment) {
+    document.querySelector("#deployment-status").textContent =
+      "Offline support is available when this deployment is served over HTTPS.";
+  } else {
+    document.querySelector("#deployment-status").textContent =
+      "This legacy review map bundles its evidence and does not use Area Deployment offline caching.";
+    const contextCopy = document.querySelector("#deployment-evidence-copy");
+    if (contextCopy) {
+      contextCopy.textContent =
+        "This legacy review map bundles its available evidence; it does not load contextual shards by map view.";
+    }
+  }
   const counts = data.layer_counts || {};
   document.querySelector("#layer-summary").textContent =
     `${counts.strategic_spines || 0} Strategic Spines · ${counts.spine_access_connections || 0} access connections · ` +

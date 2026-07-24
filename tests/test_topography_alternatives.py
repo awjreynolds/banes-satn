@@ -301,14 +301,30 @@ def test_retained_elevation_challenge_has_persistent_map_warning(tmp_path: Path)
         page = browser.new_page()
         page.route("https://tile.openstreetmap.org/**", lambda route: route.abort())
         page.goto(artifacts["review_map"].as_uri())
+        page.wait_for_function("document.documentElement.dataset.mapReady === 'true'")
 
         legend = page.locator("#legend-spine-access-connections")
+        assert legend.is_hidden()
+        page.get_by_role("button", name="About Spine Access").click()
         assert legend.is_visible()
-        assert "Amber dashed warning" in legend.inner_text()
+        assert "Dashed amber marks a retained Elevation Challenge." in legend.inner_text()
         warning = page.locator(".connection.retained-topography")
         assert warning.count() == 1
-        assert "Elevation challenge retained" in warning.inner_text()
+        assert (
+            warning.locator(".topography-warning").text_content()
+            == "Elevation challenge retained"
+        )
         page.locator("#layer-spine-access-connections").uncheck()
+        page.wait_for_function(
+            "() => ['spine-access-connections', 'access-obligations', "
+            "'spine-access-topography-warnings'].every(layer => "
+            "window.SATN_REVIEW_MAP.getLayoutProperty(layer, 'visibility') === 'none')"
+        )
+        assert page.evaluate(
+            "() => ['spine-access-connections', 'access-obligations', "
+            "'spine-access-topography-warnings'].every(layer => "
+            "window.SATN_REVIEW_MAP.getLayoutProperty(layer, 'visibility') === 'none')"
+        )
         assert legend.is_hidden()
         browser.close()
 

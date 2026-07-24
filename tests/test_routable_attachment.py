@@ -8,6 +8,70 @@ from shapely.geometry import LineString, Point
 from satn.routing import RoadGraph
 
 
+def test_metric_lower_bound_uses_the_smallest_source_cost_to_geometry_ratio() -> None:
+    graph = RoadGraph(
+        gpd.GeoDataFrame(
+            [
+                {
+                    "osmid": "forward",
+                    "u": "a",
+                    "v": "b",
+                    "length": 500,
+                    "highway": "unclassified",
+                    "geometry": LineString([(0, 0), (1000, 0)]),
+                },
+                {
+                    "osmid": "reverse",
+                    "u": "b",
+                    "v": "a",
+                    "length": 500,
+                    "highway": "unclassified",
+                    "geometry": LineString([(1000, 0), (0, 0)]),
+                },
+            ],
+            geometry="geometry",
+            crs=27700,
+        )
+    )
+
+    assert graph.lower_bound_cost_factor == pytest.approx(0.5)
+    assert graph.lower_bound_disabled_reason is None
+    assert graph.lower_bound_to_geometry_m(Point(0, 0), LineString([(1000, 0), (1000, 1)])) == (
+        pytest.approx(500)
+    )
+
+
+def test_metric_lower_bound_falls_back_to_zero_for_noncanonical_endpoints() -> None:
+    graph = RoadGraph(
+        gpd.GeoDataFrame(
+            [
+                {
+                    "osmid": "canonical",
+                    "u": "a",
+                    "v": "b",
+                    "length": 1000,
+                    "highway": "unclassified",
+                    "geometry": LineString([(0, 0), (1000, 0)]),
+                },
+                {
+                    "osmid": "mismatched",
+                    "u": "a",
+                    "v": "c",
+                    "length": 1000,
+                    "highway": "unclassified",
+                    "geometry": LineString([(10, 0), (0, 1000)]),
+                },
+            ],
+            geometry="geometry",
+            crs=27700,
+        )
+    )
+
+    assert graph.lower_bound_cost_factor == 0.0
+    assert graph.lower_bound_disabled_reason == "non-canonical-edge-endpoints"
+    assert graph.lower_bound_to_geometry_m(Point(0, 0), Point(1000, 0)) == 0.0
+
+
 def test_dominant_routable_component_avoids_nearby_isolated_fragment() -> None:
     rows = []
     for index in range(20):

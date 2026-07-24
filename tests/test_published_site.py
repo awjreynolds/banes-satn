@@ -1,91 +1,217 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
+
 from satn.constants import DISCLAIMER
+from satn.deployment import build_area_deployment
+from satn.models import CouncilConfig
+from satn.pipeline import compile
+from satn.sources import snapshot
 
 PROJECT = Path(__file__).parents[1]
 
 
-def test_tracked_pages_site_is_complete_and_contains_no_atm_geometry() -> None:
-    site = PROJECT / "site"
-    publication = json.loads((site / "publication.json").read_text(encoding="utf-8"))
-    agent_records = json.loads((site / "agent-records.json").read_text(encoding="utf-8"))
-    network = json.loads((site / "network.geojson").read_text(encoding="utf-8"))
-    features = network["features"]
-    connections = [
-        feature
-        for feature in features
-        if feature["properties"]["feature_type"]
-        in {
-            "spine-access-connection",
-            "school-access-connection",
-            "branch-meeting-connection",
-        }
-    ]
+def test_area_deployment_is_progressive_portable_and_not_git_path_bound(
+    tmp_path: Path,
+) -> None:
+    definition = CouncilConfig.from_yaml(PROJECT / "examples" / "fixture" / "council.yaml")
+    definition.publication.output_dir = tmp_path / "compiled"
+    definition.source.snapshot_dir = tmp_path / "snapshots"
 
-    assert publication["schema_version"] == "2.0"
-    assert publication["network_model"] == "backbone-outward"
-    assert publication["status"] in {"complete", "reviewable"}
-    assert publication["connection_count"] == len(connections)
-    assert publication["gap_count"] == publication["layer_counts"]["gaps"]
-    assert publication["human_intervention_request_count"] == 0
-    assert publication["comparison_role"] == "superseded-reference-not-ground-truth"
-    assert publication["compilation_diagnostics"]["assembly_strategy"] == "backbone-outward"
-    recorded_ids = {record["connection_id"] for record in agent_records["records"]}
-    assert {feature["id"] for feature in connections} <= recorded_ids
-    assert recorded_ids <= {feature["id"] for feature in features}
-    assert publication["disclaimer"] == DISCLAIMER
-    assert len({feature["id"] for feature in connections}) == len(connections)
-    assert "connection" not in {feature["properties"]["feature_type"] for feature in features}
-    assert "atm-reference" not in {feature["properties"]["feature_type"] for feature in features}
-    assert (site / ".nojekyll").exists()
-    assert (site / "network-map.pdf").read_bytes().startswith(b"%PDF-")
-    assert (site / "network.geojson").stat().st_size < 35_000_000
-    assert (site / "topography.geojson").stat().st_size < 60_000_000
-    assert (site / "data.js").stat().st_size < 1_000_000
-    assert '"network_url":"network.geojson"' in (site / "data.js").read_text()
-    assert '"topography_url":"topography.geojson"' in (site / "data.js").read_text()
+    snapshot(definition)
+    result = compile(definition)
+    deployment = build_area_deployment(definition, tmp_path / "deployments" / "tiny")
+
+    publication = json.loads((deployment / "publication.json").read_text(encoding="utf-8"))
+    network = json.loads((deployment / "network.geojson").read_text(encoding="utf-8"))
+    layer_manifest = json.loads(
+        (deployment / "layer-manifest.json").read_text(encoding="utf-8")
+    )
+    topography_manifest = json.loads(
+        (deployment / "topography-manifest.json").read_text(encoding="utf-8")
+    )
     profile_index = json.loads(
-        (site / "topography-profile-evidence.json").read_text(encoding="utf-8")
+        (deployment / "topography-profile-evidence.json").read_text(encoding="utf-8")
     )
-    governed_profiles = [
-        feature
-        for chunk in profile_index["chunks"]
-        for feature in json.loads((site / chunk["path"]).read_text(encoding="utf-8"))[
-            "features"
-        ]
-    ]
-    assert len(governed_profiles) == profile_index["profile_count"]
-    available = next(
-        feature
-        for feature in governed_profiles
-        if json.loads(feature["properties"]["micro_gradient_intervals"])
-    )
-    interval = json.loads(available["properties"]["micro_gradient_intervals"])[0]
-    assert {
-        "uphill_direction",
-        "absolute_gradient_pct",
-        "rolling_step_m",
-        "calculation_method",
-        "elevation_evidence_ids",
-        "uncertainty",
-    } <= set(interval)
+    original_network = json.loads(result.artifacts["geojson"].read_text(encoding="utf-8"))
+
+    assert result.status in {"complete", "reviewable"}
+    assert publication["area_id"] == definition.area_id
+    assert publication["area_name"] == definition.area_name
+    assert publication["area_definition_sha256"] == hashlib.sha256(
+        definition.config_path.read_bytes()
+    ).hexdigest()
+    assert publication["disclaimer"] == DISCLAIMER
+    assert publication["network_model"] == "backbone-outward"
+    assert publication["layer_manifest"] == "layer-manifest.json"
+    assert publication["topography_manifest"] == "topography-manifest.json"
+    assert set(layer_manifest["groups"]) == {"amenities", "low-traffic", "schools", "urban"}
     assert all(
-        "micro_gradient_intervals" not in feature["properties"]
-        for feature in connections
+        entry["path"].startswith("layers/")
+        for group in layer_manifest["groups"].values()
+        for entry in group["shards"]
     )
-    html = (site / "index.html").read_text(encoding="utf-8")
-    assert '<a href="network-map.pdf" download>Network map PDF</a>' in html
-    assert 'id="layer-strategic-network"' in html
-    assert 'id="layer-spine-access-connections"' in html
-    assert 'id="layer-cross-spine-connectors"' in html
-    assert 'id="layer-gaps-warnings"' in html
-    assert 'id="layer-schools"' in html
-    assert 'id="layer-retail-centres"' in html
-    assert 'id="layer-healthcare"' in html
-    assert 'id="layer-atm"' in html
-    assert 'id="atm-upload"' in html
-    assert 'aria-describedby="legend-strategic-network"' in html
-    assert 'aria-describedby="legend-spine-access-connections"' in html
+    assert all(
+        len(entry["sha256"]) == 64
+        for group in layer_manifest["groups"].values()
+        for entry in group["shards"]
+    )
+    assert all(
+        feature["properties"]["feature_type"] != "gradient-section"
+        for feature in network["features"]
+    )
+    assert any(
+        feature["properties"]["feature_type"] == "authority-boundary"
+        for feature in network["features"]
+    )
+    deferred_types = {
+        "urban-spine",
+        "urban-classification-unknown",
+        "low-traffic-area",
+        "low-traffic-area-portal",
+        "school",
+        "school-street-assessment",
+        "retail-centre",
+        "healthcare",
+    }
+    assert not {
+        feature["properties"]["feature_type"] for feature in network["features"]
+    } & deferred_types
+    assert all(
+        json.loads(feature["properties"]["micro_gradient_intervals"]) == []
+        for feature in network["features"]
+        if feature["properties"]["feature_type"] == "topography-profile"
+    )
+    assert topography_manifest["detail_min_zoom"] == 10
+    assert topography_manifest["gradient_section_count"] == publication["layer_counts"][
+        "gradient_sections"
+    ]
+    assert topography_manifest["detail_feature_count"] == (
+        topography_manifest["gradient_section_count"]
+        + topography_manifest["unavailable_profile_count"]
+    )
+    assert profile_index["profile_count"] == publication["layer_counts"][
+        "topography_profiles"
+    ]
+    assert all("profile_ids" in chunk for chunk in profile_index["chunks"])
+    assert (deployment / "network-map.pdf").read_bytes().startswith(b"%PDF-")
+    service_worker = (deployment / "service-worker.js").read_text(encoding="utf-8")
+    assert "caches.match" in service_worker
+    assert "event.waitUntil" in service_worker
+    assert "cache.put(event.request, response.clone())" in service_worker
+    assert '"assets/maplibre-gl.js"' in service_worker
+    assert '"assets/review-map.' in service_worker
+    assert "network.geojson" not in service_worker
+    assert "layer-manifest.json" not in service_worker
+    assert "topography-manifest.json" not in service_worker
+    assert "topography-profile-evidence.json" not in service_worker
+    assert 'event.data?.type !== "cache-core"' in service_worker
+    assert '"network_url":"network.geojson"' in (deployment / "data.js").read_text()
+    assert '"layer_manifest_url":"layer-manifest.json"' in (
+        deployment / "data.js"
+    ).read_text()
+
+    deferred_features = [
+        feature
+        for group in layer_manifest["groups"].values()
+        for entry in group["shards"]
+        for feature in json.loads(
+            (deployment / entry["path"]).read_text(encoding="utf-8")
+        )["features"]
+    ]
+    overview_features = [
+        feature
+        for entry in topography_manifest["overview"]
+        for feature in json.loads(
+            (deployment / entry["path"]).read_text(encoding="utf-8")
+        )["features"]
+    ]
+    detail_features = [
+        feature
+        for entry in topography_manifest["detail"]
+        for feature in json.loads(
+            (deployment / entry["path"]).read_text(encoding="utf-8")
+        )["features"]
+    ]
+    original_by_id = {feature["id"]: feature for feature in original_network["features"]}
+    delivered_by_id = {
+        feature["id"]: feature
+        for feature in [
+            *network["features"],
+            *deferred_features,
+            *overview_features,
+            *detail_features,
+        ]
+    }
+    assert set(delivered_by_id) == set(original_by_id)
+    for feature_id, original in original_by_id.items():
+        delivered = delivered_by_id[feature_id]
+        feature_type = original["properties"]["feature_type"]
+        if feature_type in {"gradient-section", "topography-profile"}:
+            assert delivered["geometry"] == original["geometry"]
+        elif feature_type not in deferred_types:
+            assert delivered["properties"] == original["properties"]
+    unavailable_profile_ids = {
+        feature["id"]
+        for feature in original_network["features"]
+        if feature["properties"]["feature_type"] == "topography-profile"
+        and feature["properties"].get("evidence_status") == "evidence-unavailable"
+    }
+    assert unavailable_profile_ids <= {feature["id"] for feature in detail_features}
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node is required to exercise generated service-worker behaviour")
+    worker_probe = """
+import fs from 'node:fs';
+const listeners = {};
+const calls = [];
+global.location = { origin: 'https://example.test' };
+global.self = {
+  addEventListener: (name, listener) => { listeners[name] = listener; },
+  skipWaiting: () => {},
+  clients: { claim: async () => {} }
+};
+const cache = { addAll: async urls => calls.push(urls), put: async () => {} };
+global.caches = {
+  open: async () => cache,
+  keys: async () => [],
+  delete: async () => true,
+  match: async () => null
+};
+global.fetch = async () => ({ ok: true, clone() { return this; } });
+eval(fs.readFileSync(0, 'utf8'));
+let install;
+listeners.install({ waitUntil: promise => { install = promise; } });
+await install;
+let cacheCore;
+const replies = [];
+listeners.message({
+  data: { type: 'cache-core', urls: ['network.geojson'] },
+  ports: [{ postMessage: reply => replies.push(reply) }],
+  waitUntil: promise => { cacheCore = promise; }
+});
+await cacheCore;
+console.log(JSON.stringify({ calls, replies }));
+"""
+    completed = subprocess.run(
+        [node, "--input-type=module", "-e", worker_probe],
+        input=service_worker,
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    assert json.loads(completed.stdout) == {
+        "calls": [["./", "index.html", "data.js", "publication.json", *sorted([
+            item.relative_to(deployment).as_posix()
+            for item in (deployment / "assets").iterdir()
+            if item.is_file() and item.suffix in {".css", ".js"}
+        ])], ["network.geojson"]],
+        "replies": [{"ok": True}],
+    }

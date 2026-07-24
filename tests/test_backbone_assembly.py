@@ -203,6 +203,35 @@ def cross_spine_topology(compiled: object) -> list[tuple[object, ...]]:
     )
 
 
+def backbone_snapshot(compiled: object) -> dict[str, object]:
+    """Capture authoritative, externally visible assembly results without timestamps."""
+    return {
+        "access": topology(compiled),
+        "meetings": cross_spine_topology(compiled),
+        "connectors": sorted(
+            (
+                row.cross_spine_connector_id,
+                row.meeting_connection_id,
+                row.geometry.wkb_hex,
+            )
+            for row in compiled.cross_spine_connectors.itertuples()
+        ),
+        "agent_records": [
+            record.model_dump(mode="json", exclude={"created_at"})
+            for record in compiled.agent_records
+        ],
+    }
+
+
+def with_source_costs_below_geometry(
+    source: dict[str, gpd.GeoDataFrame],
+) -> dict[str, gpd.GeoDataFrame]:
+    """Keep an admissible but non-unit cost/geometry ratio on every road edge."""
+    network = source["network"].copy()
+    network["length"] = 100.0
+    return {**source, "network": network}
+
+
 def test_all_spines_seed_order_independent_growth_and_hinterland_chaining() -> None:
     first = compile_network(config(), parallel_spine_source(), FakeAgentRuntime())
     reordered = compile_network(config(), parallel_spine_source(reverse=True), FakeAgentRuntime())
@@ -685,7 +714,7 @@ def test_colocated_gateway_is_already_connected_without_zero_length_linework() -
     assert compiled.criteria["spine_network"]["gateway_coverage"] == "green"
 
 
-def test_growth_evaluates_each_new_frontier_once_at_representative_scale(
+def test_growth_uses_lazy_bounds_to_avoid_redundant_searches_at_representative_scale(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     community_count = 24
@@ -741,4 +770,173 @@ def test_growth_evaluates_each_new_frontier_once_at_representative_scale(
     )
 
     assert len(compiled.spine_access_connections) == community_count
-    assert calls == community_count + community_count * (community_count - 1) // 2
+    diagnostics = compiled.compilation_diagnostics
+    assert calls == community_count
+    assert diagnostics["candidate_evaluations"] == calls
+    assert diagnostics["candidate_pairs_enqueued"] == (
+        community_count + community_count * (community_count - 1) // 2
+    )
+    assert diagnostics["candidate_searches_avoided"] == (
+        diagnostics["candidate_pairs_enqueued"] - calls
+    )
+    assert diagnostics["candidate_lower_bound_factor"] == 1.0
+    assert diagnostics["candidate_lower_bound_disabled_reason"] is None
+
+
+def test_lazy_bounds_match_eager_equivalent_assembly_with_discounted_source_costs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = with_source_costs_below_geometry(parallel_spine_source())
+    lazy = compile_network(config(), source, FakeAgentRuntime())
+
+    def disable_lower_bound(self: object) -> None:
+        self._lower_bound_cost_factor = 0.0
+        self._lower_bound_disabled_reason = "forced-by-regression-test"
+
+    monkeypatch.setattr(
+        backbone_module.RoadGraph,
+        "_set_lower_bound_cost_factor",
+        disable_lower_bound,
+    )
+    eager_equivalent = compile_network(config(), source, FakeAgentRuntime())
+
+    assert 0.0 < lazy.compilation_diagnostics["candidate_lower_bound_factor"] < 1.0
+    assert eager_equivalent.compilation_diagnostics["candidate_lower_bound_factor"] == 0.0
+    assert backbone_snapshot(lazy) == backbone_snapshot(eager_equivalent)
+
+
+def test_lazy_bounds_skip_stale_community_work_after_the_community_is_served(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = parallel_spine_source()
+    source["places"] = source["places"].query("place_id != 'hinterland'").copy()
+    calls = 0
+    original = backbone_module._candidate
+
+    def counted_candidate(*args: object, **kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(backbone_module, "_candidate", counted_candidate)
+    compiled = compile_network(config(), source, FakeAgentRuntime())
+
+    assert calls == 2
+    assert compiled.compilation_diagnostics["candidate_evaluations"] == 2
+    assert compiled.compilation_diagnostics["candidate_pairs_enqueued"] == 5
+    assert compiled.compilation_diagnostics["candidate_searches_avoided"] == 3
+
+
+def test_rejected_community_candidate_is_superseded_when_a_later_frontier_is_accepted() -> None:
+    runtime = FakeAgentRuntime(
+        {
+            AgentRole.DECISION: [
+                {"request_id": "$request", "choice_id": "2"},
+                *({"request_id": "$request", "choice_id": "1"} for _ in range(8)),
+            ]
+        }
+    )
+    council = config()
+    council.compilation.agent.review_statuses = (TrafficLight.GREEN,)
+
+    compiled = compile_network(council, parallel_spine_source(), runtime)
+
+    access_records = [
+        record
+        for record in compiled.agent_records
+        if record.connection_id.startswith("spine-access-")
+    ]
+    rejected = access_records[0]
+    assert rejected.decision == "superseded"
+    assert "different governed frontier attachment" in rejected.outcome_reason
+    assert any(
+        record.decision == "accept"
+        and record.affected_feature_identifiers[1] == rejected.affected_feature_identifiers[1]
+        for record in access_records
+    )
+    assert [record.decision for record in access_records].count("accept") == 3
+    assert len(compiled.spine_access_connections) == 3
+
+
+def test_tied_roots_remain_eager_equivalent_when_inputs_are_reversed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    places = [
+        {
+            "place_id": "tie",
+            "name": "Tie",
+            "kind": "community",
+            "place_class": "village",
+            "geometry": Point(0, 0),
+        },
+        {
+            "place_id": "left-anchor",
+            "name": "Left Anchor",
+            "kind": "community",
+            "place_class": "village",
+            "geometry": Point(-0.01, 0),
+        },
+    ]
+    network = [
+        {
+            "osmid": "left",
+            "highway": "primary",
+            "ref": "A1",
+            "length": 100,
+            "geometry": LineString([(-0.01, 0), (-0.001, 0)]),
+        },
+        {
+            "osmid": "right",
+            "highway": "primary",
+            "ref": "A2",
+            "length": 100,
+            "geometry": LineString([(0.001, 0), (0.01, 0)]),
+        },
+    ]
+    context = [
+        {
+            "evidence_id": "left-spine",
+            "feature_type": "a-road-spine",
+            "name": "A1",
+            "category": "A-road strategic spine",
+            "source_id": "left",
+            "feature_count": 1,
+            "network_scope": "rural",
+            "geometry": network[0]["geometry"],
+        },
+        {
+            "evidence_id": "right-spine",
+            "feature_type": "a-road-spine",
+            "name": "A2",
+            "category": "A-road strategic spine",
+            "source_id": "right",
+            "feature_count": 1,
+            "network_scope": "rural",
+            "geometry": network[1]["geometry"],
+        },
+    ]
+
+    def compile_rows(*, reverse: bool, eager_equivalent: bool) -> object:
+        if eager_equivalent:
+            monkeypatch.setattr(
+                backbone_module.RoadGraph,
+                "_set_lower_bound_cost_factor",
+                lambda graph: setattr(graph, "_lower_bound_cost_factor", 0.0),
+            )
+        return compile_network(
+            config(),
+            {
+                "places": frame(list(reversed(places)) if reverse else places),
+                "network": frame(list(reversed(network)) if reverse else network),
+                "context": frame(list(reversed(context)) if reverse else context),
+                "boundary": gpd.GeoDataFrame(geometry=[], crs=4326),
+            },
+            FakeAgentRuntime(),
+        )
+
+    lazy = compile_rows(reverse=False, eager_equivalent=False)
+    reversed_lazy = compile_rows(reverse=True, eager_equivalent=False)
+    eager_equivalent = compile_rows(reverse=True, eager_equivalent=True)
+
+    assert backbone_snapshot(lazy) == backbone_snapshot(reversed_lazy)
+    assert backbone_snapshot(lazy) == backbone_snapshot(eager_equivalent)

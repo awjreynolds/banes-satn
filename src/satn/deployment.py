@@ -1,0 +1,436 @@
+"""Build one standalone, progressive Area Deployment from validated SATN artifacts."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import shutil
+import tempfile
+from collections import defaultdict
+from pathlib import Path
+
+from satn.constants import DISCLAIMER
+from satn.models import AreaDefinition
+
+PROJECT = Path(__file__).parents[2]
+DEFERRED_GROUPS = {
+    "urban": {"urban-spine", "urban-classification-unknown"},
+    "low-traffic": {"low-traffic-area", "low-traffic-area-portal"},
+    "schools": {"school", "school-street-assessment"},
+    "amenities": {"retail-centre", "healthcare"},
+}
+
+
+def _arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("area_definition", type=Path)
+    parser.add_argument("--destination", type=Path)
+    return parser.parse_args()
+
+
+def _write_collection(path: Path, features: list[dict[str, object]]) -> int:
+    payload = json.dumps(
+        {"type": "FeatureCollection", "features": features},
+        separators=(",", ":"),
+    ).encode()
+    path.write_bytes(payload)
+    return len(payload)
+
+
+def _coordinates(geometry: dict[str, object] | None) -> list[tuple[float, float]]:
+    if not geometry:
+        return []
+    values: list[tuple[float, float]] = []
+
+    def visit(item: object) -> None:
+        if (
+            isinstance(item, list)
+            and len(item) >= 2
+            and isinstance(item[0], (int, float))
+            and isinstance(item[1], (int, float))
+        ):
+            values.append((float(item[0]), float(item[1])))
+        elif isinstance(item, list):
+            for child in item:
+                visit(child)
+
+    visit(geometry.get("coordinates"))
+    return values
+
+
+def _bbox(features: list[dict[str, object]]) -> list[float] | None:
+    coordinates = [
+        coordinate
+        for feature in features
+        for coordinate in _coordinates(feature.get("geometry"))  # type: ignore[arg-type]
+    ]
+    if not coordinates:
+        return None
+    return [
+        min(value[0] for value in coordinates),
+        min(value[1] for value in coordinates),
+        max(value[0] for value in coordinates),
+        max(value[1] for value in coordinates),
+    ]
+
+
+def _spatial_chunks(
+    features: list[dict[str, object]],
+    *,
+    maximum_features: int,
+    cell_degrees: float = 0.1,
+) -> list[list[dict[str, object]]]:
+    cells: dict[tuple[int, int], list[dict[str, object]]] = defaultdict(list)
+    unlocated: list[dict[str, object]] = []
+    for feature in features:
+        coordinates = _coordinates(feature.get("geometry"))  # type: ignore[arg-type]
+        if not coordinates:
+            unlocated.append(feature)
+            continue
+        centre_x = (min(item[0] for item in coordinates) + max(item[0] for item in coordinates)) / 2
+        centre_y = (min(item[1] for item in coordinates) + max(item[1] for item in coordinates)) / 2
+        cells[
+            (math.floor(centre_x / cell_degrees), math.floor(centre_y / cell_degrees))
+        ].append(feature)
+    chunks: list[list[dict[str, object]]] = []
+    for key in sorted(cells):
+        cell = cells[key]
+        chunks.extend(
+            cell[index : index + maximum_features]
+            for index in range(0, len(cell), maximum_features)
+        )
+    chunks.extend(
+        unlocated[index : index + maximum_features]
+        for index in range(0, len(unlocated), maximum_features)
+    )
+    return chunks
+
+
+def _write_shards(
+    directory: Path,
+    prefix: str,
+    features: list[dict[str, object]],
+    *,
+    maximum_features: int = 1000,
+) -> list[dict[str, object]]:
+    directory.mkdir(parents=True, exist_ok=True)
+    entries = []
+    for chunk in _spatial_chunks(features, maximum_features=maximum_features):
+        encoded = json.dumps(
+            {"type": "FeatureCollection", "features": chunk},
+            separators=(",", ":"),
+        ).encode()
+        digest = hashlib.sha256(encoded).hexdigest()
+        filename = f"{prefix}-{digest[:16]}.geojson"
+        (directory / filename).write_bytes(encoded)
+        entries.append(
+            {
+                "path": f"{directory.name}/{filename}",
+                "sha256": digest,
+                "size_bytes": len(encoded),
+                "feature_count": len(chunk),
+                "bbox": _bbox(chunk),
+            }
+        )
+    return entries
+
+
+def _gradient_band(properties: dict[str, object]) -> str:
+    raw = properties.get("steepest_sustained_gradient_pct")
+    if raw is None:
+        return "unavailable"
+    value = abs(float(raw))
+    if value <= 3:
+        return "gentle"
+    if value <= 5:
+        return "noticeable"
+    if value <= 8:
+        return "steep"
+    if value <= 12.5:
+        return "very-steep"
+    return "severe"
+
+
+def _service_worker(
+    deployment_id: str, run_id: str, shell_assets: list[str]
+) -> str:
+    cache_name = f"satn-{deployment_id}-{run_id}"
+    shell = ["./", "index.html", "data.js", "publication.json", *sorted(shell_assets)]
+    return f"""const CACHE = {json.dumps(cache_name)};
+self.addEventListener("install", event => {{
+  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll({json.dumps(shell)})));
+}});
+self.addEventListener("activate", event => {{
+  event.waitUntil((async () => {{
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith("satn-{deployment_id}-") && key !== CACHE)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  }})());
+}});
+self.addEventListener("message", event => {{
+  if (event.data?.type !== "cache-core") return;
+  const urls = Array.isArray(event.data.urls) ? event.data.urls : [];
+  const reply = (payload) => event.ports[0]?.postMessage(payload);
+  event.waitUntil(caches.open(CACHE).then(async cache => {{
+    await cache.addAll(urls);
+    reply({{ ok: true }});
+  }}).catch(error => reply({{ ok: false, error: String(error) }})));
+}});
+self.addEventListener("fetch", event => {{
+  if (event.request.method !== "GET" ||
+      new URL(event.request.url).origin !== location.origin) return;
+  event.respondWith((async () => {{
+    const cached = await caches.match(event.request);
+    if (cached) return cached;
+    const response = await fetch(event.request);
+    if (response.ok) {{
+      event.waitUntil(caches.open(CACHE).then(cache =>
+        cache.put(event.request, response.clone())
+      ));
+    }}
+    return response;
+  }})());
+}});
+"""
+
+
+def build_area_deployment(
+    definition: AreaDefinition,
+    destination: Path,
+) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    output = definition.publication.output_dir
+    run_path = output / "run.json"
+    review_map = output / "review-map"
+    pdf_map = output / "network-map.pdf"
+    if not run_path.exists() or not (review_map / "index.html").exists() or not pdf_map.exists():
+        raise SystemExit(f"compile {definition.config_path} before building its Area Deployment")
+    run = json.loads(run_path.read_text(encoding="utf-8"))
+    if run["council_id"] != definition.area_id:
+        raise SystemExit("compiled artifacts do not match the requested Area Definition")
+    if run["status"] not in {"complete", "reviewable"}:
+        raise SystemExit("the current run is not publishable")
+    if run["atm_geometry_included"]:
+        raise SystemExit("a public Area Deployment must not contain governed ATM geometry")
+
+    interventions = json.loads(
+        (review_map / "human-intervention-requests.json").read_text(encoding="utf-8")
+    )
+    comparison = json.loads((review_map / "backbone-comparison.json").read_text(encoding="utf-8"))
+    temporary = Path(
+        tempfile.mkdtemp(prefix=f".{definition.deployment_slug}-", dir=destination.parent)
+    )
+    try:
+        shutil.copytree(review_map, temporary / "content", dirs_exist_ok=True)
+        content = temporary / "content"
+        network_path = content / "network.geojson"
+        network = json.loads(network_path.read_text(encoding="utf-8"))
+        gradients: list[dict[str, object]] = []
+        unavailable_profiles: list[dict[str, object]] = []
+        profiles: list[dict[str, object]] = []
+        overview: list[dict[str, object]] = []
+        deferred: dict[str, list[dict[str, object]]] = defaultdict(list)
+        core: list[dict[str, object]] = []
+        type_to_group = {
+            feature_type: group
+            for group, feature_types in DEFERRED_GROUPS.items()
+            for feature_type in feature_types
+        }
+        for feature in network["features"]:
+            properties = feature["properties"]
+            feature_type = properties.get("feature_type")
+            if feature_type == "gradient-section":
+                gradients.append(feature)
+                continue
+            if feature_type == "topography-profile":
+                profiles.append({**feature, "geometry": None})
+                lightweight = dict(properties)
+                lightweight["micro_gradient_intervals"] = "[]"
+                capability = json.loads(lightweight.get("micro_gradient_capability") or "{}")
+                capability.pop("uncertainty", None)
+                lightweight["micro_gradient_capability"] = json.dumps(
+                    capability, separators=(",", ":")
+                )
+                overview_properties = {
+                    **lightweight,
+                    "gradient_band": _gradient_band(properties),
+                }
+                overview.append({**feature, "properties": overview_properties})
+                if properties.get("evidence_status") == "evidence-unavailable":
+                    unavailable_profiles.append(feature)
+                core.append({**feature, "properties": lightweight, "geometry": None})
+                continue
+            group = type_to_group.get(feature_type)
+            if group:
+                deferred[group].append(feature)
+            else:
+                core.append(feature)
+        network["features"] = core
+        network_path.write_text(json.dumps(network, separators=(",", ":")), encoding="utf-8")
+
+        layer_directory = content / "layers"
+        groups: dict[str, dict[str, object]] = {}
+        for group in sorted(DEFERRED_GROUPS):
+            entries = _write_shards(layer_directory, group, deferred[group])
+            groups[group] = {
+                "feature_types": sorted(DEFERRED_GROUPS[group]),
+                "feature_count": len(deferred[group]),
+                "size_bytes": sum(int(entry["size_bytes"]) for entry in entries),
+                "shards": entries,
+            }
+        layer_manifest = {
+            "schema_version": run["schema_version"],
+            "area_id": definition.area_id,
+            "groups": groups,
+        }
+        (content / "layer-manifest.json").write_text(
+            json.dumps(layer_manifest, indent=2), encoding="utf-8"
+        )
+
+        topography_directory = content / "topography"
+        overview_entries = _write_shards(
+            topography_directory,
+            "overview",
+            overview,
+            maximum_features=750,
+        )
+        detail_entries = _write_shards(
+            topography_directory,
+            "detail",
+            [*gradients, *unavailable_profiles],
+            maximum_features=1500,
+        )
+        topography_manifest = {
+            "schema_version": run["schema_version"],
+            "area_id": definition.area_id,
+            "overview": overview_entries,
+            "detail": detail_entries,
+            "overview_feature_count": len(overview),
+            "detail_feature_count": len(gradients) + len(unavailable_profiles),
+            "gradient_section_count": len(gradients),
+            "unavailable_profile_count": len(unavailable_profiles),
+            "overview_size_bytes": sum(int(item["size_bytes"]) for item in overview_entries),
+            "detail_size_bytes": sum(int(item["size_bytes"]) for item in detail_entries),
+            "detail_min_zoom": 10,
+        }
+        (content / "topography-manifest.json").write_text(
+            json.dumps(topography_manifest, indent=2), encoding="utf-8"
+        )
+
+        evidence_directory = content / "evidence"
+        evidence_directory.mkdir(exist_ok=True)
+        evidence_chunks = []
+        for index in range(0, len(profiles), 200):
+            chunk = profiles[index : index + 200]
+            encoded = json.dumps(
+                {"type": "FeatureCollection", "features": chunk},
+                separators=(",", ":"),
+            ).encode()
+            digest = hashlib.sha256(encoded).hexdigest()
+            filename = f"topography-profiles-{digest[:16]}.geojson"
+            (evidence_directory / filename).write_bytes(encoded)
+            evidence_chunks.append(
+                {
+                    "path": f"evidence/{filename}",
+                    "profile_ids": [
+                        feature["properties"].get("profile_id") for feature in chunk
+                    ],
+                    "profile_count": len(chunk),
+                    "size_bytes": len(encoded),
+                    "sha256": digest,
+                }
+            )
+        profile_index = {
+            "schema_version": run["schema_version"],
+            "profile_count": len(profiles),
+            "chunks": evidence_chunks,
+            "disclaimer": DISCLAIMER,
+        }
+        (content / "topography-profile-evidence.json").write_text(
+            json.dumps(profile_index, indent=2), encoding="utf-8"
+        )
+
+        data_path = content / "data.js"
+        prefix = "window.SATN_DATA = "
+        source = data_path.read_text(encoding="utf-8")
+        if not source.startswith(prefix) or not source.endswith(";\n"):
+            raise SystemExit("review-map data.js has an unsupported format")
+        data = json.loads(source.removeprefix(prefix).removesuffix(";\n"))
+        data.pop("network", None)
+        data["area_id"] = definition.area_id
+        data["area_name"] = definition.area_name
+        data["network_url"] = "network.geojson"
+        data["layer_manifest_url"] = "layer-manifest.json"
+        data["topography_manifest_url"] = "topography-manifest.json"
+        data["profile_evidence_index_url"] = "topography-profile-evidence.json"
+        data_path.write_text(
+            f"{prefix}{json.dumps(data, separators=(',', ':')).replace('</', '<\\/')};\n",
+            encoding="utf-8",
+        )
+
+        shutil.copy2(pdf_map, content / "network-map.pdf")
+        (content / ".nojekyll").write_text("", encoding="utf-8")
+        shell_assets = [
+            item.relative_to(content).as_posix()
+            for item in (content / "assets").iterdir()
+            if item.is_file() and item.suffix in {".css", ".js"}
+        ]
+        (content / "service-worker.js").write_text(
+            _service_worker(definition.deployment_slug, run["run_id"], shell_assets),
+            encoding="utf-8",
+        )
+        publication = {
+            "schema_version": run["schema_version"],
+            "area_id": definition.area_id,
+            "area_name": definition.area_name,
+            "deployment_id": definition.deployment_slug,
+            "area_definition_sha256": hashlib.sha256(
+                definition.config_path.read_bytes()
+            ).hexdigest(),
+            "boundary_queries": list(definition.source.boundary_queries),
+            "run_id": run["run_id"],
+            "status": run["status"],
+            "network_model": run["network_model"],
+            "connection_count": run["connection_count"],
+            "gap_count": run["gap_count"],
+            "human_intervention_request_count": len(interventions["records"]),
+            "superseded_hypotheses": run["superseded_hypotheses"],
+            "layer_counts": run["layer_counts"],
+            "criteria": run["criteria"],
+            "compilation_diagnostics": run["compilation_diagnostics"],
+            "comparison_role": comparison["comparison_role"],
+            "layer_manifest": "layer-manifest.json",
+            "topography_manifest": "topography-manifest.json",
+            "topography_profile_evidence_index": "topography-profile-evidence.json",
+            "disclaimer": DISCLAIMER,
+        }
+        (content / "publication.json").write_text(
+            json.dumps(publication, indent=2), encoding="utf-8"
+        )
+        if destination.exists():
+            shutil.rmtree(destination)
+        content.replace(destination)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+    return destination
+
+
+def main() -> None:
+    args = _arguments()
+    definition = AreaDefinition.from_yaml(args.area_definition)
+    destination = (
+        args.destination.resolve()
+        if args.destination
+        else PROJECT / "build" / "deployments" / definition.deployment_slug
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    print(build_area_deployment(definition, destination))
+
+
+if __name__ == "__main__":
+    main()

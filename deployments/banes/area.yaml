@@ -1,0 +1,60 @@
+# Governed B&NES Area Definition. Outputs are reproducible process artifacts,
+# deliberately kept below ignored build/ rather than committed to Git.
+area_id: bath-and-north-east-somerset
+area_name: Bath and North East Somerset
+deployment_id: banes
+source:
+  kind: osm
+  osm_place_query: Bath and North East Somerset, England, United Kingdom
+  ncn_feature_service_url: https://services5.arcgis.com/1ZHcUS1lwPTg4ms0/arcgis/rest/services/National_Cycle_Network_Public/FeatureServer
+  reclassified_ncn_feature_service_url: https://services5.arcgis.com/1ZHcUS1lwPTg4ms0/arcgis/rest/services/Reclassified_Routes_Public/FeatureServer
+  snapshot_dir: ../../data/snapshots
+  snapshot_id: banes-osm-current
+  network_type: bike
+  overpass_url: https://overpass-api.de/api
+  osm_timeout_seconds: 600
+  external_buffer_km: 15
+  internal_portal_threshold_km: 1
+  community_place_types: [town, village, suburb, quarter, neighbourhood]
+  urban_place_types: [city, town, suburb, quarter, neighbourhood]
+  urban_place_source_ids: ["25942875", "26900589"]
+  urban_settlement_form:
+    eligible_place_classes: [village]
+    assessment_radius_km: 1
+    maximum_component_association_m: 250
+    component_association_tolerance_m: 10
+    minimum_minor_street_length_km: 10
+    minimum_junction_count: 90
+  urban_scope_buffer_km: 2
+  official_road_classification:
+    path: ../../data/governed/banes-os-open-roads-2026-04-07.geojson
+    source_id: os-open-roads-2026-04-07
+    effective_date: 2026-04-07
+    licence: Open Government Licence v3.0
+  national_elevation:
+    provider: local-geojson
+    path: ../../data/local/ea-lidar-dtm-1m-banes-samples.geojson
+    source_id: ea-lidar-composite-dtm-1m
+    effective_date: 2023-02-08
+    licence: Open Government Licence v3.0
+    attribution: "© Environment Agency copyright and/or database right 2022."
+    elevation_field: elevation_m
+    identifier_field: evidence_id
+compilation:
+  max_connection_km: 15
+  criteria_version: "1"
+  agent:
+    provider: fake
+    response_mode: direct-runtime
+    review_statuses: [amber, red]
+atm:
+  enabled: false
+  mode: blind
+  path: ../../data/local/banes-atm-full.geojson
+  redistribution_permitted: false
+publication:
+  output_dir: ../../build/compiled/banes
+  comparison_reference: ../../references/banes-legacy-pairwise-summary.json
+  title: B&NES Strategic Active Travel Network Review
+  pdf_page_size: A3
+  audience: public
