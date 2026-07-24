@@ -386,6 +386,34 @@ uv run lcwip agents validate-ledger path/to/ledger.json
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
+## Publish an immutable LCWIP release bundle
+
+`lcwip.publication` compiles a governed `PublicationConfig` into one atomic,
+immutable release directory. It publishes a cited PDF report and accessible HTML
+summary, matching GeoJSON and GeoPackage network plans, programme schedule,
+conformance manifest, privacy-safe source-quality and decision/agent audit records,
+semantic and spatial release diffs, immutable release history, and a shareable ZIP.
+
+Every material narrative claim resolves to governed citations. Unsupported adoption,
+feasibility or funding language is rejected unless it carries matching typed authority
+evidence bound to the exact release fingerprint. Mandatory conformance gaps,
+unresolved representations and equality findings remain prominent blockers. The
+default adoption-candidate banner is explicit: it is not an adopted plan.
+
+The Python boundary is `build_lcwip_publication(config)`. Validate a generated bundle
+and every cross-artifact hash, watermark, citation, GIS feature, accessible web
+contract and PDF page with:
+
+```shell
+uv run lcwip publication validate path/to/releases/release-id
+```
+
+Publication is fail-closed: generation occurs in a temporary sibling directory and
+is renamed into place only after complete validation. An existing release ID is
+content-immutable. A later adoption annotation must identify the exact substantive
+release fingerprint and distinct verification evidence; it does not rewrite the
+underlying release.
+
 ## Snapshot B&NES from OpenStreetMap
 
 The reference configuration contains only council data and thresholds; acquisition

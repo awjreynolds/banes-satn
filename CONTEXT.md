@@ -663,3 +663,34 @@ _Avoid_: public web page, map access, automatic consent
 **Adoption**:
 An authorised external council decision recorded for a specific LCWIP Release and separately verified by a named person with distinct governed evidence. This is verification provenance, not a cryptographic signature. It is distinct from Network Validity, Benefit or Priority, Feasibility and Consultation, each of which can remain incomplete or contested.
 _Avoid_: generated release, conformance result, officer draft
+
+**LCWIP Publication Release**:
+An immutable, atomic bundle of mutually validated report, web, GIS, programme,
+conformance, source-quality, audit and release-history artifacts. Every artifact
+carries the same release identity, lifecycle state and substantive release fingerprint.
+_Avoid_: mutable export folder, independent document copies, adopted plan by filename
+
+**Cited Material Claim**:
+A public narrative assertion whose governed source records resolve through exact
+citation identifiers and fingerprints. Missing evidence is published as an explicit
+placeholder; it is never converted into confident prose.
+_Avoid_: uncited summary, plausible generated text, hidden evidence gap
+
+**Publication Watermark**:
+The shared plan area, release ID and version, lifecycle state, evidence and
+configuration fingerprints, release fingerprint and publication date embedded in
+every artifact of an LCWIP Publication Release.
+_Avoid_: visual logo, filename convention, latest-release pointer
+
+**LCWIP Release Diff**:
+A semantic comparison between immutable publication releases covering evidence,
+method, geometry, programme, narrative and decision categories, with feature-level
+spatial changes recorded separately.
+_Avoid_: changelog prose, file-size comparison, geometry-only diff
+
+**Publication Adoption Annotation**:
+A later typed record of an external authorised decision and independent named-human
+verification bound to the exact substantive release fingerprint. It changes
+publication lifecycle metadata without rewriting the release's substantive evidence
+or narrative.
+_Avoid_: generated adoption statement, mutable status flag, inferred approval
