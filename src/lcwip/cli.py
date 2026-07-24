@@ -15,14 +15,20 @@ from lcwip.evidence import (
     validate_evidence_snapshot,
 )
 from lcwip.models import GuidanceProfile
+from lcwip.walking import validate_walking_bundle
 
 app = typer.Typer(no_args_is_help=True, help="Validate LCWIP public contracts.")
 profile_app = typer.Typer(no_args_is_help=True, help="Validate Guidance Profiles.")
 evidence_app = typer.Typer(no_args_is_help=True, help="Manage governed evidence snapshots.")
 demand_app = typer.Typer(no_args_is_help=True, help="Validate cycling demand bundles.")
+walking_app = typer.Typer(
+    no_args_is_help=True,
+    help="Validate walking and wheeling planning bundles.",
+)
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(demand_app, name="demand")
+app.add_typer(walking_app, name="walking")
 
 
 @profile_app.command("validate")
@@ -68,6 +74,15 @@ def validate_demand(
 ) -> None:
     """Validate a demand, desire-line and route-selection review bundle."""
     manifest = validate_demand_bundle(path)
+    typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
+
+
+@walking_app.command("validate")
+def validate_walking(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+) -> None:
+    """Validate a walking/wheeling network-planning and audit bundle."""
+    manifest = validate_walking_bundle(path)
     typer.echo(f"valid {manifest.analysis_id} {manifest.analysis_fingerprint}")
 
 
