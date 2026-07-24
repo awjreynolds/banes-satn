@@ -694,3 +694,34 @@ verification bound to the exact substantive release fingerprint. It changes
 publication lifecycle metadata without rewriting the release's substantive evidence
 or narrative.
 _Avoid_: generated adoption statement, mutable status flag, inferred approval
+
+**Programme Status Update**:
+A dated, source-bound and confidence-stated report about exactly one delivery
+dimension: design, funding, construction, completion or outcome. Only a verified
+update contributes to effective status; progress in one dimension never implies
+progress in another.
+_Avoid_: combined RAG status, inferred completion, funding-as-delivery
+
+**Monitoring Observation**:
+A governed baseline or later measurement with method, period, unit, source, coverage,
+uncertainty, observer authority and verification state. Activity observations and
+outcome observations remain distinct, and neither is a causal claim.
+_Avoid_: impact claim, context-free KPI, silently imputed value
+
+**Governed Review Trigger**:
+A source-citing condition such as a scheduled review, material development, network
+delivery, guidance change, evidence expiry or underperformance. It creates a Review
+Task and cannot silently change the historical plan or its lifecycle.
+_Avoid_: automatic replanning, mutable alert flag, background plan edit
+
+**Guidance Migration Entry**:
+The explicit effect of an added, removed or changed Guidance Profile requirement on
+named analyses and programme entries, with a required action. It compares immutable
+profiles and does not rewrite earlier conformance.
+_Avoid_: latest-guidance overwrite, generic upgrade note, inferred compliance
+
+**Superseding Release Proposal**:
+A non-adopted release proposal bound to one historical release fingerprint, a new
+evidence snapshot, the current Guidance Profile and the Review Triggers that caused
+it to be prepared.
+_Avoid_: mutated adopted release, automatic supersession, adopted monitoring update

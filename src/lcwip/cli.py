@@ -17,6 +17,7 @@ from lcwip.evidence import (
 from lcwip.governance import validate_governance_bundle
 from lcwip.interventions import validate_intervention_bundle
 from lcwip.models import GuidanceProfile
+from lcwip.monitoring import validate_monitoring_release
 from lcwip.prioritisation import validate_prioritisation_bundle
 from lcwip.publication import validate_lcwip_publication
 from lcwip.staged_agents import AgentDecisionLedger, StageDecisionEnvelope
@@ -50,6 +51,10 @@ publication_app = typer.Typer(
     no_args_is_help=True,
     help="Validate atomic, cited LCWIP publication releases.",
 )
+monitoring_app = typer.Typer(
+    no_args_is_help=True,
+    help="Validate immutable LCWIP delivery-monitoring and review releases.",
+)
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(demand_app, name="demand")
@@ -59,6 +64,7 @@ app.add_typer(prioritisation_app, name="prioritisation")
 app.add_typer(governance_app, name="governance")
 app.add_typer(agents_app, name="agents")
 app.add_typer(publication_app, name="publication")
+app.add_typer(monitoring_app, name="monitoring")
 
 
 @profile_app.command("validate")
@@ -168,6 +174,15 @@ def validate_publication(
     """Validate an archived LCWIP report and publication bundle."""
     manifest = validate_lcwip_publication(path)
     typer.echo(f"valid {manifest.release_id} {manifest.publication_fingerprint}")
+
+
+@monitoring_app.command("validate")
+def validate_monitoring(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+) -> None:
+    """Validate delivery status, monitoring evidence and governed review tasks."""
+    manifest = validate_monitoring_release(path)
+    typer.echo(f"valid {manifest.cycle_id} {manifest.monitoring_fingerprint}")
 
 
 if __name__ == "__main__":
