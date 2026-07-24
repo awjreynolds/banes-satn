@@ -26,6 +26,7 @@ from shapely.geometry import MultiLineString, mapping, shape
 
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
+from satn.identifiers import stable_id
 from satn.models import (
     AgentRecord,
     CompilationResult,
@@ -238,6 +239,10 @@ def _metadata_frame(crs: object) -> gpd.GeoDataFrame:
 
 
 def _write_geopackage(path: Path, compiled: CompiledNetwork) -> None:
+    if not compiled.boundary.empty:
+        _geopackage_safe(compiled.boundary).to_file(
+            path, layer="authority_boundaries", driver="GPKG"
+        )
     compiled.places.to_file(path, layer="places", driver="GPKG")
     if not compiled.strategic_spines.empty:
         compiled.strategic_spines.to_file(path, layer="strategic_spines", driver="GPKG")
@@ -356,6 +361,7 @@ def _feature_id(row: pd.Series, feature_type: str | None = None) -> str:
         "cross-spine-connector": "cross_spine_connector_id",
         "low-traffic-area-portal": "portal_id",
         "strategic-spine": "spine_id",
+        "authority-boundary": "boundary_id",
         "gap": "connection_id",
         "school-access-gap": "connection_id",
     }.get(feature_type)
@@ -433,7 +439,8 @@ def _network_collection(compiled: CompiledNetwork) -> dict[str, object]:
         "urban_classification_status": compiled.urban_classification_status,
         "elevation_evidence_status": compiled.elevation_evidence_status,
         "features": (
-            _features(compiled.strategic_spines, "strategic-spine")
+            _features(compiled.boundary, "authority-boundary")
+            + _features(compiled.strategic_spines, "strategic-spine")
             + _features(community_obligations, "access-obligation")
             + _features(school_obligations, "school-access-obligation")
             + _features(other_access_connections, "spine-access-connection")
@@ -1042,6 +1049,19 @@ def _write_pdf(path: Path, config: CouncilConfig, compiled: CompiledNetwork) -> 
         canvas.setStrokeColor(HexColor("#7b8794"))
         canvas.setLineWidth(0.9)
         _draw_geometry(canvas, boundary_shape, min_x, min_y, scale, origin_x, origin_y, fill=True)
+        canvas.setStrokeColor(HexColor("#59636e"))
+        canvas.setLineWidth(1.1)
+        for authority_boundary in boundary.geometry:
+            _draw_geometry(
+                canvas,
+                authority_boundary,
+                min_x,
+                min_y,
+                scale,
+                origin_x,
+                origin_y,
+                fill=False,
+            )
 
         roads = compiled.road_context.to_crs(3857)
         context_mask = roads.get("highway", pd.Series(index=roads.index, dtype=object)).map(
@@ -1572,23 +1592,29 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         "branch-meeting-connection",
         "cross-spine-connector",
     }
-    geojson_registry = {
-        str(feature["id"]): str(feature["properties"]["network_role"])
-        for feature in geojson["features"]
-        if feature["properties"].get("feature_type") in authoritative_types
-    }
-    run_registry = {
-        str(record["feature_id"]): str(record["network_role"])
-        for record in run.get("authoritative_features", [])
-    }
+    geojson_registry = _unique_authoritative_feature_registry(
+        [
+            (str(feature["id"]), str(feature["properties"]["network_role"]))
+            for feature in geojson["features"]
+            if feature["properties"].get("feature_type") in authoritative_types
+        ],
+        "GeoJSON",
+    )
+    run_registry = _unique_authoritative_feature_registry(
+        [
+            (str(record["feature_id"]), str(record["network_role"]))
+            for record in run.get("authoritative_features", [])
+        ],
+        "run manifest",
+    )
     if run_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in run manifest")
     spatial_layer_names = set(gpd.list_layers(output / "network.gpkg")["name"])
-    geopackage_registry: dict[str, str] = {}
+    geopackage_entries: list[tuple[str, str]] = []
     geopackage_decisions: dict[str, dict[str, object]] = {}
     if "spine_access_connections" in spatial_layer_names:
         access_rows = gpd.read_file(output / "network.gpkg", layer="spine_access_connections")
-        geopackage_registry.update(
+        geopackage_entries.extend(
             zip(
                 access_rows["access_connection_id"].astype(str),
                 access_rows["network_role"].astype(str),
@@ -1604,7 +1630,7 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         )
     if "branch_meeting_connections" in spatial_layer_names:
         meeting_rows = gpd.read_file(output / "network.gpkg", layer="branch_meeting_connections")
-        geopackage_registry.update(
+        geopackage_entries.extend(
             zip(
                 meeting_rows["meeting_connection_id"].astype(str),
                 meeting_rows["network_role"].astype(str),
@@ -1629,13 +1655,17 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         )
     if "cross_spine_connectors" in spatial_layer_names:
         connector_rows = gpd.read_file(output / "network.gpkg", layer="cross_spine_connectors")
-        geopackage_registry.update(
+        geopackage_entries.extend(
             zip(
                 connector_rows["cross_spine_connector_id"].astype(str),
                 connector_rows["network_role"].astype(str),
                 strict=True,
             )
         )
+    geopackage_registry = _unique_authoritative_feature_registry(
+        geopackage_entries,
+        "GeoPackage",
+    )
     if geopackage_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in GeoPackage")
     agent_payload = json.loads((output / "agent-records.json").read_text(encoding="utf-8"))
@@ -1670,32 +1700,41 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         raise ValueError("run manifest decision contract is unsupported")
     if run.get("accepted_decisions") != accepted_decisions:
         raise ValueError("run manifest accepted choices differ from decision records")
-    accepted_agent_records = [
-        record for record in agent_payload["records"] if record["decision"] == "accept"
-    ]
-    agent_registry = {
-        str(record["connection_id"]): str(record.get("network_role"))
-        for record in accepted_agent_records
-    }
-    agent_registry.update(
-        {
-            str(reference["feature_id"]): str(reference["network_role"])
-            for record in accepted_agent_records
-            for reference in record.get("derived_features", [])
-        }
+    agent_registry = _accepted_agent_authoritative_feature_registry(
+        agent_records,
     )
     if agent_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in agent records")
+    _validate_withheld_cross_spine_connector_references(
+        agent_records,
+        geojson,
+        None,
+        geojson_registry,
+    )
+    review_agent_payload = json.loads(
+        (output / "review-map" / "agent-records.json").read_text(encoding="utf-8")
+    )
+    if review_agent_payload != agent_payload:
+        raise ValueError("review map agent records differ from publication audit records")
     review_network = json.loads(
         (output / "review-map" / "network.geojson").read_text(encoding="utf-8")
     )
-    review_registry = {
-        str(feature["id"]): str(feature["properties"]["network_role"])
-        for feature in review_network["features"]
-        if feature["properties"].get("feature_type") in authoritative_types
-    }
+    review_registry = _unique_authoritative_feature_registry(
+        [
+            (str(feature["id"]), str(feature["properties"]["network_role"]))
+            for feature in review_network["features"]
+            if feature["properties"].get("feature_type") in authoritative_types
+        ],
+        "review-map GeoJSON",
+    )
     if review_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in review map")
+    _validate_withheld_cross_spine_connector_references(
+        agent_records,
+        geojson,
+        review_network,
+        geojson_registry,
+    )
     geojson_decisions = {
         str(feature["properties"]["agent_decision_request_id"]): feature["properties"]
         for feature in geojson["features"]
@@ -1915,3 +1954,252 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
             raise ValueError(
                 f"PDF edge register differs for authoritative feature: {connection_id}"
             )
+
+
+def _unique_authoritative_feature_registry(
+    entries: list[tuple[str, str]],
+    artifact_name: str,
+) -> dict[str, str]:
+    """Return an exact feature registry without silently collapsing duplicates."""
+    registry: dict[str, str] = {}
+    for feature_id, network_role in entries:
+        if not feature_id.strip():
+            raise ValueError(f"{artifact_name} authoritative feature has a blank identifier")
+        existing_role = registry.get(feature_id)
+        if existing_role is not None:
+            if existing_role != network_role:
+                raise ValueError(
+                    f"{artifact_name} authoritative feature has conflicting identifier roles: "
+                    f"{feature_id}"
+                )
+            raise ValueError(
+                f"{artifact_name} authoritative feature has duplicate identifier: {feature_id}"
+            )
+        registry[feature_id] = network_role
+    return registry
+
+
+def _accepted_agent_authoritative_feature_registry(
+    records: list[AgentRecord],
+) -> dict[str, str]:
+    """Prove each accepted direct or derived feature appears in the registry once."""
+    entries: list[tuple[str, str]] = []
+    for record in records:
+        cross_spine_references = [
+            *(
+                reference
+                for reference in record.derived_features
+                if reference.network_role == "cross-spine-connector"
+            ),
+            *(
+                reference
+                for reference in record.withheld_derived_features
+                if reference.network_role == "cross-spine-connector"
+            ),
+        ]
+        if record.decision != "accept" and cross_spine_references:
+            raise ValueError(
+                "non-accepted AgentRecord cannot establish or withhold cross-spine "
+                f"connector derived feature: {cross_spine_references[0].feature_id}"
+            )
+        if record.decision != "accept":
+            continue
+        entries.append((str(record.connection_id), str(record.network_role)))
+        entries.extend(
+            (str(reference.feature_id), str(reference.network_role))
+            for reference in record.derived_features
+        )
+    return _unique_authoritative_feature_registry(entries, "accepted agent records")
+
+
+def _validate_withheld_cross_spine_connector_references(
+    records: list[AgentRecord],
+    geojson: dict[str, object],
+    review_network: dict[str, object] | None,
+    authoritative_registry: dict[str, str],
+) -> None:
+    """Bind each withheld connector audit reference to one published gap finding.
+
+    Older publications did not carry ``withheld_derived_features``.  An empty
+    collection remains valid, while every new cross-spine reference is checked
+    against the immutable derived finding identity and the public registry.
+    """
+    features = geojson.get("features")
+    if not isinstance(features, list):
+        raise ValueError("GeoJSON has no feature collection for withheld connector validation")
+    gap_features = _cross_spine_connector_gap_features(features, "public GeoJSON")
+    review_gap_features: dict[str, list[dict[str, object]]] | None = None
+    if review_network is not None:
+        review_features = review_network.get("features")
+        if not isinstance(review_features, list):
+            raise ValueError(
+                "review-map GeoJSON has no feature collection for withheld connector validation"
+            )
+        review_gap_features = _cross_spine_connector_gap_features(
+            review_features,
+            "review-map GeoJSON",
+        )
+
+    nonaccepted_references = [
+        reference
+        for record in records
+        if record.decision != "accept"
+        for reference in record.withheld_derived_features
+        if reference.network_role == "cross-spine-connector"
+    ]
+    if nonaccepted_references:
+        raise ValueError(
+            "non-accepted AgentRecord cannot establish or withhold cross-spine "
+            f"connector derived feature: {nonaccepted_references[0].feature_id}"
+        )
+    references = [
+        reference
+        for record in records
+        if record.decision == "accept"
+        for reference in record.withheld_derived_features
+        if reference.network_role == "cross-spine-connector"
+    ]
+    reference_ids = [reference.feature_id for reference in references]
+    finding_ids = [reference.finding_id for reference in references]
+    duplicate_references = sorted(
+        reference_id
+        for reference_id in set(reference_ids)
+        if reference_ids.count(reference_id) != 1
+    )
+    if duplicate_references:
+        raise ValueError(
+            "withheld cross-spine connector audit has duplicate connector reference: "
+            f"{duplicate_references[0]}"
+        )
+    duplicate_findings = sorted(
+        finding_id
+        for finding_id in set(finding_ids)
+        if finding_ids.count(finding_id) != 1
+    )
+    if duplicate_findings:
+        raise ValueError(
+            "withheld cross-spine connector audit has conflicting finding reference: "
+            f"{duplicate_findings[0]}"
+        )
+    for reference in references:
+        expected_finding_id = stable_id("cross-spine-connector-gap", reference.feature_id)
+        if reference.finding_id != expected_finding_id:
+            raise ValueError(
+                "withheld cross-spine connector audit names the wrong finding: "
+                f"{reference.feature_id}"
+            )
+        public_feature = _exact_cross_spine_connector_gap_feature(
+            features,
+            reference.finding_id,
+            "public GeoJSON",
+        )
+        _validate_cross_spine_connector_gap_geometry(
+            public_feature,
+            reference.finding_id,
+            "public GeoJSON",
+        )
+        if reference.feature_id in authoritative_registry:
+            raise ValueError(
+                "withheld cross-spine connector is still present in the authoritative "
+                f"registry: {reference.feature_id}"
+            )
+        if review_gap_features is None:
+            continue
+        review_feature = _exact_cross_spine_connector_gap_feature(
+            review_features,
+            reference.finding_id,
+            "review-map GeoJSON",
+        )
+        _validate_cross_spine_connector_gap_geometry(
+            review_feature,
+            reference.finding_id,
+            "review-map GeoJSON",
+        )
+        if public_feature["geometry"] != review_feature["geometry"]:
+            raise ValueError(
+                "review-map Route Refinement Finding geometry differs from public "
+                f"GeoJSON: {reference.finding_id}"
+            )
+    if set(gap_features) != set(finding_ids):
+        raise ValueError(
+            "published cross-spine Route Refinement Findings differ from withheld connector audits"
+        )
+    if review_gap_features is not None and set(review_gap_features) != set(finding_ids):
+        raise ValueError(
+            "review-map cross-spine Route Refinement Findings differ from withheld connector audits"
+        )
+
+
+def _cross_spine_connector_gap_features(
+    features: list[object],
+    artifact_name: str,
+) -> dict[str, list[dict[str, object]]]:
+    """Collect only correctly typed cross-spine Route Refinement Findings."""
+    gap_features: dict[str, list[dict[str, object]]] = {}
+    for feature in features:
+        if not isinstance(feature, dict):
+            continue
+        properties = feature.get("properties")
+        if not isinstance(properties, dict):
+            continue
+        if (
+            properties.get("feature_type") != "gap"
+            or properties.get("network_role") != "cross-spine-connector-gap"
+        ):
+            continue
+        finding_id = str(feature.get("id"))
+        gap_features.setdefault(finding_id, []).append(feature)
+    return gap_features
+
+
+def _exact_cross_spine_connector_gap_feature(
+    features: list[object],
+    finding_id: str,
+    artifact_name: str,
+) -> dict[str, object]:
+    """Return the single correctly typed public representation of one finding."""
+    matching_features = [
+        feature
+        for feature in features
+        if isinstance(feature, dict) and str(feature.get("id")) == finding_id
+    ]
+    if len(matching_features) != 1:
+        raise ValueError(
+            "withheld cross-spine connector audit must reference exactly one "
+            f"{artifact_name} Route Refinement Finding: {finding_id}"
+        )
+    feature = matching_features[0]
+    properties = feature.get("properties")
+    if not isinstance(properties, dict) or (
+        properties.get("feature_type"),
+        properties.get("network_role"),
+    ) != ("gap", "cross-spine-connector-gap"):
+        raise ValueError(
+            f"{artifact_name} Route Refinement Finding has the wrong feature type or role: "
+            f"{finding_id}"
+        )
+    return feature
+
+
+def _validate_cross_spine_connector_gap_geometry(
+    feature: dict[str, object],
+    finding_id: str,
+    artifact_name: str,
+) -> None:
+    """Require withheld-connector findings to depict only observed point termini."""
+    geometry = feature.get("geometry")
+    if not isinstance(geometry, dict):
+        raise ValueError(
+            f"{artifact_name} Route Refinement Finding has invalid point geometry: {finding_id}"
+        )
+    try:
+        parsed_geometry = shape(geometry)
+    except (AttributeError, IndexError, KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            f"{artifact_name} Route Refinement Finding has invalid point geometry: {finding_id}"
+        ) from error
+    if parsed_geometry.is_empty or parsed_geometry.geom_type not in {"Point", "MultiPoint"}:
+        raise ValueError(
+            f"{artifact_name} Route Refinement Finding must have non-empty Point or "
+            f"MultiPoint geometry: {finding_id}"
+        )
