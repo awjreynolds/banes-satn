@@ -18,6 +18,7 @@ from lcwip.governance import validate_governance_bundle
 from lcwip.interventions import validate_intervention_bundle
 from lcwip.models import GuidanceProfile
 from lcwip.prioritisation import validate_prioritisation_bundle
+from lcwip.publication import validate_lcwip_publication
 from lcwip.staged_agents import AgentDecisionLedger, StageDecisionEnvelope
 from lcwip.walking import validate_walking_bundle
 
@@ -45,6 +46,10 @@ agents_app = typer.Typer(
     no_args_is_help=True,
     help="Validate bounded staged-agent decision contracts.",
 )
+publication_app = typer.Typer(
+    no_args_is_help=True,
+    help="Validate atomic, cited LCWIP publication releases.",
+)
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(demand_app, name="demand")
@@ -53,6 +58,7 @@ app.add_typer(interventions_app, name="interventions")
 app.add_typer(prioritisation_app, name="prioritisation")
 app.add_typer(governance_app, name="governance")
 app.add_typer(agents_app, name="agents")
+app.add_typer(publication_app, name="publication")
 
 
 @profile_app.command("validate")
@@ -153,6 +159,15 @@ def validate_agent_ledger(
     """Validate a data-only staged-agent replay ledger."""
     ledger = AgentDecisionLedger.model_validate_json(path.read_text())
     typer.echo(f"valid {len(ledger.responses)} staged-agent responses")
+
+
+@publication_app.command("validate")
+def validate_publication(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+) -> None:
+    """Validate an archived LCWIP report and publication bundle."""
+    manifest = validate_lcwip_publication(path)
+    typer.echo(f"valid {manifest.release_id} {manifest.publication_fingerprint}")
 
 
 if __name__ == "__main__":
