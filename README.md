@@ -323,6 +323,66 @@ Representation limits and groups not reached remain visible, and every record st
 that silence is not support. Post-consultation amendments retain their trigger,
 responsible human, rationale and release-fingerprint chain.
 
+## Run bounded staged agent reviews
+
+LCWIP stage reviews use one provider-neutral, fingerprinted decision envelope rather
+than a “write the plan” prompt. Eight closed role contracts cover evidence critique,
+cycling, walking/accessibility, interventions, prioritisation, engagement synthesis,
+network/design red-teaming and report/citation review. Each role declares its
+Evidence Packet scope, finite action vocabulary, permitted output, prohibited claims,
+citation duty, retry budget, revision budget and hard wall-clock deadline.
+
+Evidence text is explicitly untrusted data. A runtime returns only the request ID,
+dependency fingerprint, one offered action ID and governed evidence citations. It
+cannot submit executable fields or actions for raw-evidence mutation, policy weights,
+mandatory waivers, manufactured representations or adoption. Missing evidence creates
+a typed Evidence Request; an accountable policy choice, bounded-loop failure or
+no-consensus creates the smallest possible Human Intervention Request.
+
+```python
+from lcwip import (
+    apply_validated_stage_decision,
+    build_stage_decision_envelope,
+    review_stage,
+)
+
+envelope = build_stage_decision_envelope(
+    stage=stage,
+    role=role,
+    compilation_scope=scope,
+    governed_target_ids=target_ids,
+    plan_state_fingerprint=plan_state.fingerprint,
+    evidence_packet=evidence_packet,
+    actions=compiler_authored_actions,
+    deterministic_action_id="1",
+)
+review = review_stage(envelope, runtime=optional_runtime, agent_enabled=use_agents)
+mutation = apply_validated_stage_decision(
+    plan_state,
+    review,
+    critique_gate=independent_critique_gate,
+)
+```
+
+Stale fingerprints, malformed responses, timeouts, provider failures and fabricated
+replay records fail closed while retaining prompt, provider/model/runtime, input,
+response-hash, usage and validation metadata. Selected stages require an independently
+fingerprinted critic record bound to the primary request. Blocking and
+revision-required findings remain blocking until evidenced resolution, an allowed
+named-human waiver, or explicit unresolved escalation.
+
+No-Agent Mode selects the declared deterministic fallback without constructing a
+runtime and produces the same typed artifacts. Only the deterministic compiler can
+append an applied decision to authoritative state, and that state has no mutation
+surface for source content, policy weights, lifecycle state or adoption.
+
+Validate serialised envelopes and data-only replay ledgers with:
+
+```shell
+uv run lcwip agents validate-envelope path/to/envelope.json
+uv run lcwip agents validate-ledger path/to/ledger.json
+```
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
