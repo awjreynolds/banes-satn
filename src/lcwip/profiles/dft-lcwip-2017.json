@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "profile_id": "dft-lcwip-2017",
+  "issuer": "Department for Transport",
+  "document": "Local Cycling and Walking Infrastructure Plans technical guidance",
+  "version": "2017",
+  "effective_date": "2017-04-01",
+  "applicability": "English local authorities preparing or updating a Local Cycling and Walking Infrastructure Plan under the currently published DfT method.",
+  "requirements": [
+    {
+      "requirement_id": "dft-2017.scope-governance",
+      "obligation": "mandatory",
+      "expected_artifacts": ["scope-and-governance"],
+      "description": "Define the plan scope, governance, stakeholders and intended use."
+    },
+    {
+      "requirement_id": "dft-2017.information-and-barriers",
+      "obligation": "mandatory",
+      "expected_artifacts": ["baseline-evidence", "barriers-register"],
+      "description": "Compile information on existing conditions, travel patterns and barriers."
+    },
+    {
+      "requirement_id": "dft-2017.cycling-network-planning",
+      "obligation": "mandatory",
+      "expected_artifacts": ["cycling-network-plan"],
+      "description": "Develop the cycling network using the applicable DfT method."
+    },
+    {
+      "requirement_id": "dft-2017.walking-network-planning",
+      "obligation": "mandatory",
+      "expected_artifacts": ["walking-network-plan"],
+      "description": "Develop Core Walking Zones and key walking routes using the applicable DfT method."
+    },
+    {
+      "requirement_id": "dft-2017.prioritisation",
+      "obligation": "mandatory",
+      "expected_artifacts": ["prioritised-programme"],
+      "description": "Create a prioritised programme of walking and cycling improvements."
+    },
+    {
+      "requirement_id": "dft-2017.policy-integration",
+      "obligation": "mandatory",
+      "expected_artifacts": ["policy-integration"],
+      "description": "Integrate the plan with relevant local policy, strategies and delivery plans."
+    },
+    {
+      "requirement_id": "dft-2017.engagement",
+      "obligation": "recommended",
+      "expected_artifacts": ["engagement-record"],
+      "description": "Record proportionate stakeholder and public engagement."
+    },
+    {
+      "requirement_id": "local.objective-alignment",
+      "obligation": "locally-selected",
+      "expected_artifacts": ["local-objectives"],
+      "description": "A council-selected local requirement that remains explicit and versioned."
+    }
+  ]
+}

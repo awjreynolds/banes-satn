@@ -26,7 +26,15 @@ from shapely.geometry import MultiLineString, mapping, shape
 
 from satn.compiler import CompiledNetwork
 from satn.constants import DISCLAIMER, SCHEMA_VERSION
-from satn.models import AgentRecord, CouncilConfig, DivergenceRecord, TrafficLight
+from satn.models import (
+    AgentRecord,
+    CompilationResult,
+    CouncilConfig,
+    DivergenceRecord,
+    PublishedArtifactReference,
+    PublishedNetworkFeatureReference,
+    TrafficLight,
+)
 from satn.sources import NCN_ATTRIBUTION, OSM_ATTRIBUTION
 
 LOGGER = logging.getLogger(__name__)
@@ -46,6 +54,128 @@ def publication_artifacts(output: Path) -> dict[str, Path]:
         "review_zip": output / "review-map.zip",
         "pdf": output / "network-map.pdf",
     }
+
+
+def published_artifact_reference(
+    result: CompilationResult, artifact_key: str
+) -> PublishedArtifactReference:
+    """Derive the public identity of one artifact from a successful SATN result."""
+    if result.status not in {"complete", "reviewable"}:
+        raise ValueError("only successful SATN compilation results can publish artifact references")
+    try:
+        artifact = result.artifacts[artifact_key]
+    except KeyError as error:
+        raise ValueError(f"SATN result has no artifact with key {artifact_key!r}") from error
+    if not artifact.is_file():
+        raise ValueError(f"SATN artifact {artifact_key!r} is not a file")
+    return PublishedArtifactReference(
+        run_id=result.run_id,
+        artifact_key=artifact_key,
+        uri=artifact.resolve().as_uri(),
+        sha256=hashlib.sha256(artifact.read_bytes()).hexdigest(),
+    )
+
+
+def published_feature_reference(
+    result: CompilationResult, feature_id: str | int, artifact_key: str = "geojson"
+) -> PublishedNetworkFeatureReference:
+    """Return one geometry-free feature identity from a successful public GeoJSON artifact."""
+    artifact = published_artifact_reference(result, artifact_key)
+    try:
+        payload = json.loads(result.artifacts[artifact_key].read_text())
+    except (json.JSONDecodeError, OSError) as error:
+        raise ValueError(
+            f"SATN artifact {artifact_key!r} is not readable public GeoJSON"
+        ) from error
+    if payload.get("type") != "FeatureCollection" or not isinstance(payload.get("features"), list):
+        raise ValueError(f"SATN artifact {artifact_key!r} is not a GeoJSON FeatureCollection")
+    requested_feature_id = _published_geojson_feature_id(feature_id)
+    if requested_feature_id is None:
+        raise ValueError("SATN public feature identity must be a nonblank string or integer")
+    features = []
+    for feature in payload["features"]:
+        if not isinstance(feature, dict):
+            raise ValueError("SATN public GeoJSON feature identity must be an object with an ID")
+        if feature.get("type") != "Feature":
+            raise ValueError("SATN public GeoJSON item must have type 'Feature'")
+        published_id = _published_geojson_feature_id(feature.get("id"))
+        if published_id is None:
+            raise ValueError(
+                "SATN public GeoJSON feature identity must be a nonblank string or integer"
+            )
+        if published_id == requested_feature_id:
+            features.append((feature, published_id))
+    if not features:
+        raise ValueError(f"SATN public GeoJSON has no feature {requested_feature_id!r}")
+    if len(features) != 1:
+        raise ValueError(
+            f"SATN public GeoJSON must contain exactly one feature {requested_feature_id!r}"
+        )
+    feature, published_id = features[0]
+    properties = feature.get("properties")
+    if not isinstance(properties, dict):
+        raise ValueError(f"SATN public GeoJSON feature {published_id!r} has no properties")
+    _validate_published_geojson_geometry(feature, published_id)
+    feature_type = _published_geojson_text_property(properties, "feature_type", published_id)
+    network_role = _published_geojson_optional_text_property(
+        properties, "network_role", published_id
+    )
+    reference_data = {
+        "run_id": artifact.run_id,
+        "artifact_key": artifact.artifact_key,
+        "feature_id": published_id,
+        "feature_type": feature_type,
+        "source_artifact_uri": artifact.uri,
+        "source_artifact_sha256": artifact.sha256,
+    }
+    if network_role is not None:
+        reference_data["network_role"] = network_role
+    return PublishedNetworkFeatureReference(**reference_data)
+
+
+def _published_geojson_feature_id(value: object) -> str | None:
+    """Normalize the supported, scalar public GeoJSON feature identifiers."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        normalized = value.strip()
+        return normalized or None
+    return None
+
+
+def _published_geojson_text_property(
+    properties: dict[object, object], property_name: str, feature_id: str
+) -> str:
+    value = properties.get(property_name)
+    if not isinstance(value, str) or not (normalized := value.strip()):
+        raise ValueError(f"SATN public GeoJSON feature {feature_id!r} has no {property_name}")
+    return normalized
+
+
+def _published_geojson_optional_text_property(
+    properties: dict[object, object], property_name: str, feature_id: str
+) -> str | None:
+    """Return an optional text property, rejecting a malformed present value."""
+    if property_name not in properties:
+        return None
+    return _published_geojson_text_property(properties, property_name, feature_id)
+
+
+def _validate_published_geojson_geometry(feature: dict[object, object], feature_id: str) -> None:
+    """Require the selected public feature to carry a non-empty valid GeoJSON geometry."""
+    geometry = feature.get("geometry")
+    if not isinstance(geometry, dict):
+        raise ValueError(f"SATN public GeoJSON feature {feature_id!r} has invalid geometry")
+    try:
+        parsed_geometry = shape(geometry)
+    except (AttributeError, IndexError, KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            f"SATN public GeoJSON feature {feature_id!r} has invalid geometry"
+        ) from error
+    if parsed_geometry.is_empty:
+        raise ValueError(f"SATN public GeoJSON feature {feature_id!r} has empty geometry")
 
 
 def validate_publication(output: Path, config: CouncilConfig) -> None:
@@ -1508,18 +1638,13 @@ def _validate_artifacts(output: Path, config: CouncilConfig) -> None:
         )
     if geopackage_registry != geojson_registry:
         raise ValueError("authoritative feature identifiers or roles differ in GeoPackage")
-    agent_payload = json.loads(
-        (output / "agent-records.json").read_text(encoding="utf-8")
-    )
-    agent_records = [
-        AgentRecord.model_validate(record) for record in agent_payload["records"]
-    ]
+    agent_payload = json.loads((output / "agent-records.json").read_text(encoding="utf-8"))
+    agent_records = [AgentRecord.model_validate(record) for record in agent_payload["records"]]
     divergence_payload = json.loads(
         (output / "divergence-records.json").read_text(encoding="utf-8")
     )
     divergence_records = [
-        DivergenceRecord.model_validate(record)
-        for record in divergence_payload["records"]
+        DivergenceRecord.model_validate(record) for record in divergence_payload["records"]
     ]
     expected_review_summary = _agent_review_summary(
         config,

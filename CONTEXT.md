@@ -367,3 +367,35 @@ _Avoid_: geometry diff, unexplained mismatch
 **Explicit Unknown**:
 A material fact that the available evidence does not establish. It remains visible and must not be silently interpreted as absent, safe or zero.
 _Avoid_: missing value, assumed absence
+
+**LCWIP Guidance Profile**:
+A versioned, attributable set of stable LCWIP requirement identifiers, obligations and expected evidence or artifacts, identified by issuer, document version, effective date and applicability. A later profile does not rewrite an earlier Release's recorded profile.
+_Avoid_: timeless checklist, implicit DfT rule, overwritten guidance
+
+**LCWIP Requirement Status**:
+The explicit conformance state of one Guidance Profile requirement: satisfied, unknown, not-applicable, waived or failed. A waiver records a named human authority and rationale; unknown is never treated as satisfied.
+_Avoid_: blank checkbox, inferred compliance, agent waiver
+
+**LCWIP Release**:
+A versioned plan record bound to one Guidance Profile fingerprint and visible lifecycle state: exploratory, evidence_incomplete, analysis_draft, consultation_draft, adoption_candidate, adopted or superseded. Every state transition has a named human gate. Adopted requires an externally recorded authorised decision and a separately evidenced, named-human verification for that same decision; automatic or generated provenance is not permitted.
+_Avoid_: generated adoption, implicit approval, final draft
+
+**Network Validity**:
+Whether a proposed network satisfies its stated topology and continuity evidence rules. Network Validity is not evidence of Benefit or Priority, Feasibility, Consultation or Adoption.
+_Avoid_: preferred scheme, high-priority route, approved network
+
+**Benefit or Priority**:
+The evidenced and accountable ordering of valid options for investment or delivery. It does not establish Network Validity, Feasibility, Consultation support or Adoption.
+_Avoid_: compiler order, traffic-light priority, automatic programme
+
+**Feasibility**:
+The separately evidenced judgement that an intervention can be delivered within relevant physical, legal, environmental, cost and operational constraints. It does not establish Network Validity, Benefit or Priority, Consultation support or Adoption.
+_Avoid_: mapped route, indicative intervention, deliverable by default
+
+**Consultation**:
+The governed engagement process that records representations, responses and accountable dispositions. Publishing a map or an analysis draft is not Consultation and Consultation does not itself establish Adoption.
+_Avoid_: public web page, map access, automatic consent
+
+**Adoption**:
+An authorised external council decision recorded for a specific LCWIP Release and separately verified by a named person with distinct governed evidence. This is verification provenance, not a cryptographic signature. It is distinct from Network Validity, Benefit or Priority, Feasibility and Consultation, each of which can remain incomplete or contested.
+_Avoid_: generated release, conformance result, officer draft
