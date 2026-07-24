@@ -8,4 +8,5 @@ its boundary checks.
 | Boundary | Status | Pull request | Merge commit | Validation |
 | --- | --- | --- | --- | --- |
 | Governed setup | Merged | [#100](https://github.com/awjreynolds/banes-satn/pull/100) | `161f02b` | Research and workflow governance; two CI runs green. |
-| Issue [#89](https://github.com/awjreynolds/banes-satn/issues/89) | Validated; PR pending | — | — | Controller gate: 113 focused tests, 337 full-suite passes, 2 browser passes, Ruff clean, wheel/sdist build clean, packaged profile CLI valid; Standards and Spec findings repaired to a clean release decision. |
+| Issue [#89](https://github.com/awjreynolds/banes-satn/issues/89) | Merged | [#101](https://github.com/awjreynolds/banes-satn/pull/101) | `e5ae948` | Refreshed `main`: 113 focused tests, 337 full-suite passes, 2 browser passes, Ruff clean, wheel/sdist build clean, packaged profile CLI valid. |
+| Issue [#90](https://github.com/awjreynolds/banes-satn/issues/90) | Validated; PR pending | — | — | Controller gate: 23 focused Evidence Registry tests, 360 full-suite passes, 2 unchanged SATN browser passes, Ruff clean, wheel/sdist build clean, packaged LCWIP evidence CLI valid; local Standards and Spec acceptance clean. |

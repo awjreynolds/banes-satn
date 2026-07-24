@@ -260,6 +260,38 @@ _Avoid_: final design, adopted network
 An immutable, versioned collection of governed evidence and rules supplied to an agent role for one compilation scope.
 _Avoid_: prompt context, live web research
 
+**LCWIP Evidence Registry**:
+The governed catalogue of LCWIP baseline Evidence Items, their stable identities, provenance, permitted uses, access policy and reproducibility state. It describes evidence honestly; it does not acquire missing data or permit an agent to change source facts.
+_Avoid_: shared data folder, agent memory, evidence claim
+
+**LCWIP Evidence Item**:
+One immutable registry record classified by Evidence Family and Evidence Role, with publisher, licence, retrieval and observation dates, spatial coverage, version, methodology, known bias, quality and permitted uses. An unavailable item records why it cannot be reproduced instead of appearing present.
+_Avoid_: unreferenced file, prompt attachment, inferred fact
+
+**Evidence Family Requirement**:
+A Guidance-Profile- and council-specific declaration of the spatial coverage, freshness, quality and permitted use required from one Evidence Family before an analytical pass. It is configured evidence governance, not a universal threshold hidden in code.
+_Avoid_: global completeness rule, adapter default, acceptance of political risk
+
+**LCWIP Evidence Snapshot**:
+An immutable, content-hashed public bundle containing the Evidence Registry manifest, permitted or redacted evidence artifacts, and machine- and human-readable coverage reports. Sensitive or personal source material is excluded; a changed governed input creates a different snapshot rather than mutating the bundle.
+_Avoid_: live source cache, mutable baseline, private-data export
+
+**Evidence Coverage Report**:
+The deterministic account of missing, stale, low-quality, spatially incomplete, licence-restricted or non-reproducible Evidence Families for one LCWIP Evidence Snapshot. Later analytical passes load this report through the Baseline Evidence Gate and never interpret an omitted or unavailable source as satisfactory evidence.
+_Avoid_: confidence score, completeness assertion, evidence substitution
+
+**Evidence Lineage**:
+The complete stable identifiers of the governed inputs to a derived Evidence Item together with its transformation version. Lineage is acyclic and does not turn a transformation into a new raw source.
+_Avoid_: free-text citation, partial dependency list, hidden calculation
+
+**Controlled Evidence**:
+Evidence retained outside public artifacts because it is sensitive or personal. A governed public snapshot may contain only an explicitly redacted derivative, or an exclusion record with its non-reproducibility reason.
+_Avoid_: silently copied consultation response, anonymous-by-assumption data
+
+**Baseline Evidence Gate**:
+The mandatory validation boundary that reconstructs and verifies a snapshot's machine and human Evidence Coverage Reports before an LCWIP analytical pass consumes them. It exposes limitations but does not decide whether incomplete evidence is politically acceptable.
+_Avoid_: automatic approval, agent override, optional report view
+
 **Agent Decision Record**:
 A schema-valid audit record for a compilation decision, stating its governing Criterion Status, effective Agent Review Policy, whether review was required, and either the complete fingerprinted menu and accepted caller choice, the typed direct-runtime result, or the deterministic outcome. A caller-mediated record includes the mapped compiler action, responder mode, validation result and affected feature identifiers. It never directly changes compiled state.
 _Avoid_: free-form answer, silent edit, unrecorded deterministic skip
