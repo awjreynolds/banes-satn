@@ -18,6 +18,7 @@ from lcwip.governance import validate_governance_bundle
 from lcwip.interventions import validate_intervention_bundle
 from lcwip.models import GuidanceProfile
 from lcwip.prioritisation import validate_prioritisation_bundle
+from lcwip.staged_agents import AgentDecisionLedger, StageDecisionEnvelope
 from lcwip.walking import validate_walking_bundle
 
 app = typer.Typer(no_args_is_help=True, help="Validate LCWIP public contracts.")
@@ -40,6 +41,10 @@ governance_app = typer.Typer(
     no_args_is_help=True,
     help="Validate human-authority, engagement, equality and policy records.",
 )
+agents_app = typer.Typer(
+    no_args_is_help=True,
+    help="Validate bounded staged-agent decision contracts.",
+)
 app.add_typer(profile_app, name="profile")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(demand_app, name="demand")
@@ -47,6 +52,7 @@ app.add_typer(walking_app, name="walking")
 app.add_typer(interventions_app, name="interventions")
 app.add_typer(prioritisation_app, name="prioritisation")
 app.add_typer(governance_app, name="governance")
+app.add_typer(agents_app, name="agents")
 
 
 @profile_app.command("validate")
@@ -129,6 +135,24 @@ def validate_governance(
     """Validate a human-gated LCWIP governance and engagement record."""
     manifest = validate_governance_bundle(path)
     typer.echo(f"valid {manifest.release_id} {manifest.analysis_fingerprint}")
+
+
+@agents_app.command("validate-envelope")
+def validate_agent_envelope(
+    path: Annotated[Path, typer.Argument(exists=True, readable=True)],
+) -> None:
+    """Validate one fingerprinted LCWIP Stage Decision Envelope."""
+    envelope = StageDecisionEnvelope.model_validate_json(path.read_text())
+    typer.echo(f"valid {envelope.request_id} {envelope.dependency_fingerprint}")
+
+
+@agents_app.command("validate-ledger")
+def validate_agent_ledger(
+    path: Annotated[Path, typer.Argument(exists=True, readable=True)],
+) -> None:
+    """Validate a data-only staged-agent replay ledger."""
+    ledger = AgentDecisionLedger.model_validate_json(path.read_text())
+    typer.echo(f"valid {len(ledger.responses)} staged-agent responses")
 
 
 if __name__ == "__main__":

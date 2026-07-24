@@ -332,6 +332,36 @@ _Avoid_: Codex prompt, model-specific workflow
 The optional provider-neutral seam through which compilation submits one complete fingerprinted Agent Decision Request and accepts only its request identifier plus one offered choice identifier. Calls are lazy, single-attempt, request- and token-limited, and protected by a configurable hard wall-clock deadline. Timeout, provider failure, schema failure or an unoffered choice ends the invocation with the same non-waiting decision-required result. A concrete model provider is an Adapter at this seam; Codex is not required.
 _Avoid_: embedded chatbot, Codex dependency, free-form agent call
 
+**LCWIP Stage Decision Envelope**:
+A fingerprinted, provider-neutral request binding one LCWIP stage and Agent Role
+Contract to an immutable Evidence Packet, exact plan-state fingerprint, bounded
+revision index and finite compiler-authored action vocabulary. Evidence content is
+untrusted data, and a response can select only one offered action with governed
+citations.
+_Avoid_: general-purpose prompt, free-form plan edit, model-authored command
+
+**Independent Critique Gate**:
+A deterministic stage boundary that binds a separate critic's accepted decision
+record to the exact primary request and tracks every material Challenge Finding to an
+evidenced resolution, a permitted named-human waiver or an unresolved blocker.
+Stages configured for independent critique cannot mutate authoritative state without
+this gate.
+_Avoid_: optional review comment, self-review, untracked objection
+
+**Authoritative Stage Mutation**:
+The immutable state transition performed only by the deterministic LCWIP compiler
+after a Stage Decision Envelope, selected finite action, citations, current-state
+fingerprint and any required Independent Critique Gate all validate. The mutation
+surface cannot change raw evidence, policy weights, lifecycle state, representations,
+mandatory waivers or adoption.
+_Avoid_: agent patch, response side effect, direct lifecycle update
+
+**No-Agent Mode**:
+A deterministic execution of the same Stage Decision Envelope using its declared
+fallback action without constructing or calling an Agent Runtime. It produces the
+same typed review and compiler artifacts and never weakens invariants.
+_Avoid_: skipped validation, empty artifact, hidden default
+
 **Council Configuration**:
 Versioned council-specific data declaring the study boundary, source locations and Criteria Set values consumed by the council-neutral compiler without changing compilation logic.
 _Avoid_: council fork, hard-coded B&NES rule, deployment environment
