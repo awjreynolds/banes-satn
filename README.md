@@ -61,6 +61,50 @@ publication-contract interfaces for referring to SATN artifacts without copying 
 `PublishedNetworkFeatureReference` and `published_feature_reference` identify one feature in a
 published GeoJSON artifact, including its source-artifact SHA-256, without copying geometry.
 
+## Snapshot an LCWIP evidence baseline
+
+The LCWIP Evidence Registry is separate from, and compatible with, the existing
+`satn snapshot` source bundle. A council- and Guidance-Profile-specific registry
+configuration declares its required evidence families and governed local inputs:
+
+```shell
+uv run lcwip evidence snapshot path/to/evidence-registry.json
+uv run lcwip evidence validate path/to/evidence-snapshots/snapshot-id
+```
+
+The snapshot is immutable and content-fingerprinted. Each item records its source,
+publisher, licence, retrieval and observation dates, spatial coverage, version,
+methodology, known bias, quality, permitted uses and one of the governed evidence
+roles. Adapter contracts cover population, equality context, travel demand, collision
+and traffic evidence, public transport and attractors, development and policy, rights
+of way and infrastructure, and controlled local imports.
+
+Every snapshot contains `coverage-report.json` and `coverage-report.md`. The reports
+make missing, stale, low-quality, spatially incomplete, licence-restricted and
+non-reproducible evidence explicit and produce typed evidence requests. Call
+`load_evidence_gate` before later LCWIP analysis; it revalidates hashes and reconstructs
+both reports from the manifest.
+
+```python
+from pathlib import Path
+
+from lcwip import (
+    EvidenceRegistryConfig,
+    load_evidence_gate,
+    snapshot_evidence_registry,
+)
+
+config = EvidenceRegistryConfig.from_json(Path("path/to/evidence-registry.json"))
+snapshot = snapshot_evidence_registry(config)
+coverage = load_evidence_gate(snapshot)
+```
+
+Public evidence is copied into the bundle, controlled evidence must use a separately
+redacted input or be excluded, and personal evidence is always excluded. Derived
+evidence requires complete input lineage and a transformation version. Agents may
+classify or request evidence through these contracts but cannot mutate snapshot items
+or mark unavailable evidence present.
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 

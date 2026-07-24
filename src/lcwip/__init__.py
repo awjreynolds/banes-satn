@@ -5,6 +5,28 @@ adopt plans.  It provides versioned guidance and conformance contracts.
 """
 
 from lcwip.conformance import evaluate_conformance, evaluate_release_conformance
+from lcwip.evidence import (
+    AccessLevel,
+    AdapterKind,
+    EvidenceAvailability,
+    EvidenceCoverageEntry,
+    EvidenceCoverageReport,
+    EvidenceFamily,
+    EvidenceFamilyRequirement,
+    EvidenceIssue,
+    EvidenceQuality,
+    EvidenceRegistryConfig,
+    EvidenceRole,
+    EvidenceSnapshotItem,
+    EvidenceSnapshotManifest,
+    EvidenceSourceSpec,
+    PublicDisposition,
+    RegistryEvidenceRequest,
+    SpatialCoverage,
+    load_evidence_gate,
+    snapshot_evidence_registry,
+    validate_evidence_snapshot,
+)
 from lcwip.lifecycle import transition_release
 from lcwip.models import (
     ArtifactLink,
@@ -50,6 +72,8 @@ from lcwip.models import (
 )
 
 __all__ = [
+    "AccessLevel",
+    "AdapterKind",
     "ArtifactLink",
     "AuditFinding",
     "AuditFindingStatus",
@@ -59,8 +83,20 @@ __all__ = [
     "Disposition",
     "EqualityFinding",
     "EqualityFindingStatus",
+    "EvidenceAvailability",
+    "EvidenceCoverageEntry",
+    "EvidenceCoverageReport",
+    "EvidenceFamily",
+    "EvidenceFamilyRequirement",
+    "EvidenceIssue",
     "EvidenceItem",
+    "EvidenceQuality",
+    "EvidenceRegistryConfig",
     "EvidenceRequest",
+    "EvidenceRole",
+    "EvidenceSnapshotItem",
+    "EvidenceSnapshotManifest",
+    "EvidenceSourceSpec",
     "ExternalDecisionRecord",
     "ExternalDecisionVerification",
     "ExternalDecisionVerificationMethod",
@@ -78,12 +114,15 @@ __all__ = [
     "PolicyLink",
     "ProgrammeEntry",
     "ProgrammeScenario",
+    "PublicDisposition",
+    "RegistryEvidenceRequest",
     "Representation",
     "Requirement",
     "RequirementAssessment",
     "RequirementStatus",
     "SatnArtifactReference",
     "SatnFeatureReference",
+    "SpatialCoverage",
     "StudyArea",
     "Target",
     "TransitionGate",
@@ -92,5 +131,8 @@ __all__ = [
     "WalkingZone",
     "evaluate_conformance",
     "evaluate_release_conformance",
+    "load_evidence_gate",
+    "snapshot_evidence_registry",
     "transition_release",
+    "validate_evidence_snapshot",
 ]
