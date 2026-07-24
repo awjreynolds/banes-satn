@@ -293,6 +293,36 @@ programme scenarios or funding commitments. Validate outputs with:
 uv run lcwip prioritisation validate path/to/prioritisation-output/analysis-id
 ```
 
+## Govern engagement, equality and adoption
+
+The Governance Record binds plan sponsorship, the SRO, project board, council
+directives, objectives, targets and timetable to named human authorities. It also
+records the engagement strategy, stakeholder register, accessible activities,
+immutable source-representation hashes, agent summaries with source citations and
+coverage, and separate human dispositions. Public output includes public or redacted
+representations only; excluded personal material is never copied into that output.
+
+Lifecycle state is derived from a contiguous transition history. Analysis,
+consultation, adoption-candidate and adopted states require their exact named human
+gates, and cumulative validation prevents a permitted state transition from bypassing
+consultation. Equality findings with unknown or unresolved adverse impacts block
+consultation and adoption. Policy alignments cite a governed policy clause, the
+affected plan subject and a named officer's judgement.
+
+Software does not adopt an LCWIP. An `adopted` record is possible only after an
+external authority decision is independently verified by a different person and
+bound to the exact substantive release fingerprint. Use
+`governance_release_fingerprint` to bind that decision, then build and validate the
+immutable record:
+
+```shell
+uv run lcwip governance validate path/to/governance-output/release-id
+```
+
+Representation limits and groups not reached remain visible, and every record states
+that silence is not support. Post-consultation amendments retain their trigger,
+responsible human, rationale and release-fingerprint chain.
+
 The default `fake` agent provider is deterministic and requires no credentials. It
 exercises the same typed compilation gate used by configured model providers.
 
