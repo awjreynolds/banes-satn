@@ -28,7 +28,8 @@ MANIFEST_SCHEMA_VERSION: Final = "satn-compilation-dependency-manifest/v4"
 # Preserve genuine closed required routes through mesh admission.
 # Rebind canonical urban city/town anchors within the governed urban scope.
 # Preserve governed A-road and typed cycle-corridor obligations beside urban journeys.
-COMPILER_CACHE_REVISION: Final = "poc-v10"
+# Retain raw NCN membership and geometry-only reciprocal edge identities.
+COMPILER_CACHE_REVISION: Final = "poc-v11"
 _REVISION = re.compile(r"^[a-z0-9]+(?:[-._/][a-z0-9]+)*$")
 _COMPILER_PATHS = frozenset({"network", "reference", "strategic-reference", "ea-recovery"})
 

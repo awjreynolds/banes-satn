@@ -766,10 +766,17 @@ def _geometry_points(geometry: object) -> list[Point]:
 def mark_ncn_edges(network: gpd.GeoDataFrame, context: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Annotate routable edges that overlap strategic public cycle-route evidence."""
     result = network.copy()
+    raw_current_ncn = [
+        any(value.strip().lower() == "yes" for value in _tag_values(raw_value))
+        for raw_value in result.get("ncn", pd.Series(index=result.index, dtype=object))
+    ]
     ncn = context[context["feature_type"].isin(STRATEGIC_CYCLE_ROUTE_TYPES)]
     cycle_alignment_bases = [()] * len(result)
     if ncn.empty:
-        result["satn_ncn"] = False
+        result["satn_ncn"] = raw_current_ncn
+        cycle_alignment_bases = [
+            ("current-ncn",) if is_current_ncn else () for is_current_ncn in raw_current_ncn
+        ]
         result["cycle_alignment_bases"] = cycle_alignment_bases
         return result
     projected = result.to_crs(27700)
@@ -801,13 +808,25 @@ def mark_ncn_edges(network: gpd.GeoDataFrame, context: gpd.GeoDataFrame) -> gpd.
             overlap_shares,
             strict=True,
         ):
-            marked[position] = bool(length and overlap_share >= 0.5)
+            marked[position] = bool(length and overlap_share >= 0.5) or raw_current_ncn[position]
             if length:
                 cycle_alignment_bases[position] = tuple(
                     basis
                     for _feature_type, basis, typed_corridor in typed_corridors
                     if geometry.intersection(typed_corridor).length / length >= 0.5
                 )
+            if raw_current_ncn[position] and "current-ncn" not in cycle_alignment_bases[position]:
+                cycle_alignment_bases[position] = (
+                    "current-ncn",
+                    *cycle_alignment_bases[position],
+                )
+    for position, is_current_ncn in enumerate(raw_current_ncn):
+        if is_current_ncn and not marked[position]:
+            marked[position] = True
+            cycle_alignment_bases[position] = (
+                "current-ncn",
+                *cycle_alignment_bases[position],
+            )
     result["satn_ncn"] = marked
     result["cycle_alignment_bases"] = cycle_alignment_bases
     return result

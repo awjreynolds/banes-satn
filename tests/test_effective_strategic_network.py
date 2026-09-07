@@ -824,6 +824,254 @@ def test_access_extension_uses_reciprocal_length_and_reverse_provenance() -> Non
     assert "support-mb-oneway" not in support.routing_edge_ids
 
 
+def test_geometry_only_non_oneway_edges_keep_roadgraph_reciprocity_for_access_extension() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "source_id": "geometry-only-main",
+                "highway": "primary",
+                "geometry": LineString([(0, 0), (100, 0)]),
+            },
+            {
+                "source_id": "geometry-only-support",
+                "highway": "residential",
+                "geometry": LineString([(50, 0), (0, 0)]),
+            },
+            {
+                "source_id": "oneway-support",
+                "oneway": True,
+                "highway": "residential",
+                "geometry": LineString([(50, 0), (100, 0)]),
+            },
+        ],
+        geometry="geometry",
+        crs=27700,
+    )
+    graph = planning_graph_from_compiler_edges(
+        network,
+        source_export_fingerprint="4" * 64,
+    )
+    start_node = "xy:0.0000000:0.0000000"
+    end_node = "xy:100.0000000:0.0000000"
+    attachment_node = "xy:50.0000000:0.0000000"
+    road_graph = RoadGraph(network)
+    main_option = road_graph.option(start_node, end_node, "strategic-spine")
+    assert main_option is not None
+    discovered = discovery(
+        graph,
+        CorridorObligation("geometry-only-corridor", start_node, end_node),
+    )
+    source_set = discovered.candidate_sets[0]
+    records = tuple(
+        type(
+            "PreparedGeometryOnlyCandidate",
+            (),
+            {
+                "candidate": record.candidate_input,
+                "routing_edge_ids": tuple(main_option.directed_edge_ids),
+                "reverse_routing_edge_ids": tuple(main_option.reverse_directed_edge_ids),
+                "evidence_ids": (),
+                "source_ids": (),
+                "generation_strategies": ("fixture",),
+            },
+        )()
+        for record in discovered.candidate_records
+    )
+    unit = type(
+        "GeometryOnlyUnit",
+        (),
+        {
+            "unit_id": "geometry-only-corridor",
+            "unit_role": type("Role", (), {"value": "interurban-spine"})(),
+            "candidate_set": source_set,
+            "candidate_records": records,
+            "routing_start_node_id": start_node,
+            "routing_end_node_id": end_node,
+        },
+    )()
+    preparation = type(
+        "GeometryOnlyPreparation",
+        (),
+        {
+            "units": (unit,),
+            "issues": (),
+            "preparation_fingerprint": "5" * 64,
+            "profile_fingerprint": source_set.profile_fingerprint,
+        },
+    )()
+    access_support = gpd.GeoDataFrame(
+        [
+            {
+                "access_connection_id": "geometry-only-access",
+                "obligation_id": "geometry-only-access-obligation",
+                "obligation_kind": "community",
+                "target_attachment_node": attachment_node,
+                "geometry": LineString([(50, 20), (50, 0)]),
+            }
+        ],
+        geometry="geometry",
+        crs=27700,
+    )
+
+    state = compile_effective_strategic_network(
+        EffectiveStrategicNetworkRequest(
+            routable_network=network,
+            preparation=preparation,
+            area_fingerprint="6" * 64,
+            snapshot_fingerprint=graph.source_export_fingerprint,
+            access_support=(access_support,),
+        )
+    )
+
+    assert state.status is EffectiveStrategicNetworkStatus.EVALUATED
+    support = next(
+        section
+        for section in state.effective_network.sections
+        if section.section_id == "geometry-only-access"
+    )
+    assert support.routing_edge_ids == ("geometry-only-support",)
+    assert "oneway-support" not in support.routing_edge_ids
+    assert support.geometry_wkt == "LINESTRING (50 20, 50 0, 0 0)"
+    assert not any(gap.obligation_id == "geometry-only-access-obligation" for gap in state.gaps)
+
+
+def test_geometry_only_cross_source_opposites_keep_roadgraph_ids_in_planning_graph() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "source_id": "long-forward",
+                "highway": "primary",
+                "length": 100.0,
+                "geometry": LineString([(0, 0), (100, 0)]),
+            },
+            {
+                "source_id": "short-opposite",
+                "highway": "primary",
+                "length": 1.0,
+                "geometry": LineString([(100, 0), (0, 0)]),
+            },
+            {
+                "source_id": "explicit-oneway",
+                "oneway": True,
+                "highway": "primary",
+                "geometry": LineString([(0, 0), (100, 0)]),
+            },
+        ],
+        geometry="geometry",
+        crs=27700,
+    )
+    planning = planning_graph_from_compiler_edges(
+        network,
+        source_export_fingerprint="a" * 64,
+    )
+    road = RoadGraph(network)
+    planning_by_id = {edge.directed_edge_id: edge for edge in planning.edge_records}
+    road_edges = {
+        str(attrs["directed_edge_id"]): (str(start), str(end))
+        for start, end, attrs in road.graph.edges(data=True)
+    }
+
+    assert road_edges
+    assert set(road_edges) <= set(planning_by_id)
+    assert all(
+        (
+            planning_by_id[directed_edge_id].from_node_id,
+            planning_by_id[directed_edge_id].to_node_id,
+        )
+        == endpoints
+        for directed_edge_id, endpoints in road_edges.items()
+    )
+    assert not any(
+        edge.source_edge_id == "explicit-oneway"
+        and edge.from_node_id == "xy:100.0000000:0.0000000"
+        and edge.to_node_id == "xy:0.0000000:0.0000000"
+        for edge in planning.edge_records
+    )
+
+
+def test_geometry_only_reverse_roadgraph_edge_keeps_forward_prepared_route_identity() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "source_id": "geometry-only-reversed-main",
+                "highway": "primary",
+                "geometry": LineString([(100, 0), (0, 0)]),
+            }
+        ],
+        geometry="geometry",
+        crs=27700,
+    )
+    graph = planning_graph_from_compiler_edges(
+        network,
+        source_export_fingerprint="7" * 64,
+    )
+    start_node = "xy:0.0000000:0.0000000"
+    end_node = "xy:100.0000000:0.0000000"
+    reverse_record = next(
+        record
+        for record in graph.edge_records
+        if record.from_node_id == start_node and record.to_node_id == end_node
+    )
+    road_option = RoadGraph(network).option(start_node, end_node, "strategic-spine")
+    assert road_option is not None
+    assert tuple(road_option.directed_edge_ids) == (reverse_record.directed_edge_id,)
+    discovered = discovery(graph, CorridorObligation("reversed-corridor", start_node, end_node))
+    source_set = discovered.candidate_sets[0]
+    prepared_candidate = next(record for record in discovered.candidate_records if record.edge_ids)
+    prepared_record = type(
+        "PreparedReversedGeometryOnlyCandidate",
+        (),
+        {
+            "candidate": prepared_candidate.candidate_input,
+            "routing_edge_ids": tuple(road_option.directed_edge_ids),
+            "reverse_routing_edge_ids": tuple(road_option.reverse_directed_edge_ids),
+            "evidence_ids": (),
+            "source_ids": (),
+            "generation_strategies": ("roadgraph-reverse-fixture",),
+        },
+    )()
+    unit = type(
+        "ReversedGeometryOnlyUnit",
+        (),
+        {
+            "unit_id": "reversed-corridor",
+            "unit_role": type("Role", (), {"value": "interurban-spine"})(),
+            "candidate_set": source_set,
+            "candidate_records": (prepared_record,),
+            "routing_start_node_id": start_node,
+            "routing_end_node_id": end_node,
+        },
+    )()
+    preparation = type(
+        "ReversedGeometryOnlyPreparation",
+        (),
+        {
+            "units": (unit,),
+            "issues": (),
+            "preparation_fingerprint": "8" * 64,
+            "profile_fingerprint": source_set.profile_fingerprint,
+        },
+    )()
+
+    state = compile_effective_strategic_network(
+        EffectiveStrategicNetworkRequest(
+            routable_network=network,
+            preparation=preparation,
+            area_fingerprint="9" * 64,
+            snapshot_fingerprint=graph.source_export_fingerprint,
+        )
+    )
+
+    assert state.status is EffectiveStrategicNetworkStatus.EVALUATED
+    selected = next(
+        section
+        for section in state.effective_network.sections
+        if section.network_role == "interurban-spine"
+    )
+    assert selected.routing_edge_ids == (reverse_record.directed_edge_id,)
+    assert selected.geometry_wkt == "LINESTRING (0 0, 100 0)"
+
+
 def test_urban_a_road_defaults_are_protected_by_authoritative_mesh_selection() -> None:
     routable_network = _fixture_routable_network()
     graph = planning_graph_from_compiler_edges(

@@ -216,7 +216,18 @@ class RoadGraph:
             }
             self._add_best_edge(u, v, attrs)
             if not _present(row.get("u")) and not attrs["oneway"]:
-                reverse = attrs | {"geometry": LineString(list(geometry.coords)[::-1])}
+                reverse_projected_geometry = LineString(list(projected_geometry.coords)[::-1])
+                reverse = attrs | {
+                    "geometry": LineString(list(geometry.coords)[::-1]),
+                    "directed_edge_id": _directed_edge_identity(
+                        source_edge_id,
+                        v,
+                        u,
+                        reverse_projected_geometry,
+                        duplicate_source_id=True,
+                        crs="EPSG:27700",
+                    ),
+                }
                 self._add_best_edge(v, u, reverse)
         self._edge_ids_by_node: dict[str, tuple[str, ...]] = {}
         references_by_edge_id: dict[str, set[str]] = {}

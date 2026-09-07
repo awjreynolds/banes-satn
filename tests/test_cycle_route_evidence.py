@@ -9,7 +9,7 @@ from satn.routable_edge_enrichment import (
     encode_routable_edge_enrichment,
     policy_fingerprint,
 )
-from satn.routing import RoadGraph
+from satn.routing import RoadGraph, choose_alignment
 
 
 def _network() -> gpd.GeoDataFrame:
@@ -94,6 +94,49 @@ def test_typed_cycle_route_evidence_survives_marking_and_road_graph() -> None:
     assert edges["greenway-edge"]["cycle_alignment_bases"] == ("greenway",)
     assert edges["plain-cycleway-edge"]["ncn"] is False
     assert edges["plain-cycleway-edge"]["cycle_alignment_bases"] == ()
+
+
+def test_raw_osm_ncn_membership_survives_without_typed_context() -> None:
+    network = gpd.GeoDataFrame(
+        [
+            {
+                "osmid": "osm-way-current-ncn",
+                "ncn": "yes",
+                "highway": "cycleway",
+                "u": "ncn-u",
+                "v": "ncn-v",
+                "geometry": LineString([(0, 0), (100, 0)]),
+            },
+            {
+                "osmid": "osm-way-ncn-link",
+                "ncn": "link",
+                "highway": "path",
+                "u": "link-u",
+                "v": "link-v",
+                "geometry": LineString([(0, 100), (100, 100)]),
+            },
+        ],
+        geometry="geometry",
+        crs=27700,
+    )
+
+    marked = mark_ncn_edges(network, _context().iloc[0:0].copy())
+
+    assert marked["satn_ncn"].tolist() == [True, False]
+    assert marked["cycle_alignment_bases"].tolist() == [("current-ncn",), ()]
+
+    graph = RoadGraph(marked)
+    edges = {attrs["edge_id"]: attrs for _left, _right, attrs in graph.graph.edges(data=True)}
+
+    assert edges["osm-way-current-ncn"]["ncn"] is True
+    assert edges["osm-way-current-ncn"]["cycle_alignment_bases"] == ("current-ncn",)
+    assert edges["osm-way-ncn-link"]["ncn"] is False
+    assert edges["osm-way-ncn-link"]["cycle_alignment_bases"] == ()
+
+    selected, _options, _reason = choose_alignment(graph, "ncn-u", "ncn-v")
+    assert selected is not None
+    assert selected.role == "ncn-informed"
+    assert selected.ncn_share == 1
 
 
 def test_typed_cycle_route_evidence_survives_retained_edge_wire() -> None:

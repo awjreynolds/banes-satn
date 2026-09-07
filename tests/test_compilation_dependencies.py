@@ -10,7 +10,7 @@ import satn.compilation_dependencies as dependencies
 def test_manifest_is_an_explicit_revision_record() -> None:
     assert dependencies.compilation_dependency_manifest() == {
         "schema_version": "satn-compilation-dependency-manifest/v4",
-        "compiler_cache_revision": "poc-v2",
+        "compiler_cache_revision": dependencies.COMPILER_CACHE_REVISION,
         "compiler_path": "network",
     }
 
@@ -36,7 +36,7 @@ def test_manifest_does_not_scan_or_read_package_tree(
 
     assert dependencies.compilation_dependency_manifest() == {
         "schema_version": "satn-compilation-dependency-manifest/v4",
-        "compiler_cache_revision": "poc-v2",
+        "compiler_cache_revision": dependencies.COMPILER_CACHE_REVISION,
         "compiler_path": "network",
     }
 

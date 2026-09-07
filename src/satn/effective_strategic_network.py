@@ -241,6 +241,34 @@ def planning_graph_from_compiler_edges(
                 else None,
             }
         )
+        if not _present(source_row.get("u")) and drafts[-1]["oneway"] is not True:
+            reverse_geometry = LineString(list(geometry.coords)[::-1])
+            reverse_edge_id = _directed_edge_identity(
+                source_edge_id,
+                end,
+                start,
+                reverse_geometry,
+                duplicate_source_id=True,
+                crs="EPSG:27700",
+            )
+            if reverse_edge_id not in seen:
+                seen.add(reverse_edge_id)
+                directed.add_edge(end, start, edge_id=reverse_edge_id)
+                drafts.append(
+                    {
+                        "edge_id": reverse_edge_id,
+                        "source_edge_id": source_edge_id,
+                        "start": end,
+                        "end": start,
+                        "geometry": reverse_geometry,
+                        "highway": _scalar(source_row.get("highway")),
+                        "ref": _scalar(source_row.get("ref")),
+                        "access": _scalar(source_row.get("access")),
+                        "bicycle": _scalar(source_row.get("bicycle")),
+                        "foot": _scalar(source_row.get("foot")),
+                        "oneway": drafts[-1]["oneway"],
+                    }
+                )
     weak_by_node: dict[str, str] = {}
     weak_components: list[GraphComponentRecord] = []
     for nodes in sorted(
